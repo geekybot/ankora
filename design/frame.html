@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Ankora frame</title>
+<style>html,body{margin:0;background:#0b0f18}iframe{display:block;border:0}</style>
+<iframe id="f" title="Ankora preview"></iframe>
+<script>
+  // Screenshot helper: frame.html#<encoded src>|<section id>|<width>|<height>
+  const [src, id, w, h] = decodeURIComponent(location.hash.slice(1)).split('|');
+  const f = document.getElementById('f');
+  f.style.width = (w || 390) + 'px'; f.style.height = (h || 844) + 'px';
+  f.src = src || 'proto/index.html?embed=1';
+  if (id) f.addEventListener('load', () => setTimeout(() => {
+    const d = f.contentDocument, el = d && d.getElementById(id);
+    if (el) { d.querySelectorAll('.rv').forEach(x => x.classList.add('in')); f.contentWindow.scrollTo(0, el.offsetTop); }
+  }, 600));
+</script>

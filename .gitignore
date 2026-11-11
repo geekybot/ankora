@@ -1,0 +1,18 @@
+# Only the working code is in this repo: contracts, the chain client, and the UI.
+/*
+!/.gitignore
+!/README.md
+!/contracts/
+!/client/
+!/design/
+
+# Build output and tool state
+target/
+node_modules/
+.DS_Store
+design/.impeccable/
+
+# Secrets never belong here
+.env
+.env.*
+*.pem

@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ankora: dollar loans on staked NEAR</title>
+<meta name="description" content="Borrow USDC against staked NEAR on terms of up to 30 days. Ankora reads the price only when a term starts or renews, so an intraday wick can't liquidate you.">
+<meta name="theme-color" content="#0b0f18">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+  /* Ankora brand, 60-30-10: Ink (main) · Petrol (second) · Lemon (loud). Danger crimson only for loss. */
+  :root {
+    --ink: oklch(0.17 0.02 262);
+    --ink-2: oklch(0.21 0.03 235);
+    --petrol: oklch(0.34 0.065 222);
+    --petrol-2: oklch(0.29 0.055 222);
+    --petrol-line: oklch(0.42 0.055 222);
+    --lemon: oklch(0.91 0.18 103);
+    --lemon-ink: oklch(0.18 0.03 103);
+    --text: oklch(0.965 0.006 250);
+    --text-2: oklch(0.86 0.025 220);
+    --text-3: oklch(0.76 0.03 220);
+    --danger: oklch(0.65 0.22 22);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --gutter: 16px;
+    --max: 1200px;
+    color-scheme: dark;
+  }
+  @media (min-width: 720px) { :root { --gutter: 32px; } }
+  @media (min-width: 1100px) { :root { --gutter: 48px; } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-padding-top: 80px; }
+  html.smooth { scroll-behavior: smooth; }
+  body { background: var(--ink); color: var(--text); font: 400 17px/1.55 "Archivo", ui-sans-serif, system-ui, sans-serif; font-stretch: 100%; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--lemon); color: var(--lemon-ink); }
+  :focus-visible { outline: 2px solid var(--lemon); outline-offset: 3px; border-radius: 4px; }
+  a { color: inherit; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* nav */
+  .nav { position: fixed; inset: 0 0 auto; z-index: 20; height: 64px; background: var(--ink); border-bottom: 1px solid transparent; transition: border-color 200ms ease; }
+  .nav.scrolled { border-bottom-color: var(--petrol-line); }
+  .nav .wrap { height: 100%; display: flex; align-items: center; gap: 28px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; text-decoration: none; letter-spacing: -0.01em; }
+  .brand svg { width: 30px; height: 24px; }
+  .nav-links { display: none; gap: 24px; font-size: 15px; color: var(--text-2); }
+  .nav-links a { text-decoration: none; transition: color 160ms ease; }
+  .nav-links a:hover { color: var(--text); }
+  @media (min-width: 900px) { .nav-links { display: flex; } }
+  .nav .btn { margin-left: auto; }
+
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 20px; border-radius: 14px; font: 650 16px/1 "Archivo", sans-serif; text-decoration: none; white-space: nowrap; transition: transform 140ms var(--ease-out), background-color 160ms ease, border-color 160ms ease; }
+  .btn:active { transform: scale(0.97); }
+  .btn-loud { background: var(--lemon); color: var(--lemon-ink); }
+  .btn-loud svg { width: 18px; height: 18px; }
+  .btn-2 { border: 1.5px solid var(--petrol-line); color: var(--text); }
+  @media (hover: hover) { .btn-loud:hover { background: oklch(0.94 0.17 103); } .btn-2:hover { border-color: var(--text-3); } }
+  .btn-lg { height: 56px; padding: 0 24px; font-size: 17px; }
+
+  /* hero */
+  .hero { min-height: 100svh; padding: 112px 0 56px; display: flex; align-items: center; }
+  .hero-grid { display: grid; gap: 40px; align-items: center; }
+  @media (min-width: 1000px) { .hero-grid { grid-template-columns: 1.05fr 1fr; gap: 56px; } }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .tag { font-size: 13px; font-weight: 650; padding: 5px 10px; border-radius: 8px; background: var(--petrol); color: var(--text); }
+  .tag.warn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--petrol-line); color: var(--text-2); }
+  h1 { font-size: clamp(2.75rem, 7.4vw, 5.5rem); line-height: 0.96; font-weight: 800; font-stretch: 112%; letter-spacing: -0.035em; text-wrap: balance; }
+  h1 .w { display: inline-block; }
+  .sub { margin-top: 24px; font-size: clamp(1.0625rem, 1.6vw, 1.25rem); color: var(--text-2); max-width: 34em; text-wrap: pretty; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+  .fine { margin-top: 20px; font-size: 14px; color: var(--text-3); max-width: 40em; }
+
+  /* the wick chart (signature) */
+  .chart { position: relative; padding: 20px 20px 16px; border-radius: 20px; background: var(--petrol-2); }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart-cap { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-3); margin-top: 10px; }
+  .c-grid { stroke: var(--petrol-line); stroke-width: 1; }
+  .c-liq { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 6 6; }
+  .c-price { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .c-term { fill: oklch(0.42 0.06 222 / 0.45); }
+  .c-st { fill: var(--ink); stroke: var(--lemon); stroke-width: 4; }
+  .c-st-dot { fill: var(--lemon); }
+  .c-hit { fill: var(--danger); }
+  .c-t { font: 600 17px/1 "Archivo", sans-serif; font-stretch: 88%; fill: var(--text-2); }
+  .c-t-strong { fill: var(--text); font-weight: 700; }
+  @media (max-width: 600px) { .c-t { font-size: 24px; } }
+  .c-t-lemon { fill: var(--lemon); font-weight: 700; }
+  .c-t-danger { fill: var(--danger); font-weight: 700; }
+  .draw .c-price { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1600ms var(--ease-out) 300ms forwards; }
+  .draw .c-hit, .draw .c-hit-t { opacity: 0; animation: pop 260ms var(--ease-out) 1250ms forwards; }
+  .draw .c-st, .draw .c-st-dot { transform-box: fill-box; transform-origin: center; animation: st 420ms var(--ease-out) both; }
+  .draw .c-st.end, .draw .c-st-dot.end { animation-delay: 1750ms; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+  @keyframes st { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+
+  /* sections */
+  section.s { padding: 96px 0; }
+  @media (min-width: 900px) { section.s { padding: 128px 0; } }
+  .band { background: var(--petrol); }
+  .band-2 { background: var(--petrol-2); }
+  h2 { font-size: clamp(2rem, 4.4vw, 3.5rem); line-height: 1.02; font-weight: 800; font-stretch: 108%; letter-spacing: -0.03em; max-width: 18em; text-wrap: balance; }
+  h3 { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.01em; }
+  .lead { margin-top: 20px; font-size: 1.125rem; color: var(--text-2); max-width: 40em; text-wrap: pretty; }
+  p + p { margin-top: 14px; }
+  .muted { color: var(--text-2); }
+
+  .stat { display: grid; gap: 32px; margin-top: 56px; align-items: end; }
+  @media (min-width: 900px) { .stat { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
+  .stat-n { white-space: nowrap; font-size: clamp(4.5rem, 13vw, 9.5rem); line-height: 0.82; font-weight: 800; font-stretch: 70%; letter-spacing: -0.03em; color: var(--lemon); }
+  .stat-n small { white-space: normal; line-height: 1.15; max-width: 16em; font-size: 0.3em; font-stretch: 100%; letter-spacing: 0; color: var(--text); font-weight: 700; display: block; margin-top: 12px; }
+  .stat p { max-width: 36em; color: var(--text-2); }
+
+  /* four stations */
+  .steps { margin-top: 56px; display: grid; gap: 0; position: relative; counter-reset: st; }
+  @media (min-width: 960px) { .steps { grid-template-columns: repeat(4, 1fr); gap: 28px; } }
+  .step { position: relative; padding: 0 0 36px 44px; }
+  .step::before { content: ""; position: absolute; left: 12px; top: 26px; bottom: 0; width: 6px; border-radius: 3px; background: var(--petrol-line); }
+  .step:last-child::before { display: none; }
+  .step i { position: absolute; left: 0; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); border: 5px solid var(--text); }
+  .step.read i { border-color: var(--lemon); }
+  @media (min-width: 960px) {
+    .step { padding: 52px 0 0; }
+    .step::before { left: 30px; right: -28px; top: 12px; bottom: auto; width: auto; height: 6px; }
+    .step:last-child::before { display: block; right: 0; height: 0; background: none; border-top: 6px dotted var(--petrol-line); border-radius: 0; }
+    .step i { top: 0; }
+  }
+  .step h3 { margin-bottom: 8px; }
+  .step p { font-size: 15px; color: var(--text-2); }
+  .step .read-t { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--lemon); }
+
+  /* plans */
+  .plans { margin-top: 56px; display: grid; border-radius: 20px; overflow: hidden; background: var(--petrol-line); gap: 1.5px; }
+  @media (min-width: 800px) { .plans { grid-template-columns: repeat(3, 1fr); } }
+  .plan { background: var(--petrol-2); padding: 28px 28px 32px; display: grid; gap: 6px; }
+  .plan-name { font-size: 15px; font-weight: 700; color: var(--text-2); }
+  .plan-ltv { font-size: 4.5rem; line-height: 0.9; font-weight: 800; font-stretch: 70%; }
+  .plan-ltv small { font-size: 0.3em; font-stretch: 100%; font-weight: 650; color: var(--text-2); margin-left: 6px; }
+  .plan dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin-top: 14px; font-size: 15px; }
+  .plan dt { color: var(--text-3); }
+  .plan dd { text-align: right; font-weight: 650; }
+  .note { margin-top: 24px; font-size: 15px; color: var(--text-2); max-width: 46em; }
+
+  /* five days */
+  .days { margin-top: 56px; display: grid; gap: 28px; }
+  .bar { display: grid; grid-template-columns: 72fr 48fr 24fr; min-height: 76px; border-radius: 14px; overflow: hidden; gap: 2px; }
+  .bar > div { display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; font-weight: 750; font-size: 15px; line-height: 1.25; min-width: 0; }
+  .bar small { font-weight: 600; font-size: 13px; color: inherit; }
+  .b-notice { background: var(--text); color: var(--ink); }
+  .b-grace { background: var(--text-3); color: var(--ink); }
+  .b-auc { background: var(--danger); color: var(--ink); }
+  .rules { display: grid; gap: 20px; }
+  @media (min-width: 900px) { .rules { grid-template-columns: repeat(2, 1fr); gap: 24px 48px; } }
+  .rules div { padding-top: 16px; border-top: 1.5px solid var(--petrol-line); }
+  .rules b { display: block; margin-bottom: 6px; }
+  .rules p { color: var(--text-2); font-size: 16px; }
+
+  /* split */
+  .split { display: grid; gap: 48px; margin-top: 56px; }
+  @media (min-width: 900px) { .split { grid-template-columns: 1fr 1fr; gap: 64px; } }
+  .split h3 { font-size: 1.5rem; margin-bottom: 14px; }
+  .split h3 em { font-style: normal; color: var(--lemon); }
+  .split ul { list-style: none; display: grid; gap: 12px; }
+  .split li { padding-left: 22px; position: relative; color: var(--text-2); font-size: 16px; }
+  .split li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+  .split .loss li::before { background: var(--danger); }
+
+  .cols3 { display: grid; gap: 40px; margin-top: 56px; }
+  @media (min-width: 900px) { .cols3 { grid-template-columns: repeat(3, 1fr); } }
+  .cols3 h3 { margin-bottom: 14px; }
+  .cols3 ul { list-style: none; display: grid; gap: 12px; }
+  .cols3 li { color: var(--text-2); font-size: 16px; padding-left: 22px; position: relative; }
+  .cols3 li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+
+  /* faq */
+  .faq { margin-top: 48px; max-width: 820px; }
+  .faq details { border-top: 1.5px solid var(--petrol-line); }
+  .faq details:last-child { border-bottom: 1.5px solid var(--petrol-line); }
+  .faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; padding: 22px 0; font-size: 1.125rem; font-weight: 700; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary svg { width: 22px; height: 22px; flex: none; transition: transform 200ms var(--ease-out); }
+  .faq details[open] summary svg { transform: rotate(45deg); }
+  .faq details p { padding: 0 0 22px; color: var(--text-2); max-width: 44em; }
+
+  /* close */
+  .close { text-align: left; }
+  .close .ctas { margin-top: 36px; }
+  footer { padding: 48px 0 64px; border-top: 1px solid var(--petrol-line); color: var(--text-3); font-size: 14px; }
+  footer .wrap { display: grid; gap: 16px; }
+  footer p { max-width: 60em; }
+
+  /* reveal on scroll: content is visible by default; JS adds the class only when motion is allowed */
+  .js-motion .rv { opacity: 0; transform: translateY(16px); transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); }
+  .js-motion .rv.in { opacity: 1; transform: none; }
+  .js-motion h1 .w { opacity: 0; transform: translateY(14px); animation: wordin 620ms var(--ease-out) forwards; }
+  @keyframes wordin { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .draw .c-price { stroke-dashoffset: 0; } .draw .c-hit, .draw .c-hit-t { opacity: 1; } }
+</style>
+</head>
+<body>
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Ankora on NEAR, home">
+      <svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 12h18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="12" r="4.2" fill="var(--ink)" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="12" r="4.2" fill="var(--lemon)" stroke="var(--lemon)" stroke-width="2.6"/></svg>
+      Ankora
+    </a>
+    <nav class="nav-links" aria-label="Sections"><a href="#how">How it works</a><a href="#plans">Borrow</a><a href="#lend">Lend</a><a href="#risks">Risks</a><a href="#faq">Questions</a></nav>
+    <a class="btn btn-loud" href="../proto/index.html?d=b&p=petrol">Open the app</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="tags"><span class="tag">On NEAR</span><span class="tag warn">Testnet</span><span class="tag warn">Unaudited</span></div>
+        <h1 id="h1">A wick can't liquidate your NEAR.</h1>
+        <p class="sub">Borrow dollars against staked NEAR on terms of up to 30 days. Ankora reads the price when your term starts and when it renews. In between, nothing can sell your collateral.</p>
+        <div class="ctas">
+          <a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=petrol#/review">See what you can borrow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
+          <a class="btn btn-2 btn-lg" href="#lend">Lend dollars</a>
+        </div>
+        <p class="fine">Up to 50% LTV, at 9.7–11.3% a year in normal markets. Each term's rate is fixed when it starts.</p>
+      </div>
+
+      <figure class="chart" aria-labelledby="chart-cap">
+        <svg id="wick" viewBox="0 0 640 400" role="img" aria-label="Illustration: a NEAR price path over one 30-day term. An intraday wick dips below a live liquidation line on day 18 and recovers. Ankora reads the price only on day 0 and day 30.">
+          <rect class="c-term" x="40" y="24" width="560" height="296" rx="6"/>
+          <line class="c-grid" x1="40" y1="320" x2="600" y2="320"/>
+          <line class="c-liq" x1="40" y1="258" x2="600" y2="258"/>
+          <text class="c-t c-t-danger" x="52" y="248">Live liquidation line (≈ 66.5% LTV)</text>
+          <path class="c-price" pathLength="1" d="M40 112 L68 120 L96 104 L124 126 L152 118 L180 140 L208 132 L236 150 L264 138 L292 158 L320 150 L348 166 L376 156 L404 172 L418 168 L432 294 L446 176 L474 164 L502 150 L530 158 L558 140 L586 132 L600 128"/>
+          <circle class="c-hit" cx="432" cy="294" r="8"/>
+          <text class="c-t c-t-danger c-hit-t" x="416" y="300" text-anchor="end">Liquidated elsewhere</text>
+          <text class="c-t" x="320" y="54" text-anchor="middle">No price read during the term</text>
+          <circle class="c-st" cx="40" cy="112" r="11"/><circle class="c-st-dot" cx="40" cy="112" r="4"/>
+          <circle class="c-st end" cx="600" cy="128" r="11"/><circle class="c-st-dot end" cx="600" cy="128" r="4"/>
+          <text class="c-t c-t-strong" x="40" y="350">Day 0</text><text class="c-t c-t-lemon" x="40" y="374">price read</text>
+          <text class="c-t c-t-strong" x="432" y="350" text-anchor="middle">Day 18</text><text class="c-t" x="432" y="374" text-anchor="middle">wick</text>
+          <text class="c-t c-t-strong" x="600" y="350" text-anchor="end">Day 30</text><text class="c-t c-t-lemon" x="600" y="374" text-anchor="end">price read</text>
+        </svg>
+        <figcaption class="chart-cap" id="chart-cap"><span>Illustrative path, not real prices.</span><span>On Ankora the day-18 wick does nothing.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="s band rv" id="wicks">
+    <div class="wrap">
+      <h2>Most liquidations in our backtest were wicks.</h2>
+      <div class="stat">
+        <div class="stat-n num">60–68%<small>of liquidated borrowers were caught by an intraday low</small></div>
+        <div>
+          <p>We replayed NEAR's daily prices from October 2020 to November 2026 against Rhea's liquidation line, at about 66.5% LTV. Each simulated borrower started at 30%, 40% or 50% and added nothing for a year. Of the borrowers who got liquidated, 60–68% were caught by an intraday low on a day that closed above their liquidation price.</p>
+          <p>Each of those liquidations would have come without notice. The liquidator would have taken the collateral at a discount, at a price that was gone by the close. Ankora doesn't read the price during a term, so a wick gives it nothing to act on.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s rv" id="how">
+    <div class="wrap">
+      <h2>Four steps and one price check per term.</h2>
+      <div class="steps">
+        <div class="step"><i></i><h3>Bring NEAR</h3><p>The loan's vault stakes it with your validator, as long as that validator is on NEAR Foundation's lockup whitelist. Already staked? You unstake once first, about 28 hours.</p></div>
+        <div class="step read"><i></i><h3>Pick a plan</h3><p>The app pushes a fresh Pyth price just before you borrow. A price older than 60 seconds, or one the feed is unsure of, is rejected and your NEAR goes back.</p><span class="read-t">Price read</span></div>
+        <div class="step"><i></i><h3>Get dollars</h3><p>The first term's interest comes off the top. Your staking rewards keep building in the vault.</p></div>
+        <div class="step read"><i></i><h3>Renew or repay</h3><p>At the end of the term the loan renews by itself if your LTV fits a plan. Repay instead, and the vault becomes yours, with the stake still staked.</p><span class="read-t">Price read</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s band-2 rv" id="plans">
+    <div class="wrap">
+      <h2>Borrow more, renew more often.</h2>
+      <div class="plans">
+        <div class="plan"><span class="plan-name">30% plan</span><span class="plan-ltv num">30%<small>of your collateral</small></span><dl><dt>Term</dt><dd>30 days</dd><dt>Rate, normal markets</dt><dd class="num">9.7%</dd></dl></div>
+        <div class="plan"><span class="plan-name">40% plan</span><span class="plan-ltv num">40%<small>of your collateral</small></span><dl><dt>Term</dt><dd>14 days</dd><dt>Rate, normal markets</dt><dd class="num">10.1%</dd></dl></div>
+        <div class="plan"><span class="plan-name">50% plan</span><span class="plan-ltv num">50%<small>of your collateral</small></span><dl><dt>Term</dt><dd>7 days</dd><dt>Rate, normal markets</dt><dd class="num">11.3%</dd></dl></div>
+      </div>
+      <p class="note">Each rate comes from pricing the loan as a put option on your collateral, using a jump-diffusion model of NEAR fitted to every day since October 2020. Once a term starts, its rate doesn't change. When NEAR is unusually volatile, Ankora switches new loans and renewals to shorter terms (14, 7 and 3 days); rates stay the same except the 50% plan's, which rises to 11.7%. In v1 the team flips that switch by hand.</p>
+    </div>
+  </section>
+
+  <section class="s rv" id="five-days">
+    <div class="wrap">
+      <h2>If the price has fallen, you get five days before any auction.</h2>
+      <p class="lead">At each renewal the pool reads the lower of Pyth's spot price and its average. Anyone can trigger the renewal once the term ends, so it can't be held back to wait for a better price.</p>
+      <div class="days">
+        <div class="bar" role="img" aria-label="72 hours of notice, then 48 hours of grace, then a 24-hour auction">
+          <div class="b-notice">72 h notice<small>repay part or all</small></div>
+          <div class="b-grace">48 h grace<small>same terms</small></div>
+          <div class="b-auc">24 h<small>auction</small></div>
+        </div>
+        <div class="rules">
+          <div><b>LTV 50% or lower</b><p>The loan renews into the plan that fits. The next term's interest is added to your debt.</p></div>
+          <div><b>LTV above 50%</b><p>72 hours of notice. Repay part of the debt in USDC to bring LTV to 50% or lower, and the loan renews at the next check. If NEAR recovers in that time, it renews without a payment.</p></div>
+          <div><b>After the grace period</b><p>A 24-hour Dutch auction of the vault, starting at its full value and falling to half. Lenders are repaid and anything above your debt goes to you. You can still repay in full until a bid lands.</p></div>
+          <div><b>No late fee</b><p>If the loan renews after its end date, you pay interest for the extra days at the new plan's rate. If an auction raises less than the debt, the lenders take the loss and you owe nothing more.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s band rv" id="native">
+    <div class="wrap">
+      <h2>Native stakers keep their validator.</h2>
+      <p class="lead">About 91% of staked NEAR, roughly $1.88B, is native stake with a validator its owner picked. Staking pools can't transfer stake between accounts, so moving it means unstaking once. Rhea doesn't accept native stake. Ankora's vault re-stakes with your validator, as long as it's on NEAR Foundation's lockup whitelist.</p>
+      <p class="lead">The move costs about 28 hours without rewards, roughly 0.017% of your stake. When you repay, the vault passes to you with the stake still staked.</p>
+    </div>
+  </section>
+
+  <section class="s rv" id="lend">
+    <div class="wrap">
+      <h2>Lend dollars, and choose how much of the loss you take.</h2>
+      <p class="lead">Deposit USDC on NEAR and it goes straight into the pool. Every loan is backed by NEAR, so pooling can't remove crash risk. The two tranches decide who takes a loss first.</p>
+      <div class="split">
+        <div>
+          <h3>Senior: <em>fixed 6.5%</em> a year</h3>
+          <ul>
+            <li>Paid before the junior earns anything. Senior money is lost only after the borrowers' equity and the whole junior tranche are gone.</li>
+            <li>In a 2021–22 crash test with a rate model fitted only on later prices, senior was paid in full in every start-week when collateral sold within 2 days, and in 94.3% of them when sales took 5 days at a 10% discount.</li>
+            <li>Withdrawals are paid from cash the pool isn't lending. v1 has no queue, so when cash is short the first to withdraw is paid first.</li>
+          </ul>
+        </div>
+        <div class="loss">
+          <h3>Junior: first loss</h3>
+          <ul>
+            <li>You take losses before the senior. In a bad enough crash you lose your whole deposit.</li>
+            <li>You keep what the pool earns after the senior's 6.5% and Ankora's fee: 18.1–21.0% a year replaying 2021–22, in-sample; 11.3% when fitted only on 2023–26 prices, with losses in 4.8% of weeks.</li>
+            <li>Locked for 36 days from your latest junior deposit. After that, you can't withdraw below 15% junior cover.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s band-2 rv" id="rhea">
+    <div class="wrap">
+      <h2>When Rhea is the better choice.</h2>
+      <div class="cols3" style="--dot: var(--text-3)">
+        <div><h3>More than 50% LTV</h3><p class="muted">Rhea lends up to about 66.5%, with no end date.</p></div>
+        <div><h3>A liquid staking token</h3><p class="muted">Rhea takes it directly. Ankora v1 takes plain NEAR only.</p></div>
+        <div><h3>The lowest rate in an ordinary year</h3><p class="muted">Rhea's 12-month median borrow rate is 7.8%. At that rate Ankora costs 2 to 3.5 points more.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s rv" id="risks">
+    <div class="wrap">
+      <h2>How you can lose money here.</h2>
+      <div class="cols3">
+        <div><h3>Borrowers</h3><ul>
+          <li>If your LTV is above 50% at a renewal and you don't pay down within 72 hours plus the 48-hour grace period, your vault is auctioned. The price can fall to half the vault's value before someone bids.</li>
+          <li>In our 2021–22 replay, 53–81% of borrowers who added nothing were asked to pay down at least once in a year; on Rhea, 55–85% were liquidated.</li>
+          <li>Repaying early doesn't refund the current term's interest.</li></ul></div>
+        <div><h3>Lenders</h3><ul>
+          <li>Senior and junior can both lose money in a fast NEAR crash, and the junior can lose all of it.</li>
+          <li>Every loan is backed by the same asset, so they all fall together. Since 2020 NEAR has fallen 52% in 3 days and 70% in 35 days.</li>
+          <li>If an auction gets no bid, the team sells the NEAR by hand and books the USDC back to lenders.</li></ul></div>
+        <div><h3>Everyone</h3><ul>
+          <li>Ankora is new code and hasn't been audited. In v1 the pool contract can still be upgraded by its deployer. The loan vaults can't be upgraded.</li>
+          <li>Prices come from Pyth. If the feed is stale or unsure, loans don't start.</li>
+          <li>We haven't tested whether enough lenders, junior buyers or auction bidders will show up.</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s band-2 rv" id="faq">
+    <div class="wrap">
+      <h2>Questions.</h2>
+      <div class="faq">
+        <details><summary>Is Ankora the same as Spectra Finance?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>No. Ankora, spelled with a k, lends dollars against staked NEAR on the NEAR blockchain. It has no connection to Spectra Finance.</p></details>
+        <details><summary>Do I have to unstake?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>If your NEAR is natively staked, yes, once. It takes about 28 hours and has ranged from 21 to 35. Then you bring plain NEAR and the vault stakes it with your validator. Getting your vault back after you repay needs no unstaking.</p></details>
+        <details><summary>Does Ankora use an oracle?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes. It reads Pyth when a loan starts and when it renews, at no other time, and uses the lower of spot and the average price. A bad price can stop a loan from starting or renewing. It can't take your collateral: only an auction can, and only after the term ends and the notice and grace periods have passed.</p></details>
+        <details><summary>Can I lose my NEAR?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes, if your LTV is above 50% at a renewal and you don't bring it down within 72 hours plus the 48-hour grace period. The vault then goes to a 24-hour auction whose price starts at the vault's value and falls to half. Anything above your debt comes back to you. You can never owe more than the vault is worth.</p></details>
+        <details><summary>What does it cost?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>A fixed rate for each term. You pay the first term's interest upfront, and each later term's interest is added to the debt. There's no late fee. Ankora keeps 5% of the interest. Each vault also holds back 1.5 NEAR from what you send, and about 1.2 NEAR of that pays for the vault account's storage.</p></details>
+        <details><summary>Can I repay early?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes, at any time, even during an auction until a bid lands. The current term's interest isn't refunded.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="s close rv">
+    <div class="wrap">
+      <h2>See what you can borrow. No wallet needed for a quote.</h2>
+      <div class="ctas">
+        <a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=petrol#/review">See what you can borrow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
+        <a class="btn btn-2 btn-lg" href="#risks">Read the risks first</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Ankora is experimental software running on NEAR testnet. Nothing on this site is investment advice. Ankora is not affiliated with Spectra Finance.</p>
+    <p>Design prototype, 2026. Figures come from Ankora's own model write-ups; the hero chart is illustrative.</p>
+  </div>
+</footer>
+
+<script>
+  (() => {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]still\b/.test(location.search);
+    // Review helper: ?only=<section id> shows just that section (used for screenshots)
+    const only = new URLSearchParams(location.search).get('only');
+    if (only) document.querySelectorAll('main > section').forEach(x => { if (x.id !== only) x.style.display = 'none'; else x.style.paddingTop = '120px'; });
+    const nav = document.getElementById('nav');
+    const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
+    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    // smooth scrolling only for in-page clicks, so arriving on #anchor jumps straight there
+    addEventListener('load', () => document.documentElement.classList.add('smooth'));
+    if (reduce) return;
+    document.documentElement.classList.add('js-motion');
+    // hero words rise in once, 40 ms apart
+    const h1 = document.getElementById('h1');
+    h1.innerHTML = h1.textContent.split(' ').map((w, i) => `<span class="w" style="animation-delay:${80 + i * 40}ms">${w}</span>`).join(' ');
+    document.getElementById('wick').classList.add('draw');
+    // sections fade up once as they enter
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -12% 0px' });
+    document.querySelectorAll('.rv').forEach(el => io.observe(el));
+  })();
+</script>
+</body>
+</html>

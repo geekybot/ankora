@@ -1,0 +1,17 @@
+// Addresses checked on chain 2026-11-11.
+export const NEAR_USD_ID = "c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750";
+
+export const MAINNET = {
+  /** Rhea's aggregate oracle: signed Pyth Pro payloads, reported about every 40 s. Pyth-shaped `get_price_no_older_than`; no EMA method. */
+  priceSource: "aggregate-oracle.near",
+  /** Dead for NEAR since the Pyth Core upgrade: last NEAR/USD publish 2026-08-25. Kept to detect a revival. */
+  pythLegacy: "pyth-oracle.near",
+  lockupWhitelist: "lockup-whitelist.near",
+  rpc: "https://free.rpc.fastnear.com",
+} as const;
+
+export const TESTNET = {
+  whitelist: "whitelist.f863973.m0",
+  exampleValidator: "kiln.pool.f863973.m0",
+  rpc: "https://test.rpc.fastnear.com",
+} as const;

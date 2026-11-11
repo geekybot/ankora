@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" data-dir="b" data-pal="petrol">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ankora prototype</title>
+<meta name="description" content="Clickable UX prototype for Ankora: no-liquidation dollar loans against staked NEAR. Demo data only.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Atkinson+Hyperlegible+Mono:wght@400..700&family=Atkinson+Hyperlegible+Next:wght@400..800&family=Martian+Mono:wdth,wght@75..112.5,400..700&family=Schibsted+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="directions.css">
+<link rel="stylesheet" href="palettes.css">
+</head>
+<body>
+<div id="hud" class="hud" aria-label="Prototype controls"></div>
+
+<div id="app" class="app">
+  <aside class="rail" aria-label="Main">
+    <div class="brand" data-go="home" role="link" tabindex="0" aria-label="Ankora home"></div>
+    <nav class="rail-nav" id="rail-nav"></nav>
+    <div class="rail-foot" id="rail-foot"></div>
+  </aside>
+
+  <header class="top">
+    <div class="brand" data-go="home" role="link" tabindex="0" aria-label="Ankora home"></div>
+    <button class="wallet-chip" type="button" data-act="toast" data-msg="Wallet Selector would open here.">
+      <span class="dot" aria-hidden="true"></span><span>alex.near</span>
+    </button>
+  </header>
+
+  <main class="main" id="main">
+    <div class="screen" id="screen"></div>
+    <div class="dock" id="dock"></div>
+  </main>
+
+  <aside class="context" id="context" aria-label="Timeline"></aside>
+
+  <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
+</div>
+
+<div class="sheet-layer" id="sheet-layer" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

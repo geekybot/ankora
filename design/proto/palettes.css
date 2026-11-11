@@ -1,0 +1,170 @@
+/* 60-30-10 palettes for direction B (Line). Main 60 = ground, Second 30 = panels/nav/line, Loud 10 = the next action.
+   Loaded after directions.css; only applies with data-dir="b" and a data-pal value. */
+
+/* ---------- Petrol (recommended): Ink 60 · Petrol 30 · Lemon 10 ---------- */
+[data-dir="b"][data-pal="petrol"] {
+  --main: oklch(0.17 0.02 262);      /* Ink, 60% */
+  --second: oklch(0.34 0.065 222);   /* Petrol, 30% */
+  --second-2: oklch(0.29 0.055 222);
+  --loud: oklch(0.91 0.18 103);      /* Lemon, 10% */
+  --loud-ink: oklch(0.18 0.03 103);
+
+  --bg: var(--main);
+  --bg-2: oklch(0.21 0.03 230);
+  --surface: var(--second);
+  --line: oklch(0.42 0.055 222);
+  --text: oklch(0.965 0.006 250);
+  --text-2: oklch(0.86 0.025 220);
+  --text-3: oklch(0.76 0.03 220);
+  --accent: var(--loud);
+  --accent-ink: var(--loud-ink);
+  --accent-soft: oklch(0.42 0.07 222);
+  --focus: var(--loud);
+  --l30: oklch(0.86 0.06 215);
+  --l40: oklch(0.72 0.09 218);
+  --l50: oklch(0.76 0.15 58);
+  --line-cur: var(--l30);
+  --danger: oklch(0.65 0.22 22);
+  --danger-ink: oklch(0.17 0.02 262); /* ink: 5.3:1 on danger; white was 3.2:1 */
+  --danger-soft: oklch(0.3 0.08 22);
+  --warn: oklch(0.76 0.15 58);
+  --warn-soft: oklch(0.3 0.06 58);
+  --warn-ink: oklch(0.9 0.08 70);
+  --ok: var(--loud); --ok-soft: oklch(0.42 0.07 222);
+  --sel-bg: var(--loud); --sel-ink: var(--loud-ink);
+  --track-fill: transparent;
+  --thumb: var(--loud); --thumb-ring: var(--main);
+  --meter-fill: var(--text);
+  --tr-s: var(--second); --tr-s-ink: var(--text); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second-2);
+  --nav-on: var(--loud);
+  --rail-bg: var(--second-2); --rail-on-bg: var(--second); --rail-on: var(--text);
+  --link: var(--loud);
+  --brand: var(--text);
+}
+
+/* ---------- Day: Porcelain 60 · Petrol 30 · Lemon 10 (landing, daytime) ---------- */
+[data-dir="b"][data-pal="day"] {
+  color-scheme: light;
+  --main: oklch(0.965 0.006 240);
+  --second: oklch(0.34 0.065 222);
+  --second-2: oklch(0.3 0.06 222);
+  --loud: oklch(0.91 0.18 103);
+  --loud-ink: oklch(0.18 0.03 103);
+
+  --bg: var(--main);
+  --bg-2: oklch(0.925 0.012 225);
+  --surface: oklch(0.99 0.004 240);
+  --line: oklch(0.86 0.015 225);
+  --text: oklch(0.19 0.02 262);
+  --text-2: oklch(0.4 0.03 230);
+  --text-3: oklch(0.5 0.03 230);
+  --accent: var(--loud);
+  --accent-ink: var(--loud-ink);
+  --accent-soft: oklch(0.9 0.04 222);
+  --focus: var(--second);
+  --l30: oklch(0.34 0.065 222);
+  --l40: oklch(0.5 0.08 220);
+  --l50: oklch(0.64 0.16 55);
+  --line-cur: var(--l30);
+  --danger: oklch(0.56 0.21 25);
+  --danger-ink: oklch(0.98 0.01 25);
+  --danger-soft: oklch(0.95 0.03 25);
+  --warn: oklch(0.64 0.16 55);
+  --warn-soft: oklch(0.96 0.04 70);
+  --warn-ink: oklch(0.42 0.1 55);
+  --ok: var(--second); --ok-soft: oklch(0.9 0.04 222);
+  --sel-bg: var(--second); --sel-ink: oklch(0.97 0.006 240);
+  --track-bands: linear-gradient(to right, var(--l30) 0 50%, var(--l40) 50% 75%, var(--l50) 75% 100%);
+  --track-fill: transparent;
+  --thumb: var(--loud); --thumb-ring: var(--text);
+  --meter-b1: oklch(0.85 0.03 222); --meter-b2: oklch(0.89 0.025 222); --meter-b3: oklch(0.93 0.015 222);
+  --meter-fill: var(--second);
+  --tr-s: var(--second); --tr-s-ink: oklch(0.97 0.006 240); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second);
+  --nav-on: var(--loud);
+  --rail-bg: var(--second); --rail-ink: oklch(0.97 0.006 240); --rail-ink-2: oklch(0.85 0.025 220); --rail-on-bg: oklch(0.42 0.07 222); --rail-on: var(--loud); --rail-brand: oklch(0.97 0.006 240);
+  --link: var(--second);
+  --brand: var(--second);
+}
+html[data-dir="b"][data-pal="day"] .tabbar .nav-i { color: oklch(0.82 0.03 220); }
+html[data-dir="b"][data-pal="day"] .tabbar .nav-i.on { color: var(--loud); }
+html[data-dir="b"][data-pal="day"] .rail .wallet-chip { background: oklch(0.42 0.07 222); color: oklch(0.97 0.006 240); }
+html[data-dir="b"][data-pal="day"] .rail .demo { color: oklch(0.82 0.03 220); }
+[data-dir="b"][data-pal="day"] .b-st { fill: var(--bg); }
+
+/* ---------- Cobalt (alternate): Ink 60 · Cobalt 30 · Tangerine 10 ---------- */
+[data-dir="b"][data-pal="cobalt"] {
+  --main: oklch(0.16 0.025 265);
+  --second: oklch(0.33 0.12 264);
+  --second-2: oklch(0.27 0.1 264);
+  --loud: oklch(0.76 0.17 52);
+  --loud-ink: oklch(0.18 0.03 52);
+
+  --bg: var(--main);
+  --bg-2: oklch(0.2 0.04 265);
+  --surface: var(--second);
+  --line: oklch(0.42 0.11 264);
+  --text: oklch(0.965 0.006 265);
+  --text-2: oklch(0.86 0.03 265);
+  --text-3: oklch(0.77 0.04 265);
+  --accent: var(--loud);
+  --accent-ink: var(--loud-ink);
+  --accent-soft: oklch(0.42 0.11 264);
+  --focus: var(--loud);
+  --l30: oklch(0.85 0.06 255);
+  --l40: oklch(0.7 0.12 260);
+  --l50: var(--loud);
+  --line-cur: var(--l30);
+  --danger: oklch(0.64 0.23 18);
+  --danger-ink: oklch(0.16 0.025 265);
+  --danger-soft: oklch(0.3 0.09 18);
+  --warn: oklch(0.82 0.14 85);
+  --warn-soft: oklch(0.3 0.06 85);
+  --warn-ink: oklch(0.92 0.08 90);
+  --ok: var(--loud); --ok-soft: oklch(0.42 0.11 264);
+  --sel-bg: var(--loud); --sel-ink: var(--loud-ink);
+  --thumb: var(--loud); --thumb-ring: var(--main);
+  --meter-fill: var(--text);
+  --tr-s: var(--second); --tr-s-ink: var(--text); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second-2);
+  --nav-on: var(--loud);
+  --rail-bg: var(--second-2); --rail-on-bg: var(--second); --rail-on: var(--text);
+  --link: var(--loud);
+  --brand: var(--text);
+}
+
+/* ---------- shared rules for all three 60-30-10 palettes ---------- */
+[data-dir="b"][data-pal] .cta { border-radius: 16px; }
+[data-dir="b"][data-pal] .cta .cta-pic { border-radius: 12px; background: var(--loud-ink); color: var(--loud); }
+[data-dir="b"][data-pal] .cta.is-danger .cta-pic { background: var(--danger-ink); color: var(--danger); }
+[data-dir="b"][data-pal] .cta-quiet { border-radius: 16px; background: var(--second-2); color: var(--text-2); }
+[data-dir="b"][data-pal="day"] .cta-quiet { background: var(--bg-2); color: var(--text-2); }
+[data-dir="b"][data-pal] .btn { border-radius: 14px; }
+[data-dir="b"][data-pal] .menu-cell { background: var(--second-2); color: var(--text); }
+[data-dir="b"][data-pal="day"] .menu-cell { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+[data-dir="b"][data-pal] .menu-cell[aria-checked="true"] { background: var(--loud); color: var(--loud-ink); box-shadow: none; }
+[data-dir="b"][data-pal] .menu-cell[aria-checked="true"] small { color: var(--loud-ink); }
+[data-dir="b"][data-pal] .menu-cell[aria-checked="true"] b::before { border-color: var(--loud-ink); background: var(--loud); }
+[data-dir="b"][data-pal] .b-here { fill: var(--loud); }
+[data-dir="b"][data-pal] .b-halo { stroke: var(--loud); }
+[data-dir="b"][data-pal] .b-term-big b { color: var(--text); }
+[data-dir="b"][data-pal] .b-term.is-warn .b-term-big b { color: var(--warn); }
+[data-dir="b"][data-pal] .asset-ic.tok { background: var(--loud); color: var(--loud-ink); }
+[data-dir="b"][data-pal] .switch[aria-checked="true"] { background: var(--loud); }
+[data-dir="b"][data-pal] .switch[aria-checked="true"] i { background: var(--loud-ink); }
+[data-dir="b"][data-pal] .check[aria-checked="true"] .check-box { background: var(--loud); border-color: var(--loud); color: var(--loud-ink); }
+[data-dir="b"][data-pal] .wallet-chip { background: var(--second); color: var(--text); }
+[data-dir="b"][data-pal] .wallet-chip .dot { background: var(--loud); }
+[data-dir="b"][data-pal="day"] .wallet-chip { background: var(--bg-2); }
+[data-dir="b"][data-pal] .tabbar { border-top: 0; }
+[data-dir="b"][data-pal] .tabbar .nav-i { color: var(--text-3); }
+[data-dir="b"][data-pal] .done-ic { background: var(--loud); color: var(--loud-ink); }
+[data-dir="b"][data-pal] .opt.on { --opt-on: var(--loud); --opt-on-bg: var(--second); }
+[data-dir="b"][data-pal="day"] .opt.on { --opt-on: var(--second); --opt-on-bg: var(--surface); }
+[data-dir="b"][data-pal][data-screen="notice"], [data-dir="b"][data-pal][data-screen="auction"] { --opt-on: var(--danger); --opt-on-bg: var(--danger-soft); }
+[data-dir="b"][data-pal] .chip[aria-checked="true"] { border-color: var(--loud); background: var(--second-2); }
+[data-dir="b"][data-pal="day"] .chip[aria-checked="true"] { border-color: var(--second); background: var(--accent-soft); }
+[data-dir="b"][data-pal] .ltv.is-warn { background: var(--warn-soft); }
+[data-dir="b"][data-pal] .note { background: var(--bg-2); }
+[data-dir="b"][data-pal] .cta:disabled { background: var(--bg-2); color: var(--text-3); }

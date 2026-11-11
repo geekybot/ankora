@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["ankora-core", "ankora-pool", "ankora-vault", "ankora-mocks"]
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

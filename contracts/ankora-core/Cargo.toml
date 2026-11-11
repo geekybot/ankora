@@ -1,0 +1,10 @@
+[package]
+name = "ankora-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+borsh = { version = "1.5", features = ["derive", "unstable__schema"], optional = true }
+
+[features]
+borsh = ["dep:borsh"]
