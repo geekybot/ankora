@@ -42,29 +42,28 @@ Pyth is gone on NEAR. Pyth Core dropped NEAR in its 26 Aug 2026 upgrade: `pyth-o
 | Validators | Any `*.pool.f863973.m0` on the whitelist, for example `kiln.pool.f863973.m0` |
 | NEAR/USD id | `c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750` (the same id on `aggregate-oracle.near`) |
 
-## Deploy (the user runs these; Claude never creates accounts)
+## Deploy (the founder creates the accounts; Claude never does)
 
-1. Create two testnet accounts, keys saved where the keeper can read them (`~/.near-credentials`):
+1. Create two testnet accounts with keys in `~/.near-credentials` (uses `cargo-near`; no near CLI needed):
    ```bash
-   near account create-account sponsor-by-faucet-service <you>-mocks.testnet autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
+   cargo near create-dev-account use-specific-account-id <you>-mocks.testnet autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
    ```
    ```bash
-   near account create-account sponsor-by-faucet-service <you>-ankora.testnet autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
+   cargo near create-dev-account use-specific-account-id <you>-ankora.testnet autogenerate-new-keypair save-to-legacy-keychain network-config testnet create
    ```
-   The pool needs about 4 NEAR for its 373 KB contract; the mocks need about 1.6 NEAR.
-2. Deploy the relay and test USDC, from `ankora-mocks/`:
+2. Build, then deploy, seed and run a smoke borrow in one idempotent script (rerun it if a step fails):
    ```bash
-   cargo near deploy build-non-reproducible-wasm <you>-mocks.testnet with-init-call new json-args '{}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-legacy-keychain send
+   ./build.sh
    ```
-3. Deploy the pool from `ankora-pool/`, after `./build.sh`:
    ```bash
-   cargo near deploy build-non-reproducible-wasm <you>-ankora.testnet with-init-call new json-args '{"owner":"<you>-mocks.testnet","usdc":"<you>-mocks.testnet","pyth":"<you>-mocks.testnet","price_id":"c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750","whitelist":"whitelist.f863973.m0"}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-legacy-keychain send
+   cd ../client && npm install && ANKORA_RELAY=<you>-mocks.testnet ANKORA_POOL=<you>-ankora.testnet npm run deploy:testnet
    ```
-4. Start the keeper (relays prices every 5 s, settles due loans every 60 s), from `../client`:
+   It deploys the relay and test USDC, then the pool (owner, USDC and price relay all `<you>-mocks.testnet`), deposits 3,000 First-loss and 17,000 Fixed test USDC, and borrows against 3.5 NEAR staked with `kiln.pool.f863973.m0`. `CHECK_ONLY=1` runs the read-only preflight.
+3. Start the keeper (relays prices every 5 s, settles due loans every 60 s, `GET /health` on port 8080):
    ```bash
    ANKORA_RELAY=<you>-mocks.testnet ANKORA_POOL=<you>-ankora.testnet npm run keeper
    ```
-5. Seed the pool: mint test USDC and deposit at least 15% junior before any borrow. Then borrow with `borrow({"validator":"kiln.pool.f863973.m0","principal":"<usdc 6dp>","plan":"P40"})`, attaching the NEAR to stake plus 1.5 NEAR for vault storage, with 300 Tgas.
+   Hosted: `client/Dockerfile`, with `KEEPER_PRIVATE_KEY` set as a host secret.
 
 A demo pool that can fast-forward time for the video: build with `--features test-clock` (`target/near/ankora_pool_testclock/`) and deploy it to a separate account; `test_advance_clock` is owner-only. Move the relay's clock with it (`advance_clock`).
 
