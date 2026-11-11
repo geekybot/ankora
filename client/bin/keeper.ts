@@ -77,7 +77,10 @@ async function main() {
   const state: KeeperState = { startedAt: now(), lastPushAt: 0, lastPublishTime: 0 };
   createServer((req, res) => {
     const h = keeperHealth(state, now());
-    res.writeHead(req.url === "/health" ? (h.ok ? 200 : 503) : 404, { "content-type": "application/json" });
+    // /health drives restarts (503 when stale); /status always answers 200 so the app can show a live/lagging badge.
+    const path = (req.url ?? "").split("?")[0];
+    const code = path === "/health" ? (h.ok ? 200 : 503) : path === "/status" ? 200 : 404;
+    res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "no-store" });
     res.end(JSON.stringify({ ...h, relay: RELAY, pool: POOL, dryRun: DRY }));
   }).listen(Number(process.env.PORT ?? 8080));
   const pool = POOL ? views(testnet as never, POOL) : null;
