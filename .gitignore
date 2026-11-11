@@ -5,6 +5,8 @@
 !/contracts/
 !/client/
 !/design/
+!/.github/
+!/scripts/
 
 # Build output and tool state
 target/

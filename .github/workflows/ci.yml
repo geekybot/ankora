@@ -1,0 +1,54 @@
+# Contracts (unit + sandbox end-to-end) and the chain client on every push to main and every PR.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust 1.95.0 (pinned in rust-toolchain.toml)
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - name: cargo-near 0.23.0
+        working-directory: .
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.23.0/cargo-near-installer.sh | sh
+      - name: Build wasm (vault, pool, test-clock pool, mocks)
+        run: ./build.sh
+      - name: Unit tests
+        run: |
+          cargo test --workspace --lib
+          cargo test -p ankora-pool --lib --features test-clock
+      - name: Sandbox end-to-end
+        run: cargo test -p ankora-pool --test flow -- --test-threads=1
+
+  client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test

@@ -4,12 +4,15 @@
 //   ANKORA_RELAY=<you>-mocks.testnet ANKORA_POOL=<you>-ankora.testnet npm run keeper
 //   DRY_RUN=1 npm run keeper      # read and decide, send nothing (no account needed)
 //
-// Keys: near-cli-rs `save-to-legacy-keychain` writes ~/.near-credentials/testnet/<account>.json, read here.
-import { Near } from "near-kit";
+// Keys: KEEPER_PRIVATE_KEY (ed25519:..., for a hosted container) or ~/.near-credentials/testnet/<account>.json
+// (`cargo near create-dev-account ... save-to-legacy-keychain` writes it). GET /health on PORT (default 8080) answers
+// 200 while relay pushes succeed and 503 after 2 minutes without one, so the host restarts the process.
+import { InMemoryKeyStore, Near } from "near-kit";
 import { FileKeyStore } from "near-kit/keys/file";
+import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { MAINNET, NEAR_USD_ID, TESTNET } from "../src/config.ts";
-import { dueForSettle, relayDecision } from "../src/keeper.ts";
+import { dueForSettle, keeperHealth, relayDecision, type KeeperState } from "../src/keeper.ts";
 import { Ema, parsePythPrice } from "../src/oracle.ts";
 import { views, type Action } from "../src/pool.ts";
 
@@ -24,7 +27,12 @@ if (!DRY && (!RELAY || !POOL)) throw new Error("set ANKORA_RELAY and ANKORA_POOL
 const mainnet = new Near({ network: "mainnet", rpcUrl: MAINNET.rpc });
 const testnet = new Near({
   network: "testnet", rpcUrl: TESTNET.rpc,
-  ...(DRY ? {} : { keyStore: new FileKeyStore(`${homedir()}/.near-credentials`, "testnet"), defaultSignerId: SIGNER }),
+  ...(DRY ? {} : {
+    keyStore: process.env.KEEPER_PRIVATE_KEY
+      ? new InMemoryKeyStore({ [SIGNER]: process.env.KEEPER_PRIVATE_KEY })
+      : new FileKeyStore(`${homedir()}/.near-credentials`, "testnet"),
+    defaultSignerId: SIGNER,
+  }),
 });
 const now = () => Math.floor(Date.now() / 1000);
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -52,6 +60,12 @@ async function main() {
   const ema = new Ema(3600);
   await seedEma(ema);
   let lastPushed = 0;
+  const state: KeeperState = { startedAt: now(), lastPushAt: 0, lastPublishTime: 0 };
+  createServer((req, res) => {
+    const h = keeperHealth(state, now());
+    res.writeHead(req.url === "/health" ? (h.ok ? 200 : 503) : 404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ...h, relay: RELAY, pool: POOL, dryRun: DRY }));
+  }).listen(Number(process.env.PORT ?? 8080));
   const pool = POOL ? views(testnet as never, POOL) : null;
 
   const priceTick = async () => {
@@ -65,6 +79,8 @@ async function main() {
       gas: 10_000_000_000_000n, deposit: 0n,
     });
     lastPushed = src.publishTime;
+    state.lastPushAt = now();
+    state.lastPublishTime = src.publishTime;
     log(`relayed spot ${Number(src.price) / 1e8} ema ${(Number(ema.value) / 1e8).toFixed(4)} age ${now() - src.publishTime}s`);
   };
   const settleTick = async () => {

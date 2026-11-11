@@ -17,3 +17,14 @@ export function relayDecision(src: SourcePrice | null, lastPushedPublishTime: nu
   if (priceAge(src, nowSecs) > MAX_PRICE_AGE_SECS) return { push: false, why: "source stale" };
   return { push: true };
 }
+
+export interface KeeperState { startedAt: number; lastPushAt: number; lastPublishTime: number }
+export interface KeeperHealth { ok: boolean; relayPriceAgeSecs: number | null; secsSincePush: number }
+const MAX_SILENCE_SECS = 120;
+
+/** Unhealthy after 2 minutes without a successful relay push (counted from start until the first push),
+ *  so the host restarts the process. The pool itself refuses prices older than 60 s. */
+export function keeperHealth(s: KeeperState, nowSecs: number): KeeperHealth {
+  const secsSincePush = nowSecs - (s.lastPushAt > 0 ? s.lastPushAt : s.startedAt);
+  return { ok: secsSincePush <= MAX_SILENCE_SECS, relayPriceAgeSecs: s.lastPublishTime > 0 ? nowSecs - s.lastPublishTime : null, secsSincePush };
+}
