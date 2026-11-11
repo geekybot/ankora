@@ -113,6 +113,10 @@ impl Vault {
         Promise::new(env::current_account_id()).add_full_access_key(public_key)
     }
 
+    /// NEAR the owner can `transfer` out right now: balance minus the storage reserve. Staked and unstaked amounts
+    /// live in the staking pool: read `get_account(account_id)` on the validator.
+    pub fn get_transferable(&self) -> U128 { U128(Self::free_balance().as_yoctonear()) }
+
     pub fn get_info(&self) -> VaultInfo {
         VaultInfo { pool: self.pool.clone(), borrower: self.borrower.clone(), validator: self.validator.clone(), owner: self.owner.clone(), released: self.released, staked: U128(self.staked) }
     }
@@ -136,6 +140,13 @@ mod tests {
     fn vault() -> Vault {
         testing_env!(ctx(pool()).build());
         Vault::new(pool(), accounts(1), "bisontrails.poolv1.near".parse().unwrap(), "lockup-whitelist.near".parse().unwrap())
+    }
+
+    #[test]
+    fn transferable_is_balance_minus_the_storage_reserve() {
+        let v = vault();
+        assert_eq!(v.get_transferable().0, Vault::free_balance().as_yoctonear());
+        assert!(v.get_transferable().0 < NearToken::from_near(10_002).as_yoctonear());
     }
 
     #[test]

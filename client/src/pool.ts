@@ -81,6 +81,12 @@ export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: st
     claimable: (accountId: string) => v.view<string>(pool, "get_claimable", { account_id: accountId }),
     usdcBalance: (accountId: string) => v.view<string>(need(more.usdc, "usdc"), "ft_balance_of", { account_id: accountId }),
     vaultInfo: (vault: string) => v.view<VaultInfo | null>(vault, "get_info", {}),
+    /** After repay: transfer `transferable` now; `unstaked` becomes withdrawable when `canWithdraw` (about 4 epochs after unstake). */
+    vaultBalances: async (vault: string, validator: string) => {
+      const transferable = await v.view<string>(vault, "get_transferable", {});
+      const acct = await v.view<{ unstaked_balance: string; staked_balance: string; can_withdraw: boolean } | null>(validator, "get_account", { account_id: vault });
+      return { transferable: BigInt(transferable ?? "0"), staked: BigInt(acct?.staked_balance ?? "0"), unstaked: BigInt(acct?.unstaked_balance ?? "0"), canWithdraw: acct?.can_withdraw ?? false };
+    },
     /** Spot and EMA as the pool will read them, up to 10 minutes old, so the app can show age and the breaker state. */
     relayPrice: async () => {
       const r = need(more.relay, "relay");

@@ -143,6 +143,11 @@ impl Mock {
         let u = self.unstaked.insert(a.clone(), 0).unwrap_or(0);
         Promise::new(a).transfer(NearToken::from_yoctonear(u))
     }
+    /// The standard staking-pool view (core-contracts staking-pool `get_account`). Unstake is instant here, so can_withdraw is true.
+    pub fn get_account(&self, account_id: AccountId) -> near_sdk::serde_json::Value {
+        near_sdk::serde_json::json!({ "account_id": account_id, "unstaked_balance": U128(self.unstaked.get(&account_id).copied().unwrap_or(0)),
+            "staked_balance": U128(self.staked.get(&account_id).copied().unwrap_or(0)), "can_withdraw": true })
+    }
     pub fn get_account_staked_balance(&self, account_id: AccountId) -> U128 { U128(self.staked.get(&account_id).copied().unwrap_or(0)) }
 
     /// Sandbox clock, so tests can fast-forward to exact deadlines.

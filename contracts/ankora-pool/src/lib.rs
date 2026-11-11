@@ -278,6 +278,7 @@ impl Pool {
     #[private]
     pub fn on_paid(&mut self, id: u64, #[callback_result] ok: Result<(), PromiseError>) -> bool {
         if ok.is_ok() { return true; }
+        env::log_str(&format!("borrow {id} cancelled: payout failed"));
         if let Some(l) = self.loans.remove(&id) {
             self.ledger.cancel_loan(l.debt, l.term_interest);
             Self::release_vault(&l.vault.parse().unwrap(), l.borrower.parse().unwrap());
@@ -649,6 +650,7 @@ mod tests {
         let mut p = funded();
         let id = booked(&mut p);
         assert!(!p.on_paid(id, Err(PromiseError::Failed)));
+        assert!(near_sdk::test_utils::get_logs().iter().any(|l| l == &format!("borrow {id} cancelled: payout failed")), "a bounced payout logs like every other cancel");
         assert!(p.get_loan(id).is_none());
         let g = p.get_ledger();
         assert_eq!((g.cash.0, g.outstanding.0, g.unearned.0), (20_000 * U, 0, 0));

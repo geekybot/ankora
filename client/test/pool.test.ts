@@ -72,3 +72,14 @@ describe("views for the app", () => {
     ]);
   });
 });
+
+describe("vault balances", () => {
+  it("combines what the vault can transfer now with the staking pool's own account view", async () => {
+    const answers: Record<string, unknown> = {
+      "v0.pool.testnet get_transferable": "2000",
+      "kiln.pool.f863973.m0 get_account": { account_id: "v0.pool.testnet", unstaked_balance: "5", staked_balance: "7", can_withdraw: false },
+    };
+    const v = views({ view: async (c, m) => answers[`${c} ${m}`] as never }, "pool.testnet");
+    expect(await v.vaultBalances("v0.pool.testnet", "kiln.pool.f863973.m0")).toEqual({ transferable: 2000n, staked: 7n, unstaked: 5n, canWithdraw: false });
+  });
+});
