@@ -91,17 +91,18 @@ export const nearBalance = async (id: string): Promise<bigint> => {
 };
 export const usdcBalance = async (id: string): Promise<bigint> => BigInt((await pool.usdcBalance(id)) ?? "0");
 export const allLoans = (): Promise<LoanView[]> => pagedLoans(pool.loans);
-export type MyVault = VaultInfo & { vault: string; loanId: number; balance: bigint };
+export type MyVault = VaultInfo & { vault: string; loanId: number; transferable: bigint; stakedNow: bigint; unstaked: bigint; canWithdraw: boolean };
 /** Vaults the borrower got back after repaying: NEAR still staked until they unstake and withdraw. */
 export async function myVaults(loans: LoanView[], id: string): Promise<MyVault[]> {
   const closed = loans.filter((l) => l.borrower === id && l.state === "Closed");
   const out = await Promise.all(closed.map(async (l) => {
     const info = await pool.vaultInfo(l.vault).catch(() => null);
     if (!info?.released || info.owner !== id) return null;
-    const balance = await nearBalance(l.vault).catch(() => 0n);
-    return { ...info, vault: l.vault, loanId: l.id, balance };
+    const b = await pool.vaultBalances(l.vault, info.validator).catch(() => null);
+    if (!b) return null;
+    return { ...info, vault: l.vault, loanId: l.id, transferable: b.transferable, stakedNow: b.staked, unstaked: b.unstaked, canWithdraw: b.canWithdraw };
   }));
-  return out.filter((x): x is MyVault => !!x && (BigInt(x.staked) > 0n || x.balance > 2n * 10n ** 24n));
+  return out.filter((x): x is MyVault => !!x && (x.stakedNow > 0n || x.unstaked > 0n || x.transferable > 0n));
 }
 
 export interface PriceRead {
@@ -119,6 +120,13 @@ export async function readPrice(): Promise<PriceRead> {
   if (!c.ok) return { ok: false, fresh: false, price: sv, ageSecs: age, gapBps, reason: c.error };
   const fresh = age <= QUOTE_MAX_AGE_SECS && gapBps <= QUOTE_MAX_GAP_BPS;
   return { ok: true, fresh, price: Number(c.price) * 10 ** c.expo, priceRaw: c.price, expo: c.expo, ageSecs: age, gapBps };
+}
+
+/** Keeper health badge; hidden when VITE_KEEPER_URL is unset. */
+export const KEEPER_URL = env("VITE_KEEPER_URL");
+export async function keeperStatus(): Promise<{ ok: boolean; relayPriceAgeSecs: number | null; secsSincePush: number } | null> {
+  if (!KEEPER_URL) return null;
+  try { return await fetch(KEEPER_URL.replace(/\/$/, "") + "/status", { cache: "no-store" }).then((r) => r.json()); } catch { return { ok: false, relayPriceAgeSecs: null, secsSincePush: Infinity }; }
 }
 
 /** Test USDC faucet: the mock token's open `mint`, capped at 1,000 per call. */

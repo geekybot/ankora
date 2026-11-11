@@ -19,7 +19,6 @@ const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { w
 const left = (secs: number) => { const d = secs - Date.now() / 1000; if (d <= 0) return "now"; const h = Math.floor(d / 3600); return h >= 48 ? `${Math.floor(h / 24)} days` : `${h} h ${Math.floor((d % 3600) / 60)} m`; };
 const planLabel = (p: string) => `${p.slice(1)}% plan`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
-const VAULT_KEEP = 3n * YOCTO / 2n; // left in a released vault for its storage when sending NEAR out
 
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
@@ -41,11 +40,22 @@ async function load() {
   } catch (e) { S.error = (e as Error).message; }
   render();
 }
+const REASONS: Record<string, string> = {
+  Stale: "the price was over 60 seconds old when the transaction landed", WideConfidence: "the price feed was too unsure of the price",
+  Breaker: "spot was more than 3% from the one-hour average", Missing: "there was no price", ExpoMismatch: "the price feed was malformed", Invalid: "the price was invalid",
+  "LTV above plan cap": "the price fell between the quote and the transaction, so the loan was over the plan's limit",
+  "vault creation failed": "the vault couldn't be created", "validator rejected or stake failed": "the validator didn't accept the stake",
+  "staked amount below estimate": "the validator staked less than expected", "payout failed": "the USDC payout bounced",
+};
 /** What the chain said about a transaction, in words. */
 function explain(o: C.Outcome, done: string): string {
-  if (!o.ok) return `The transaction failed on chain. Nothing changed. ${o.failure ?? ""}`.trim();
+  if (!o.ok) return `The transaction was refused and nothing changed: your NEAR and USDC never left the wallet. ${(o.failure ?? "").replace(/^\{.*?"(?:ExecutionError|panic_msg)":"?/, "").replace(/["}\]]+$/, "")}`.trim();
   const cancelled = o.logs.map((l) => /borrow \d+ cancelled: (.+)/.exec(l)?.[1]).find(Boolean);
-  if (o.value === false || cancelled) return `The borrow was cancelled and your NEAR was refunded: ${cancelled ?? "the pool refused it"}.`;
+  if (o.value === false || cancelled) {
+    const why = cancelled ?? "the pool refused it";
+    if (/vault handed to the borrower/.test(why)) return "The validator wouldn't take the stake, so the loan didn't start. Your vault and its NEAR are yours: see the vault card.";
+    return `The borrow was cancelled and your NEAR was refunded. Reason: ${REASONS[why] ?? why}.`;
+  }
   return done;
 }
 async function run(a: C.Action, done: string) {
@@ -160,10 +170,14 @@ function loanCard(l: C.LoanView) {
 }
 
 function vaultCard(v: C.MyVault) {
-  const staked = BigInt(v.staked), out = v.balance > VAULT_KEEP ? v.balance - VAULT_KEEP : 0n;
-  const step = staked > 0n
-    ? { h: `Loan #${v.loanId} repaid. ${near(staked)} NEAR is still staked in your vault.`, t: `The vault is yours now. Unstake it, then withdraw after 4 epochs (about 28 hours), then send the NEAR to your wallet.`, b: `<button class="btn btn-2" data-act="v-unstake" data-v="${v.vault}">Unstake all</button><button class="btn btn-2" data-act="v-withdraw" data-v="${v.vault}">Withdraw (after about 28 h)</button>` }
-    : { h: `Loan #${v.loanId} repaid. ${near(out)} NEAR is ready to send.`, t: `The vault keeps 1.5 NEAR for its storage.`, b: `<button class="btn btn-2" data-act="v-transfer" data-v="${v.vault}" data-amt="${out}">Send ${near(out)} NEAR to ${esc(C.account!)}</button>` };
+  const btn = (act: string, label: string, amt = "") => `<button class="btn btn-2" data-act="${act}" data-v="${v.vault}" ${amt ? `data-amt="${amt}"` : ""} ${S.busy ? "disabled" : ""}>${label}</button>`;
+  const step = v.stakedNow > 0n
+    ? { h: `Loan #${v.loanId} is closed. ${near(v.stakedNow)} NEAR is still staked in your vault.`, t: "The vault is yours now. Step 1 of 3: unstake. Then withdraw after 4 epochs (about 28 hours), then send the NEAR to your wallet.", b: btn("v-unstake", "Unstake all") }
+    : v.unstaked > 0n && !v.canWithdraw
+    ? { h: `${near(v.unstaked)} NEAR is unstaking.`, t: "Step 2 of 3. The validator releases it about 4 epochs (around 28 hours) after you unstaked. Check back then.", b: "" }
+    : v.unstaked > 0n
+    ? { h: `${near(v.unstaked)} NEAR is ready to withdraw.`, t: "Step 2 of 3: move it from the validator into your vault.", b: btn("v-withdraw", "Withdraw all") }
+    : { h: `${near(v.transferable)} NEAR is ready to send.`, t: "Step 3 of 3. The vault keeps a small reserve for its own storage.", b: btn("v-transfer", `Send ${near(v.transferable)} NEAR to ${esc(C.account!)}`, String(v.transferable)) };
   return `<section class="loan"><p class="kick">Vault ${esc(v.vault)} · ${esc(v.validator)}</p><h2 class="h2">${step.h}</h2><p class="lede">${step.t}</p><div class="actions">${step.b}</div></section>`;
 }
 
@@ -209,9 +223,11 @@ function lendScreen() {
   };
 }
 
+let keeper: Awaited<ReturnType<typeof C.keeperStatus>> = null;
 const NAV = [["home", "Borrow"], ["lend", "Lend"], ["loans", "Live loans"]];
 function render() {
   const r = route();
+  $("#keeper").innerHTML = keeper ? `<span class="badge ${keeper.ok ? "ok" : "lag"}">Price relay: ${keeper.ok ? "live" : "lagging"}</span>` : "";
   $("#wallet").innerHTML = C.account ? `<span class="dot"></span><span>${esc(C.account)}</span>` : "Connect";
   const link = (cls: string) => NAV.map(([k, l]) => `<a class="${cls} ${r === k ? "on" : ""}" href="#/${k === "home" ? "" : k}"><span>${l}</span></a>`).join("") + `<a class="${cls}" href="/landing/index.html#risks"><span>Risks</span></a>`;
   $("#top-nav").innerHTML = link("tn-i");
@@ -266,6 +282,7 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => { const t = e.target as HTMLInputElement; if (t.id === "val") { S.validator = t.value.trim(); render(); } });
 addEventListener("hashchange", () => { render(); if (route() === "loans") load(); });
 C.onWallet(load);
+if (C.KEEPER_URL) { const k = async () => { keeper = await C.keeperStatus(); render(); }; k(); setInterval(k, 30_000); }
 // Countdowns tick locally; the price refreshes every 15 s (never mid-typing).
 setInterval(() => document.querySelectorAll<HTMLElement>("[data-deadline]").forEach((n) => (n.textContent = left(Number(n.dataset.deadline)))), 30_000);
 setInterval(async () => {
