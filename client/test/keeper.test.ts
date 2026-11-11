@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueForSettle, keeperHealth, relayDecision } from "../src/keeper.ts";
+import { allLoans, dueForSettle, keeperHealth, relayDecision } from "../src/keeper.ts";
 import type { LoanView } from "../src/pool.ts";
 
 const loan = (id: number, state: string, deadline: number): LoanView => ({
@@ -48,5 +48,16 @@ describe("keeper health", () => {
   it("is unhealthy after two minutes without a push, so the host restarts it", () => {
     const h = keeperHealth({ startedAt: started, lastPushAt: 1_200, lastPublishTime: 1_190 }, 1_321);
     expect(h).toEqual({ ok: false, relayPriceAgeSecs: 131, secsSincePush: 121 });
+  });
+});
+
+describe("all loans", () => {
+  it("pages past the first 100, because closed loans stay in the map", async () => {
+    const all = Array.from({ length: 250 }, (_, i) => loan(i, i < 240 ? "Closed" : "Active", 100));
+    const calls: number[] = [];
+    const got = await allLoans(async (from, limit) => { calls.push(from); return all.slice(from, from + limit); });
+    expect(got.length).toBe(250);
+    expect(calls).toEqual([0, 100, 200]);
+    expect(dueForSettle(got, 100)).toEqual([240, 241, 242, 243, 244, 245, 246, 247, 248, 249]);
   });
 });

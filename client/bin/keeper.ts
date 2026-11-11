@@ -12,7 +12,7 @@ import { FileKeyStore } from "near-kit/keys/file";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { MAINNET, NEAR_USD_ID, TESTNET } from "../src/config.ts";
-import { dueForSettle, keeperHealth, relayDecision, type KeeperState } from "../src/keeper.ts";
+import { allLoans, dueForSettle, keeperHealth, relayDecision, type KeeperState } from "../src/keeper.ts";
 import { Ema, parsePythPrice } from "../src/oracle.ts";
 import { views, type Action } from "../src/pool.ts";
 
@@ -85,7 +85,7 @@ async function main() {
   };
   const settleTick = async () => {
     if (!pool) return;
-    const due = dueForSettle(await pool.loans(0, 100), now());
+    const due = dueForSettle(await allLoans(pool.loans), now());
     for (const id of due) {
       try { await send({ receiverId: POOL, methodName: "settle", args: { id }, gas: 100_000_000_000_000n, deposit: 0n }); log("settled", id); }
       catch (e) { log("settle", id, "failed:", (e as Error).message.slice(0, 160)); }

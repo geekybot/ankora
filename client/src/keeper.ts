@@ -28,3 +28,13 @@ export function keeperHealth(s: KeeperState, nowSecs: number): KeeperHealth {
   const secsSincePush = nowSecs - (s.lastPushAt > 0 ? s.lastPushAt : s.startedAt);
   return { ok: secsSincePush <= MAX_SILENCE_SECS, relayPriceAgeSecs: s.lastPublishTime > 0 ? nowSecs - s.lastPublishTime : null, secsSincePush };
 }
+
+/** Every loan, page by page. Closed loans stay in the pool's map, so the first page alone misses new ones. */
+export async function allLoans(page: (fromIndex: number, limit: number) => Promise<LoanView[]>, limit = 100): Promise<LoanView[]> {
+  const out: LoanView[] = [];
+  for (let from = 0; ; from += limit) {
+    const p = await page(from, limit);
+    out.push(...p);
+    if (p.length < limit) return out;
+  }
+}
