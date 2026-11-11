@@ -8,6 +8,7 @@
 //   GET  /status                 keeper-style status (the app's relay badge)
 //   POST /advance?secs=86400     move the pool's and the relay's clocks together (demo notice, grace, auction)
 //   POST /settle?id=0            settle a loan now
+//   POST /price?usd=1.5          hold NEAR at a fixed price (demo a crash into notice); POST /price with no usd: back to live
 // The app signs as `judge.<root>` with VITE_DEV_KEY: local only, never on testnet. Ctrl-C stops everything.
 import { InMemoryKeyStore, Near } from "near-kit";
 import { Sandbox } from "near-kit/sandbox";
@@ -66,8 +67,20 @@ async function main() {
   const mainnet = new Near({ network: "mainnet", rpcUrl: MAINNET.rpc });
   const ema = new Ema(3600);
   const state: KeeperState = { startedAt: Math.floor(Date.now() / 1000), lastPushAt: 0, lastPublishTime: 0 };
-  const push = async () => {
+  let fixedUsd: number | null = null;
+  // One push at a time, and the override is re-checked after the mainnet read: an in-flight live push must never
+  // land after a fixed price (that race once renewed a loan at the live price during a crash demo).
+  let queue: Promise<unknown> = Promise.resolve();
+  const push = () => { const p = queue.then(pushOnce, pushOnce); queue = p.catch(() => undefined); return p; };
+  const pushOnce = async () => {
+    if (fixedUsd !== null) {
+      const p = BigInt(Math.round(fixedUsd * 1e8)).toString();
+      await call(usdc, usdc, "set_prices", { spot: p, ema: p, conf: "0" });
+      state.lastPushAt = state.lastPublishTime = Math.floor(Date.now() / 1000);
+      return;
+    }
     const src = parsePythPrice(await mainnet.view(MAINNET.priceSource, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }));
+    if (fixedUsd !== null) return pushOnce();
     if (!src) return log("no mainnet price; keeping the last one");
     ema.update(src.price, src.publishTime);
     await call(usdc, usdc, "set_prices", { spot: src.price.toString(), ema: ema.value.toString(), conf: src.conf.toString() });
@@ -102,6 +115,13 @@ async function main() {
         await call(usdc, usdc, "advance_clock", { secs });
         await push();
         return res.end(JSON.stringify({ advanced: secs }));
+      }
+      if (req.method === "POST" && u.pathname === "/price") {
+        const usd = u.searchParams.get("usd");
+        fixedUsd = usd ? Number(usd) : null;
+        if (fixedUsd !== null && !(fixedUsd > 0)) { fixedUsd = null; throw new Error("usd must be a positive number"); }
+        await push();
+        return res.end(JSON.stringify({ price: fixedUsd ?? "live" }));
       }
       if (req.method === "POST" && u.pathname === "/settle") {
         const o = await call(usdc, pool, "settle", { id: Number(u.searchParams.get("id") ?? 0) }, "0 yocto", "100 Tgas");

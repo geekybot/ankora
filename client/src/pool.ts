@@ -69,29 +69,32 @@ export interface VaultInfo { pool: string; borrower: string; validator: string; 
 export interface RawPrice { price: string; conf: string; expo: number; publish_time: number }
 
 /** Anything that can run a view call: near-kit's `Near#view` fits. */
-export interface Viewer { view<T>(contractId: string, method: string, args?: object): Promise<T> }
+export interface Viewer { view<T>(contractId: string, method: string, args?: object, options?: { finality: "optimistic" | "final" }): Promise<T> }
+/** Optimistic reads: finalised state trails the latest transactions by a couple of blocks, so a screen re-read
+ *  right after the user's own transaction would otherwise show the old balance or loan state. */
+const OPT = { finality: "optimistic" } as const;
 
 export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: string } = {}) {
   return {
-    ledger: () => v.view<LedgerView>(pool, "get_ledger", {}),
-    loan: (id: number) => v.view<LoanView | null>(pool, "get_loan", { id }),
-    loans: (fromIndex = 0, limit = 100) => v.view<LoanView[]>(pool, "get_loans", { from_index: fromIndex, limit }),
-    lender: (accountId: string) => v.view<LenderView | null>(pool, "get_lender", { account_id: accountId }),
-    plans: () => v.view<PlanView[]>(pool, "get_plans", {}),
-    claimable: (accountId: string) => v.view<string>(pool, "get_claimable", { account_id: accountId }),
-    usdcBalance: (accountId: string) => v.view<string>(need(more.usdc, "usdc"), "ft_balance_of", { account_id: accountId }),
-    vaultInfo: (vault: string) => v.view<VaultInfo | null>(vault, "get_info", {}),
+    ledger: () => v.view<LedgerView>(pool, "get_ledger", {}, OPT),
+    loan: (id: number) => v.view<LoanView | null>(pool, "get_loan", { id }, OPT),
+    loans: (fromIndex = 0, limit = 100) => v.view<LoanView[]>(pool, "get_loans", { from_index: fromIndex, limit }, OPT),
+    lender: (accountId: string) => v.view<LenderView | null>(pool, "get_lender", { account_id: accountId }, OPT),
+    plans: () => v.view<PlanView[]>(pool, "get_plans", {}, OPT),
+    claimable: (accountId: string) => v.view<string>(pool, "get_claimable", { account_id: accountId }, OPT),
+    usdcBalance: (accountId: string) => v.view<string>(need(more.usdc, "usdc"), "ft_balance_of", { account_id: accountId }, OPT),
+    vaultInfo: (vault: string) => v.view<VaultInfo | null>(vault, "get_info", {}, OPT),
     /** After repay: transfer `transferable` now; `unstaked` becomes withdrawable when `canWithdraw` (about 4 epochs after unstake). */
     vaultBalances: async (vault: string, validator: string) => {
-      const transferable = await v.view<string>(vault, "get_transferable", {});
-      const acct = await v.view<{ unstaked_balance: string; staked_balance: string; can_withdraw: boolean } | null>(validator, "get_account", { account_id: vault });
+      const transferable = await v.view<string>(vault, "get_transferable", {}, OPT);
+      const acct = await v.view<{ unstaked_balance: string; staked_balance: string; can_withdraw: boolean } | null>(validator, "get_account", { account_id: vault }, OPT);
       return { transferable: BigInt(transferable ?? "0"), staked: BigInt(acct?.staked_balance ?? "0"), unstaked: BigInt(acct?.unstaked_balance ?? "0"), canWithdraw: acct?.can_withdraw ?? false };
     },
     /** Spot and EMA as the pool will read them, up to 10 minutes old, so the app can show age and the breaker state. */
     relayPrice: async () => {
       const r = need(more.relay, "relay");
-      const spot = await v.view<RawPrice | null>(r, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 });
-      const ema = await v.view<RawPrice | null>(r, "get_ema_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 });
+      const spot = await v.view<RawPrice | null>(r, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }, OPT);
+      const ema = await v.view<RawPrice | null>(r, "get_ema_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }, OPT);
       return { spot, ema };
     },
   };
