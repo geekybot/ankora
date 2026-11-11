@@ -41,6 +41,13 @@ export class Ema {
   constructor(readonly tauSecs: number) {}
   get value(): bigint { if (this.v === null) throw new Error("EMA has no samples"); return BigInt(Math.round(this.v)); }
   get lastTime(): number { return this.t; }
+  save(): { v: number | null; t: number } { return { v: this.v, t: Number.isFinite(this.t) ? this.t : 0 }; }
+  static restore(tauSecs: number, saved: unknown): Ema {
+    const e = new Ema(tauSecs);
+    const s = saved as { v?: unknown; t?: unknown } | null;
+    if (s && typeof s.v === "number" && Number.isFinite(s.v) && typeof s.t === "number") { e.v = s.v; e.t = s.t; }
+    return e;
+  }
   update(price: bigint, t: number): void {
     if (t <= this.t) return;
     const p = Number(price);

@@ -44,3 +44,20 @@ describe("collateral price, mirrored from ankora-core", () => {
     expect(priceAge(at(1n, 940), 1_000)).toBe(60);
   });
 });
+
+describe("EMA persistence", () => {
+  it("restores value and time, so a restart keeps the breaker working", () => {
+    const e = new Ema(3600);
+    e.update(300_000_000n, 0);
+    e.update(400_000_000n, 3600);
+    const back = Ema.restore(3600, JSON.parse(JSON.stringify(e.save())));
+    expect(back.value).toBe(e.value);
+    expect(back.lastTime).toBe(3600);
+    back.update(400_000_000n, 3500);
+    expect(back.value).toBe(e.value);
+  });
+  it("starts empty from a missing or broken save", () => {
+    expect(() => Ema.restore(3600, null).value).toThrow("EMA has no samples");
+    expect(() => Ema.restore(3600, { v: "x", t: 1 }).value).toThrow("EMA has no samples");
+  });
+});

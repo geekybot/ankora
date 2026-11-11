@@ -9,6 +9,7 @@
 // 200 while relay pushes succeed and 503 after 2 minutes without one, so the host restarts the process.
 import { InMemoryKeyStore, Near } from "near-kit";
 import { FileKeyStore } from "near-kit/keys/file";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { MAINNET, NEAR_USD_ID, TESTNET } from "../src/config.ts";
@@ -24,7 +25,17 @@ const PRICE_EVERY_MS = 5_000; // the source posts every ~25-57 s; the pool accep
 const SETTLE_EVERY_MS = 60_000;
 if (!DRY && (!RELAY || !POOL)) throw new Error("set ANKORA_RELAY and ANKORA_POOL (or DRY_RUN=1)");
 
-const mainnet = new Near({ network: "mainnet", rpcUrl: MAINNET.rpc });
+const STATE_FILE = process.env.KEEPER_STATE_FILE ?? ".keeper-state.json";
+const mainnets = [MAINNET.rpc, "https://rpc.mainnet.near.org"].map((rpcUrl) => new Near({ network: "mainnet", rpcUrl }));
+const withTimeout = <T>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<never>((_, no) => setTimeout(() => no(new Error(`timeout ${ms} ms`)), ms))]);
+/** Primary RPC first, then the fallback; a hung free-tier request must not stall the loop. */
+async function sourceView(method: string, args: object): Promise<unknown> {
+  let last: unknown;
+  for (const n of mainnets) {
+    try { return await withTimeout(n.view(MAINNET.priceSource, method, args), 8_000); } catch (e) { last = e; }
+  }
+  throw last;
+}
 const testnet = new Near({
   network: "testnet", rpcUrl: TESTNET.rpc,
   ...(DRY ? {} : {
@@ -57,8 +68,11 @@ async function seedEma(ema: Ema): Promise<void> {
 }
 
 async function main() {
-  const ema = new Ema(3600);
-  await seedEma(ema);
+  let saved: unknown = null;
+  try { saved = JSON.parse(readFileSync(STATE_FILE, "utf8")).ema; } catch { /* first run */ }
+  const ema = Ema.restore(3600, saved);
+  if (now() - ema.lastTime > 2 * 3600) await seedEma(ema);
+  else log(`EMA restored from ${STATE_FILE}:`, Number(ema.value) / 1e8);
   let lastPushed = 0;
   const state: KeeperState = { startedAt: now(), lastPushAt: 0, lastPublishTime: 0 };
   createServer((req, res) => {
@@ -69,7 +83,7 @@ async function main() {
   const pool = POOL ? views(testnet as never, POOL) : null;
 
   const priceTick = async () => {
-    const src = parsePythPrice(await mainnet.view(MAINNET.priceSource, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 60 }));
+    const src = parsePythPrice(await sourceView("get_price_no_older_than", { price_id: NEAR_USD_ID, age: 60 }));
     const d = relayDecision(src, lastPushed, now());
     if (!d.push || !src) return d.push ? undefined : log("relay skip:", d.why);
     ema.update(src.price, src.publishTime);
@@ -81,6 +95,7 @@ async function main() {
     lastPushed = src.publishTime;
     state.lastPushAt = now();
     state.lastPublishTime = src.publishTime;
+    try { writeFileSync(STATE_FILE, JSON.stringify({ ema: ema.save() })); } catch (e) { log("state save failed:", (e as Error).message); }
     log(`relayed spot ${Number(src.price) / 1e8} ema ${(Number(ema.value) / 1e8).toFixed(4)} age ${now() - src.publishTime}s`);
   };
   const settleTick = async () => {
