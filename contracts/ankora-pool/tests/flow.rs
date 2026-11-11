@@ -65,7 +65,7 @@ async fn setup() -> TestResult<Setup> {
         .with_signer(w.signer.clone()).send_to(&w.net).await?.assert_success();
     w.call(&wl, &wl, "add_staking_pool", json!({"staking_pool_account_id": validator}), 0, 30).await?;
     for (who, amount, tranche) in [(&junior, 3_000 * U, "junior"), (&senior, 17_000 * U, "senior")] {
-        w.call(who, &usdc, "mint", json!({"account_id": who, "amount": amount.to_string()}), 0, 30).await?;
+        w.call(&usdc, &usdc, "mint", json!({"account_id": who, "amount": amount.to_string()}), 0, 30).await?;
         w.call(who, &usdc, "ft_transfer_call", json!({"receiver_id": pool, "amount": amount.to_string(), "msg": json!({"deposit": tranche}).to_string()}), 1, 200).await?;
     }
     Ok(Setup { w, usdc, pyth, wl, validator, pool, owner, whale })
@@ -111,7 +111,7 @@ async fn native_borrow_repay_release() -> TestResult<()> {
     s.w.call(&s.whale, &s.usdc, "ft_transfer_call", json!({"receiver_id": s.pool, "amount": (14_000 * U).to_string(), "msg": r#"{"repay":0}"#}), 1, 200).await?;
     assert_eq!(loan(&s).await?["state"], "Closed");
     assert_eq!(s.w.view(&vault, "get_info", json!({})).await?["owner"], s.whale.as_str(), "vault handed back to the borrower");
-    s.w.call(&s.whale, &vault, "unstake_all", json!({}), 0, 100).await?;
+    s.w.call(&s.whale, &vault, "unstake_all", json!({}), 1, 100).await?;
     Ok(())
 }
 
@@ -133,9 +133,11 @@ async fn renewal_notice_auction_returns_surplus() -> TestResult<()> {
     let s = setup().await?;
     borrow(&s).await?;
     let l = loan(&s).await?;
-    let (exp, debt) = (l["expiry"].as_u64().unwrap(), u(&l["debt"]));
+    let debt = u(&l["debt"]);
     let whale_usdc = usdc_of(&s, &s.whale).await?;
-    for (t, want) in [(exp, "NoticeStarted"), (exp + 259_200, "GraceStarted"), (exp + 259_200 + 172_800, "AuctionStarted")] {
+    // Each window runs from the block time its settle landed, so aim at the loan's own deadline, not computed constants.
+    for want in ["NoticeStarted", "GraceStarted", "AuctionStarted"] {
+        let t = loan(&s).await?["deadline"].as_u64().unwrap();
         let now = s.w.now(&s.pyth).await?;
         if t + 1 > now { advance(&s, t + 1 - now).await?; }
         set_price(&s, 150_000_000).await?;
@@ -146,7 +148,7 @@ async fn renewal_notice_auction_returns_surplus() -> TestResult<()> {
     assert_eq!(l["state"], "Auction");
     let price = u(&l["auction_price"]);
     let bidder = s.w.account("bidder.sandbox", 10).await?;
-    s.w.call(&bidder, &s.usdc, "mint", json!({"account_id": bidder, "amount": (price + 1_000 * U).to_string()}), 0, 30).await?;
+    s.w.call(&s.usdc, &s.usdc, "mint", json!({"account_id": bidder, "amount": (price + 1_000 * U).to_string()}), 0, 30).await?;
     s.w.call(&bidder, &s.usdc, "ft_transfer_call", json!({"receiver_id": s.pool, "amount": price.to_string(), "msg": r#"{"bid":0}"#}), 1, 200).await?;
     let l = loan(&s).await?;
     assert_eq!(l["state"], "Closed");
@@ -183,7 +185,7 @@ async fn stake_panic_after_vault_exists_hands_vault_to_borrower() -> TestResult<
     let whale_mid = near_of(&s, &s.whale).await?;
     assert!(whale_before - whale_mid > 10_000 * NEAR_Y, "borrower was not refunded from the pool's balance");
     // The borrower takes the NEAR out of the vault it now owns.
-    s.w.call(&s.whale, &vault, "transfer", json!({"to": s.whale, "amount": (10_000 * NEAR_Y).to_string()}), 0, 30).await?;
+    s.w.call(&s.whale, &vault, "transfer", json!({"to": s.whale, "amount": (10_000 * NEAR_Y).to_string()}), 1, 30).await?;
     assert!(whale_before - near_of(&s, &s.whale).await? < 2 * NEAR_Y, "borrower is whole apart from gas and vault storage");
     Ok(())
 }

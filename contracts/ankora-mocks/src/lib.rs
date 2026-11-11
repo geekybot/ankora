@@ -32,6 +32,16 @@ pub struct Mock {
     owner: AccountId,
 }
 
+const FAUCET_CAP: u128 = 1_000_000_000; // 1,000 USDC (6 decimals)
+
+#[near(serializers = [json])]
+pub struct FtMetadata { pub spec: String, pub name: String, pub symbol: String, pub icon: Option<String>, pub reference: Option<String>, pub reference_hash: Option<String>, pub decimals: u8 }
+
+/// NEP-297 event in the NEP-141 shape, so explorers and wallets index test USDC.
+fn event(name: &str, data: near_sdk::serde_json::Value) {
+    env::log_str(&format!("EVENT_JSON:{}", near_sdk::serde_json::json!({ "standard": "nep141", "version": "1.0.0", "event": name, "data": [data] })));
+}
+
 fn now_base() -> u64 { env::block_timestamp() / 1_000_000_000 }
 
 impl Mock {
@@ -44,6 +54,7 @@ impl Mock {
         self.balances.insert(from.clone(), f - amount);
         let t = self.bal(to);
         self.balances.insert(to.clone(), t + amount);
+        event("ft_transfer", near_sdk::serde_json::json!({ "old_owner_id": from, "new_owner_id": to, "amount": U128(amount) }));
     }
     fn price(&self, p: i64, age: u64) -> Option<Price> {
         if self.price_ts == 0 || self.now().abs_diff(self.price_ts) > age { return None; }
@@ -59,9 +70,15 @@ impl Mock {
     }
 
     // ---- USDC (NEP-141 subset, no storage registration) ----
+    /// Faucet: anyone gets up to 1,000 test USDC per call; the owner mints more to seed the pool.
     pub fn mint(&mut self, account_id: AccountId, amount: U128) {
+        require!(env::predecessor_account_id() == self.owner || amount.0 <= FAUCET_CAP, "faucet gives at most 1,000 USDC per call");
         let b = self.bal(&account_id);
-        self.balances.insert(account_id, b + amount.0);
+        self.balances.insert(account_id.clone(), b + amount.0);
+        event("ft_mint", near_sdk::serde_json::json!({ "owner_id": account_id, "amount": amount }));
+    }
+    pub fn ft_metadata(&self) -> FtMetadata {
+        FtMetadata { spec: "ft-1.0.0".into(), name: "USDC (test, Ankora testnet)".into(), symbol: "USDC".into(), icon: None, reference: None, reference_hash: None, decimals: 6 }
     }
     pub fn ft_balance_of(&self, account_id: AccountId) -> U128 { U128(self.bal(&account_id)) }
     #[payable]
@@ -182,6 +199,38 @@ mod tests {
         assert_eq!(m.get_ema_price_no_older_than("id".into(), 60).unwrap().price.0, 354_000_000);
         set("anyone.testnet", T0 + 31);
         assert!(m.get_price_no_older_than("id".into(), 60).is_none(), "61 s after the source published: stale");
+    }
+
+    #[test]
+    #[should_panic(expected = "faucet gives at most 1,000 USDC per call")]
+    fn faucet_caps_strangers_at_1000_usdc() {
+        let mut m = relay();
+        set("judge.testnet", T0);
+        m.mint("judge.testnet".parse().unwrap(), U128(1_000_000_001));
+    }
+
+    #[test]
+    fn owner_can_mint_more_to_seed_the_pool() {
+        let mut m = relay();
+        m.mint("relay.testnet".parse().unwrap(), U128(20_000_000_000));
+        assert_eq!(m.ft_balance_of("relay.testnet".parse().unwrap()).0, 20_000_000_000);
+    }
+
+    #[test]
+    fn metadata_names_it_as_test_usdc() {
+        let m = relay();
+        let md = m.ft_metadata();
+        assert_eq!((md.symbol.as_str(), md.decimals, md.spec.as_str()), ("USDC", 6, "ft-1.0.0"));
+        assert!(md.name.contains("test"));
+    }
+
+    #[test]
+    fn mint_and_transfer_emit_nep141_events() {
+        let mut m = relay();
+        set("judge.testnet", T0);
+        m.mint("judge.testnet".parse().unwrap(), U128(5));
+        let logs = near_sdk::test_utils::get_logs();
+        assert!(logs.iter().any(|l| l.starts_with("EVENT_JSON:") && l.contains("\"ft_mint\"")), "{logs:?}");
     }
 
     #[test]

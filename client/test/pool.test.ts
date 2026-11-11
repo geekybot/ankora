@@ -1,6 +1,7 @@
 // Action shapes the wallet signs. Gas, deposits and JSON keys must match the contract exactly.
 import { describe, expect, it } from "vitest";
-import { actions } from "../src/pool.ts";
+import { actions, vaultActions, views } from "../src/pool.ts";
+import { NEAR_USD_ID, TESTNET_STUB } from "../src/config.ts";
 import { NEAR, VAULT_RESERVE } from "../src/quote.ts";
 
 const a = actions({ pool: "ankora.testnet", usdc: "usdc.testnet" });
@@ -36,5 +37,38 @@ describe("pool actions", () => {
   });
   it("settle is open to anyone and needs no deposit", () => {
     expect(a.settle(3)).toMatchObject({ methodName: "settle", args: { id: 3 }, deposit: 0n });
+  });
+});
+
+describe("app additions", () => {
+  it("mints test USDC to the caller's account, capped at 1,000 USDC per call", () => {
+    const x = a.mint("judge.testnet", 1_000_000_000n);
+    expect(x).toMatchObject({ receiverId: "usdc.testnet", methodName: "mint", args: { account_id: "judge.testnet", amount: "1000000000" }, deposit: 0n });
+    expect(() => a.mint("judge.testnet", 1_000_000_001n)).toThrow("faucet gives at most 1,000 USDC per call");
+  });
+  it("vault actions go to the loan's vault with 1 yoctoNEAR, so the wallet always asks", () => {
+    const v = vaultActions("v0.ankora.testnet");
+    expect(v.unstakeAll()).toEqual({ receiverId: "v0.ankora.testnet", methodName: "unstake_all", args: {}, gas: 100n * TGAS, deposit: 1n });
+    expect(v.withdrawAll()).toMatchObject({ methodName: "withdraw_all", deposit: 1n });
+    expect(v.transfer("me.testnet", 5n * NEAR).args).toEqual({ to: "me.testnet", amount: (5n * NEAR).toString() });
+  });
+  it("ships a testnet config stub with every key the app reads", () => {
+    expect(Object.keys(TESTNET_STUB).sort()).toEqual(["faucet", "network", "pool", "relay", "rpc", "usdc", "validator"]);
+  });
+});
+
+describe("views for the app", () => {
+  const seen: [string, string, object][] = [];
+  const v = views({ view: async (c, m, args) => { seen.push([c, m, args ?? {}]); return null as never; } }, "pool.testnet", { usdc: "usdc.testnet", relay: "relay.testnet" });
+  it("reads balances, vault info and both relay prices from the right contracts", async () => {
+    await v.usdcBalance("me.testnet");
+    await v.vaultInfo("v0.pool.testnet");
+    await v.relayPrice();
+    expect(seen).toEqual([
+      ["usdc.testnet", "ft_balance_of", { account_id: "me.testnet" }],
+      ["v0.pool.testnet", "get_info", {}],
+      ["relay.testnet", "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }],
+      ["relay.testnet", "get_ema_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }],
+    ]);
   });
 });

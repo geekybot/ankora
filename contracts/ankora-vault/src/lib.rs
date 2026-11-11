@@ -82,17 +82,23 @@ impl Vault {
         self.released = true;
     }
 
+    #[payable]
     pub fn unstake_all(&mut self) -> Promise {
+        near_sdk::assert_one_yocto();
         self.only_owner_after_release();
         ext_staking_pool::ext(self.validator.clone()).with_static_gas(GAS_STAKE).unstake_all()
     }
 
+    #[payable]
     pub fn withdraw_all(&mut self) -> Promise {
+        near_sdk::assert_one_yocto();
         self.only_owner_after_release();
         ext_staking_pool::ext(self.validator.clone()).with_static_gas(GAS_STAKE).withdraw_all()
     }
 
+    #[payable]
     pub fn transfer(&mut self, to: AccountId, amount: U128) -> Promise {
+        near_sdk::assert_one_yocto();
         self.only_owner_after_release();
         let a = NearToken::from_yoctonear(amount.0);
         require!(a <= Self::free_balance(), "amount above free balance");
@@ -100,7 +106,9 @@ impl Vault {
     }
 
     /// Gives the owner full control of this account, so stake never has to move.
+    #[payable]
     pub fn add_full_access_key(&mut self, public_key: PublicKey) -> Promise {
+        near_sdk::assert_one_yocto();
         self.only_owner_after_release();
         Promise::new(env::current_account_id()).add_full_access_key(public_key)
     }
@@ -120,6 +128,7 @@ mod tests {
         let mut b = VMContextBuilder::new();
         b.current_account_id("v1.pool.testnet".parse().unwrap())
             .predecessor_account_id(predecessor)
+            .attached_deposit(NearToken::from_yoctonear(1)) // owner calls attach 1 yocto, as a wallet would
             .account_balance(NearToken::from_near(10_002));
         b
     }
@@ -158,6 +167,23 @@ mod tests {
         let mut v = vault();
         testing_env!(ctx(accounts(1)).build());
         let _ = v.unstake_all();
+    }
+
+    #[test]
+    #[should_panic(expected = "Requires attached deposit of exactly 1 yoctoNEAR")]
+    fn owner_transfer_needs_one_yocto_so_the_wallet_confirms() {
+        let mut v = vault();
+        v.release(accounts(1));
+        testing_env!(ctx(accounts(1)).attached_deposit(NearToken::from_yoctonear(0)).build());
+        let _ = v.transfer(accounts(1), U128(1));
+    }
+
+    #[test]
+    fn owner_transfer_with_one_yocto_works() {
+        let mut v = vault();
+        v.release(accounts(1));
+        testing_env!(ctx(accounts(1)).attached_deposit(NearToken::from_yoctonear(1)).build());
+        let _ = v.transfer(accounts(1), U128(1));
     }
 
     #[test]

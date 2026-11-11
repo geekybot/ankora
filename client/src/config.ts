@@ -15,3 +15,11 @@ export const TESTNET = {
   exampleValidator: "kiln.pool.f863973.m0",
   rpc: "https://test.rpc.fastnear.com",
 } as const;
+
+export interface AnkoraConfig { network: "testnet"; rpc: string; pool: string; usdc: string; relay: string; faucet: string; validator: string }
+/** Until the founder's accounts exist. Replace with the real ids after deploy. */
+export const TESTNET_STUB: AnkoraConfig = {
+  network: "testnet", rpc: TESTNET.rpc,
+  pool: "ankora-stub.testnet", usdc: "ankora-mocks-stub.testnet", relay: "ankora-mocks-stub.testnet", faucet: "ankora-mocks-stub.testnet",
+  validator: TESTNET.exampleValidator,
+};
