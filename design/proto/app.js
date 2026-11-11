@@ -11,7 +11,7 @@
     usdc: 2140,
     walletNear: { amt: 5000 }, // liquid NEAR in the wallet, demo (v1 collateral is plain NEAR only)
     native: { amt: 12000, pool: 'northstar.poolv1.near' }, // fictional validator
-    price: 3.0, // NEAR in USD, demo; lower of Pyth spot and EMA
+    price: 3.0, // NEAR/USD, demo (Pyth Pro via Rhea's aggregate oracle; testnet relay)
   };
   const MENU = [
     { ltv: 30, days: 30, rate: 9.7, key: 'l30' },
@@ -112,7 +112,7 @@
   let S;
   function baseState(dir) {
     return {
-      dir: dir || 'b', pal: (S && S.pal) || qs.get('p') || 'petrol', now: NOW0, price: D.price, usdc: D.usdc,
+      dir: dir || 'b', pal: (S && S.pal) || qs.get('p') || 'sky', now: NOW0, price: D.price, usdc: D.usdc,
       hasWallet: true, hasNative: true, col: 'wallet', ltv: 30, auction: null, claim: 0, repayPart: false,
       loan: null, notice: null, choice: 'cash', cashTarget: 50,
       native: { stage: 'none', startedAt: null, amt: D.native.amt },
@@ -124,8 +124,9 @@
     fresh: { label: 'No loan, holds NEAR and native stake', fn: s => s },
     'native-only': { label: 'No loan, native stake only', fn: s => { s.hasWallet = false; s.col = 'native'; return s; } },
     midterm: { label: 'Loan, day 15 of 30, NEAR $2.40', fn: s => { s.loan = mkLoan('wallet', 30, NOW0 - 15 * DAY, D.price); s.price = 2.4; s.usdc = D.usdc + 4464.12; return s; } },
-    wick: { label: 'Loan during a wick, NEAR $1.60', fn: s => { s.loan = mkLoan('wallet', 30, NOW0 - 15 * DAY, D.price); s.price = 1.6; s.usdc = D.usdc + 4464.12; return s; } },
+    wick: { label: 'Loan during a 3am dip, NEAR $1.60', fn: s => { s.loan = mkLoan('wallet', 30, NOW0 - 15 * DAY, D.price); s.price = 1.6; s.usdc = D.usdc + 4464.12; return s; } },
     notice: { label: 'Renewal check failed, NEAR $1.70', fn: s => { s.loan = mkLoan('wallet', 30, NOW0 - 30 * DAY, D.price); s.now = NOW0 + 18 * MIN; s.price = 1.7; s.usdc = 4800; s.notice = { at: NOW0, price: 1.7 }; return s; } },
+    stale: { label: 'Price over 60 s old at review', fn: s => { s.priceOffset = 75; return s; } },
     breaker: { label: 'New loans paused: price moving fast', fn: s => { s.paused = 'breaker'; return s; } },
     junior: { label: 'New loans paused: junior cover short', fn: s => { s.paused = 'junior'; return s; } },
     auction: { label: 'Auction running: repay to stop it', fn: s => { s.loan = mkLoan('wallet', 30, NOW0 - 30 * DAY, D.price); s.price = 1.2; s.notice = { at: NOW0, price: 1.7 }; s.auction = { start: NOW0 + 120 * HOUR }; s.now = NOW0 + 123 * HOUR; s.usdc = D.usdc + 4464.12; return s; } },
@@ -222,7 +223,7 @@
           <text class="b-t b-t-dim" x="${x2}" y="${y - 20}" text-anchor="end">renews</text>
           <text class="b-t b-t-branch" x="${x2}" y="${y + 60}" text-anchor="end">only if LTV &gt; 50%: notice</text>
         </svg>
-        <div class="b-term-big"><b>${mode === 'quote' ? band.days : daysLeft}</b><span>days ${mode === 'quote' ? 'until the first price check' : 'to the next station'}<br><em>${dateLong(due)} · ${hm(due)} UTC</em></span></div>
+        <div class="b-term-big"><b>${mode === 'quote' ? band.days : daysLeft}</b><span>days ${mode === 'quote' ? 'until the first price check' : 'to the next price check'}<br><em>${dateLong(due)} · ${hm(due)} UTC</em></span></div>
       </div>`;
     }
     // c
@@ -309,7 +310,7 @@
           </div>
           <ul class="facts">
             <li>${ic('server')}<span><b>Keep your validator.</b> Unstake once (about 28 hours); your vault then re-stakes with ${D.native.pool}.</span></li>
-            <li>${ic('shield')}<span>A wick can't liquidate this loan. The price is read only when a term starts or renews.</span></li>
+            <li>${ic('shield')}<span>A 3am dip can't sell your NEAR. The price is checked only when a term starts or renews.</span></li>
           </ul>
           ${S.hasWallet ? `<button class="link" data-act="col" data-col="wallet">Use the ${num(D.walletNear.amt)} NEAR in your wallet instead (no unstaking)</button>` : ''}
           <p class="demo">Demo balances and price.</p>`,
@@ -320,10 +321,10 @@
     const q = quote('wallet', 30, S.price);
     return {
       html: `
-        <h1 class="h1">Borrow dollars. Keep your NEAR staked.</h1>
+        <h1 class="h1">Borrow dollars against your NEAR. A 3am dip can't sell it.</h1>
         ${pauseNote()}
         <div class="asset">
-          <span class="asset-ic tok">N</span>
+          <span class="asset-ic coin-ic"><img src="../landing/assets/near-coin.svg" alt="NEAR"></span>
           <span class="asset-txt"><b>${num(D.walletNear.amt)} NEAR in your wallet</b><small>your vault stakes it with ${D.native.pool}</small></span>
           <span class="asset-val">≈ $${num(q.value)}</span>
         </div>
@@ -333,7 +334,7 @@
           <span class="offer-s">30% plan · 30-day term · ${q.band.rate}% a year, fixed for this term</span>
         </div>
         <ul class="facts">
-          <li>${ic('shield')}<span><b>A wick can't liquidate you.</b> The price is read when a term starts or renews, never in between.</span></li>
+          <li>${ic('shield')}<span>The price is checked when a term starts or renews, and at no other time. If NEAR has fallen too far by then, you get five days to pay some back.</span></li>
           <li>${ic('server')}<span>Staked with the validator you already use. Rewards stay in your vault.</span></li>
         </ul>
         ${S.hasNative ? `<button class="link" data-act="col" data-col="native">Use your ${num(D.native.amt)} staked NEAR instead</button>` : ''}
@@ -343,6 +344,17 @@
     };
   };
 
+  // The keeper pushes NEAR/USD to the pool's price relay; the app checks its age before asking the wallet.
+  // Over 60 s old the borrow would refund, so the button becomes "Refresh the price" (an extra tap only when that happens).
+  const priceAge = () => Math.floor((Date.now() - (S.priceAt || (S.priceAt = Date.now()))) / 1000) + (S.priceOffset || 0);
+  function tickPriceAge() {
+    const el = document.querySelector('#price-age span'); if (!el) return;
+    const a = priceAge();
+    el.textContent = `NEAR/USD $${S.price.toFixed(2)} (demo) · ${a} s old · Pyth Pro via Rhea's oracle. Over 60 s old, the borrow refunds your NEAR.`;
+    el.parentElement.classList.toggle('stale', a > 60);
+    if (a > 60 && !document.querySelector('[data-act="refreshPrice"]')) render();
+  }
+  setInterval(tickPriceAge, 1000);
   function reviewNumbers() {
     const q = quote(S.col, S.ltv, S.price);
     return q;
@@ -359,7 +371,7 @@
         <div class="recv">
           <span class="recv-k">You receive</span>
           <span class="recv-v num" data-b="recv">${money(q.receive)}</span>
-          <span class="recv-u">USDC</span>
+          <span class="recv-u"><img class="coin" src="../landing/assets/usdc.svg" alt="">USDC</span>
         </div>
         <div class="amount">
           <div class="amount-top"><label for="ltv">Borrow <b class="num" data-b="debt">${money(q.debt)}</b> USDC</label><span class="amount-pct num" data-b="ltv">${S.ltv}% LTV</span></div>
@@ -375,8 +387,9 @@
           <li>${ic('clock')}<span data-b="f2">Renews <b>${dateLong(due)} at ${hm(due)} UTC</b> if your LTV is 50% or lower then. No price is read before that.</span></li>
           <li>${ic('wallet')}<span>Send <b class="num">${num(q.amt + RESERVE, 1)} NEAR</b>: ${num(q.amt)} as collateral, plus 1.5 NEAR held back for your vault's storage.</span></li>
           <li>${ic('server')}<span>Your ${num(q.amt)} NEAR goes into your own vault, staked with <b>${D.native.pool}</b>. <button class="link inline" data-act="toast" data-msg="Validator picker: any pool on lockup-whitelist.near. Defaults to the one you already use.">Change</button></span></li>
-        </ul>`,
-      cta: pauseCta({ label: `Borrow ${money(q.receive)} USDC`, act: 'borrow', b: 'cta' }),
+        </ul>
+        <p class="price-age" id="price-age">${ic('pulse')}<span></span></p>`,
+      cta: pauseCta(priceAge() > 60 ? { label: 'Refresh the price', act: 'refreshPrice' } : { label: `Borrow ${money(q.receive)} USDC`, act: 'borrow', b: 'cta' }),
       ctx: ctxHowItRuns(q),
     };
   };
@@ -422,14 +435,14 @@
       html: `
         ${sigTerm({ start: L.start, due: L.due, now: S.now, band: L.band, mode: warn ? 'warn' : 'live', fresh: !!S.fresh.loan })}
         <h1 class="h1">Nothing to do until ${dateLong(L.due)}.</h1>
-        <p class="lede">That's your next price check. Until then no price move can change this loan${warn ? ', including this one' : ''}.</p>
+        <p class="lede">That's your next price check. Until then no price move can change this loan${warn ? ', including this one' : ''}. Ankora won't message you in v1. Check back on ${dateLong(L.due)}.</p>
         <section class="ltv ${warn ? 'is-warn' : ''}">
           <div class="ltv-top"><span>LTV now</span><b class="num">${pct(ltv)}</b></div>
           ${meter(ltv, { state: warn ? 'warn' : 'ok' })}
           <p class="ltv-if">${warn
             ? `${ic('alert')}<span>If NEAR is still at this price on ${dayMon(L.due)}, you'll get 72 hours to pay down about <b class="num">${money(payTo50, 0)} USDC</b>. Nothing happens before then.</span>`
             : `${ic('renew')}<span>If checked today it would renew for <b>${nb.days} days at about ${nb.rate}%</b>.</span>`}</p>
-          <p class="ltv-src">NEAR $${S.price.toFixed(2)} (demo; lower of Pyth spot and EMA). Shown for information only.</p>
+          <p class="ltv-src">NEAR $${S.price.toFixed(2)} (demo). Shown for information only.</p>
         </section>
         <dl class="rows">
           <div><dt>You owe</dt><dd class="num">${money(L.debt)} USDC</dd></div>
@@ -481,7 +494,7 @@
           : `<div class="b-alert"><span class="b-alert-dot"></span><div><b class="num">${h} h ${String(m).padStart(2, '0')} m</b><span>left to pay down · ${dateLong(n.payBy)}, ${hm(n.payBy)} UTC</span></div></div>`}
         </div>
         <h1 class="h1">Pay down by ${dateLong(n.payBy)}, ${hm(n.payBy)} UTC</h1>
-        <p class="lede">At renewal your LTV was <b class="num">${pct(n.ltv)}</b>, above the 50% limit (NEAR $${S.notice.price.toFixed(2)}, demo). Repay <b class="num">${money(n.cash(50), 0)} USDC</b> to bring it to 50%, and the loan renews at the next check. If NEAR's price recovers before the deadline, it can renew without a payment.</p>
+        <p class="lede">At renewal your LTV was <b class="num">${pct(n.ltv)}</b>, above the 50% limit (NEAR $${S.notice.price.toFixed(2)}, demo). Repay <b class="num">${money(n.cash(50), 0)} USDC</b> to bring it to 50%, and the loan renews at the next check. If NEAR's price recovers before the deadline, it can renew without a payment. After that, 48 hours' grace on the same terms. The auction starts ${dateLong(n.graceEnd)}, ${hm(n.graceEnd)} UTC.</p>
         <div class="opts" role="radiogroup" aria-label="How to pay down">
           ${opt('cash', `Repay ${money(cashAmt, 0)} USDC`, `Part of the debt. Renews on the ${tgt.ltv}% plan, ${tgt.days}-day term. Paying down further means fewer requests later. You have ${money(S.usdc, 0)} USDC.`, S.choice === 'cash' ? chips : '', !canCash)}
           ${opt('repay', `Repay all ${money(n.L.debt)} USDC`, canRepay ? `Closes the loan. The vault becomes yours, with the NEAR still staked.` : `Needs ${money(n.L.debt, 0)} USDC; you have ${money(S.usdc, 0)}.`, '', !canRepay)}
@@ -531,7 +544,7 @@
     return {
       back: 'home', title: part ? 'Pay down part' : 'Repay',
       html: `
-        <div class="recv"><span class="recv-k">You pay</span><span class="recv-v num">${money(amt)}</span><span class="recv-u">USDC</span></div>
+        <div class="recv"><span class="recv-k">You pay</span><span class="recv-v num">${money(amt)}</span><span class="recv-u"><img class="coin" src="../landing/assets/usdc.svg" alt="">USDC</span></div>
         ${chips}
         <ul class="facts">
           ${part
@@ -658,20 +671,20 @@
   });
 
   const RISK = {
-    senior: { head: 'Senior: fixed 6.5% a year, paid first', intro: "You're paid before the junior tranche, and you lose money only after it's gone. The rate is fixed. Your deposit can still lose money.", items: [
+    senior: { head: 'Fixed 6.5%: paid first, and it can still lose money', intro: 'Senior tranche. You earn 6.5% a year, paid before First-loss deposits earn anything. You lose money only after every First-loss deposit is gone. The rate is fixed. Your deposit can still lose money.', items: [
       ['A fast crash.', "If NEAR fell 80% in one move during a term, senior lenders would lose 14–21% on loans at 20–40% LTV. If the loans had drifted to 30–65% LTV, they'd lose 42–46%. Since 2020, NEAR's worst falls were 52% in 3 days and 70% in 35 days."],
       ['Slow sales.', 'Staked NEAR takes about 28 hours to free up. In our one out-of-sample crash test with 5-day sales at a 10% discount, senior was paid in full in 94.3% of weeks.'],
       ['Crashes hit everything at once.', 'Losses come when the rest of crypto is also down.'],
       ['Slow exits.', "Withdrawals are paid only from cash the pool isn't lending. When cash is short, the first to withdraw is paid first; v1 has no queue."],
       ['Unsold auctions are handled by hand.', 'If nobody bids, the team sells the vault\'s NEAR and books the USDC back to the pool. You rely on them to do it.'],
       ['New code.', "Ankora hasn't been audited, and in v1 its deployer can still upgrade the pool contract."],
-    ], ack: 'I understand senior deposits can lose money in a fast NEAR crash and may not be withdrawable until borrowers repay.' },
-    junior: { head: 'Junior: first loss', intro: 'You take losses before anyone else. In a bad enough crash you lose everything you deposit.', items: [
+    ], ack: 'I understand Fixed 6.5% deposits can lose money in a fast NEAR crash and may not be withdrawable until borrowers repay.' },
+    junior: { head: 'First-loss: takes losses first, and can lose everything', intro: 'Junior tranche. You take losses before Fixed 6.5% lenders. In a bad enough crash you lose everything you deposit.', items: [
       ['Return:', "whatever the pool earns after the senior's 6.5% and Ankora's fee. Replays of 2021–22 on these plans gave 18.1–21.0% a year in-sample. The same pricing rule fitted only on 2023–26 prices gave 11.3% on 2021–22, with losses in 4.8% of weeks."],
       ['Use matters.', 'In our model the junior earns about 16% when 90% of the pool is lent and nothing at about 61%.'],
       ['Locked in.', "Your deposit is locked for 36 days from your latest junior deposit, and adding more restarts the lock. After that, you can't withdraw if it would leave junior cover below 15% of loans outstanding."],
       ['Who it\'s for:', 'holders already long NEAR, whose junior losses land in crashes they already carry.'],
-    ], ack: 'I understand I can lose my entire junior deposit.' },
+    ], ack: 'I understand I can lose my entire First-loss deposit.' },
   };
   SCR.lend = () => {
     const L = S.lend;
@@ -686,8 +699,8 @@
         ${pos}
         <h1 class="h1">Lend dollars, and choose how much of the loss you take.</h1>
         <div class="opts" role="radiogroup" aria-label="Tranche">
-          <div class="opt ${!jr ? 'on' : ''}"><button class="opt-btn" role="radio" aria-checked="${!jr}" data-act="tranche" data-t="senior"><span class="opt-radio"></span><span class="opt-txt"><b>Senior <em class="num">fixed 6.5%</em></b><small>Paid before the junior earns anything.</small></span></button></div>
-          <div class="opt ${jr ? 'on' : ''}"><button class="opt-btn" role="radio" aria-checked="${jr}" data-act="tranche" data-t="junior"><span class="opt-radio"></span><span class="opt-txt"><b>Junior <em>first loss</em></b><small>Keeps what's left after the senior. Can lose all of it.</small></span></button></div>
+          <div class="opt ${!jr ? 'on' : ''}"><button class="opt-btn" role="radio" aria-checked="${!jr}" data-act="tranche" data-t="senior"><span class="opt-radio"></span><span class="opt-txt"><b>Fixed 6.5% <em>Loses only after First-loss</em></b><small>Earns 6.5% a year, paid before First-loss. You lose money only if losses use up every First-loss deposit. Senior tranche.</small></span></button></div>
+          <div class="opt ${jr ? 'on' : ''}"><button class="opt-btn" role="radio" aria-checked="${jr}" data-act="tranche" data-t="junior"><span class="opt-radio"></span><span class="opt-txt"><b>First-loss <em>Variable · can lose it all</em></b><small>Takes losses first and keeps what the pool earns after Fixed 6.5%. Locked for 36 days. Junior tranche.</small></span></button></div>
         </div>
         <section class="risktext">
           <h2 class="h2">${R.head}</h2>
@@ -700,7 +713,7 @@
           <div class="field-row"><input id="amt" class="input num" inputmode="decimal" placeholder="0.00" value="${L.amt}" autocomplete="off"><span class="field-u">USDC</span><button class="chip sm" data-act="max">Max</button></div>
           <small>You have <span class="num">${money(S.usdc)}</span> USDC on NEAR. Deposits go straight into the pool.</small>
         </div>`,
-      cta: { label: amt > 0 ? `Deposit ${money(amt)} to ${jr ? 'Junior' : 'Senior'}` : `Deposit to ${jr ? 'Junior' : 'Senior'}`, act: 'deposit', disabled: !ok, hint: !L.ack ? 'Tick the box above first.' : '' },
+      cta: { label: jr ? 'Deposit as First-loss' : 'Deposit at Fixed 6.5%', act: 'deposit', disabled: !ok, hint: !L.ack ? 'Tick the box above first.' : '' },
       ctx: ctxLend(),
     };
   };
@@ -720,7 +733,7 @@
     title: 'Risk',
     html: `
       <h1 class="h1">How you can lose money here.</h1>
-      <p class="lede">A wick can't liquidate your NEAR: the price is read only when a term starts or renews. In our backtest 60–68% of liquidations were wicks. Everything below can still go wrong.</p>
+      <p class="lede">A dip during a term can't sell your collateral: the price is checked only when a term starts or renews. In our backtest, 60–68% of Rhea liquidations came on a day NEAR closed back above the line. Everything below can still go wrong.</p>
       <section class="risk"><h2 class="h2">Borrowers</h2><ul class="facts">
         <li>${ic('alert')}<span>If your LTV is above 50% at a renewal and you don't pay down within 72 hours plus the 48-hour grace period, your vault is auctioned. The auction price can fall to half the vault's value before someone bids.</span></li>
         <li>${ic('alert')}<span>In a crash you'll be asked to act about as often as on Rhea: 53–81% of passive borrowers in our 2021–22 replay, against 55–85% liquidated on Rhea. Each request came with five days to respond.</span></li>
@@ -733,7 +746,7 @@
       </ul></section>
       <section class="risk"><h2 class="h2">Everyone</h2><ul class="facts">
         <li>${ic('alert')}<span>Ankora is new code and hasn't been audited. In v1 the pool contract can still be upgraded by its deployer, and the team switches to the stressed terms by hand. The loan vaults can't be upgraded.</span></li>
-        <li>${ic('alert')}<span>Prices come from Pyth. If the feed is stale or unsure, loans don't start. Rates come from a model fitted on six years of data; fitted on the calm years alone, it underpriced the 2021–22 crash.</span></li>
+        <li>${ic('alert')}<span>NEAR/USD comes from Pyth Pro, via Rhea's aggregate oracle; on testnet a relay run by the team copies it. If the price is more than 60 seconds old, a borrow refunds your NEAR. Rates come from a model fitted on six years of data; fitted on the calm years alone, it underpriced the 2021–22 crash.</span></li>
         <li>${ic('alert')}<span>We haven't tested whether enough lenders, junior buyers or auction bidders will show up.</span></li>
       </ul></section>
       <p class="demo">Ankora is not affiliated with Spectra Finance.</p>`,
@@ -816,6 +829,7 @@
     const html = items.map(([r, l, i]) => `<button class="nav-i ${sec === r ? 'on' : ''}" data-go="${r}" ${sec === r ? 'aria-current="page"' : ''}>${ic(i)}<span>${l}</span></button>`).join('');
     $('#tabbar').innerHTML = html;
     $('#rail-nav').innerHTML = html;
+    const tn = $('#top-nav'); if (tn) tn.innerHTML = items.map(([r, l]) => `<button class="tn-i ${sec === r ? 'on' : ''}" data-go="${r}" ${sec === r ? 'aria-current="page"' : ''}>${l}</button>`).join('');
     $('#rail-foot').innerHTML = `<button class="wallet-chip" data-act="toast" data-msg="Wallet Selector would open here."><span class="dot"></span><span>${D.wallet}</span></button><p class="demo">Prototype · demo data</p>`;
     document.querySelectorAll('.brand').forEach(b => (b.innerHTML = brandHtml()));
   }
@@ -834,6 +848,8 @@
     renderDock(scr.cta);
     renderNav(id);
     S.fresh = {};
+    if (window.ankoraRelabel) window.ankoraRelabel(document.getElementById('app'));
+    tickPriceAge();
     if (T.run && T.run.end === id) finishFlow();
     renderHud();
     const range = $('#ltv');
@@ -869,10 +885,11 @@
       <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="w-t">
         <div class="sheet-grip" aria-hidden="true"></div>
         <div class="w-head"><span class="w-logo">${ic('wallet')}</span><div><b id="w-t">Wallet</b><small>${D.wallet} · mock</small></div></div>
-        <p class="w-ask">ankora.utpal.dev asks you to approve ${txs.length} transaction${txs.length > 1 ? 's' : ''} in one batch.</p>
+        <p class="w-ask">ankora.utpal.dev asks you to approve ${txs.length > 1 ? `${txs.length} transactions in one batch` : 'one transaction'}.</p>
         <ol class="w-txs">${txs.map(t => `<li><span>${t[0]}</span><small>${t[1]}</small></li>`).join('')}</ol>
         <div class="w-btns"><button class="w-btn" data-act="walletReject">Reject</button><button class="w-btn w-ok" data-act="walletApprove">Approve</button></div>
       </div>`;
+    if (window.ankoraRelabel) window.ankoraRelabel(layer);
     requestAnimationFrame(() => layer.classList.add('open'));
     W.onApprove = onApprove;
     setTimeout(() => { const b = layer.querySelector('.w-ok'); if (b) b.focus(); }, 50);
@@ -892,8 +909,8 @@
       const q = reviewNumbers();
       const isN = S.col === 'native';
       const txs = isN
-        ? [['Update NEAR price', 'Pyth via Hermes, max 60 s old'], [`Create your vault and deposit ${num(q.amt + RESERVE, 1)} NEAR`, '1.5 NEAR held back for storage'], [`Vault stakes ${num(q.amt)} NEAR`, `with ${D.native.pool}`], [`Borrow ${money(q.debt)} USDC`, `${q.band.days}-day term · ${q.band.rate}% · ${money(q.interest)} upfront`]]
-        : [['Update NEAR price', 'Pyth via Hermes, max 60 s old'], [`Create your vault and deposit ${num(q.amt + RESERVE, 1)} NEAR`, '1.5 NEAR held back for storage'], [`Vault stakes ${num(q.amt)} NEAR`, `with ${D.native.pool}`], [`Borrow ${money(q.debt)} USDC`, `${q.band.days} days · about ${q.band.rate}% · ${money(q.interest)} upfront`]];
+        ? [[`Borrow ${money(q.debt)} USDC with ${num(q.amt + RESERVE, 1)} NEAR`, `one transaction: creates your vault (1.5 NEAR held back for storage), stakes ${num(q.amt)} NEAR with ${D.native.pool} · ${q.band.days}-day term · ${q.band.rate}% · ${money(q.interest)} upfront`]]
+        : [[`Borrow ${money(q.debt)} USDC with ${num(q.amt + RESERVE, 1)} NEAR`, `one transaction: creates your vault (1.5 NEAR held back for storage), stakes ${num(q.amt)} NEAR with ${D.native.pool} · ${q.band.days}-day term · ${q.band.rate}% · ${money(q.interest)} upfront`]];
       openWallet({
         txs, onApprove: () => {
           S.loan = mkLoan(S.col, S.ltv, S.now, S.price);
@@ -970,6 +987,7 @@
         onApprove: () => { S.positions.push({ tranche: t, amt, at: S.now }); S.usdc = r2(S.usdc - amt); S.lend = { tranche: 'senior', amt: '', ack: false }; go('lent'); },
       });
     },
+    refreshPrice: () => { S.priceAt = Date.now(); S.priceOffset = 0; render(); },
     walletApprove: el => {
       el.textContent = 'Signing…'; el.disabled = true;
       const fn = W.onApprove; W.onApprove = null;
@@ -1012,7 +1030,7 @@
     hud.innerHTML = `
       <span class="hud-t">Ankora prototype</span>
       <div class="hud-seg" role="radiogroup" aria-label="Direction">${Object.entries(DIRS).map(([k, v]) => `<button role="radio" aria-checked="${S.dir === k}" data-hud="dir" data-v="${k}">${k.toUpperCase()} ${v}</button>`).join('')}</div>
-      <label class="hud-l">Palette <select data-hud="pal">${[['petrol', 'Ink · Petrol · Lemon'], ['day', 'Day · Petrol · Lemon'], ['cobalt', 'Ink · Cobalt · Tangerine'], ['off', 'Original']].map(([k, v]) => `<option value="${k}" ${S.pal === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label class="hud-l">Palette <select data-hud="pal">${[['sky', 'Sky · Navy · Apricot (recommended)'], ['aqua', 'Aqua · Lilac (your theme 1)'], ['mint', 'Mint · Gold (your theme 2)'], ['petrol', 'Ink · Petrol · Lemon (dark)'], ['off', 'Original']].map(([k, v]) => `<option value="${k}" ${S.pal === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
       <label class="hud-l">State <select data-hud="scen">${Object.entries(SCEN).map(([k, v]) => `<option value="${k}" ${S.scen === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></label>
       <label class="hud-l">Run a flow <select data-hud="flow"><option value="">Choose…</option>${FLOWS.map(x => `<option value="${x.id}" ${f && f.id === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
       <span class="hud-n" aria-live="polite">${f ? `${f.name}: <b>${T.n}</b> tap${T.n === 1 ? '' : 's'}` : `Taps: <b>${T.n}</b>`}</span>
@@ -1070,7 +1088,7 @@
   window.addEventListener('hashchange', () => transition(render));
   window.addEventListener('resize', () => { const h = $('#hud'); if (h && h.isConnected) document.documentElement.style.setProperty('--hud-h', h.offsetHeight + 'px'); });
 
-  function setPal() { const h = document.documentElement; if (S.pal && S.pal !== 'off') h.dataset.pal = S.pal; else h.removeAttribute('data-pal'); }
+  function setPal() { const h = document.documentElement; if (S.pal && S.pal !== 'off') h.dataset.pal = S.pal; else h.removeAttribute('data-pal'); h.dataset.tone = ['sky', 'aqua', 'mint', 'day'].includes(S.pal) ? 'light' : 'dark'; }
 
   // ---------- boot ----------
   const dir0 = ['a', 'b', 'c'].includes(qs.get('d')) ? qs.get('d') : 'b';

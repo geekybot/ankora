@@ -87,11 +87,11 @@
   --link: var(--second);
   --brand: var(--second);
 }
-html[data-dir="b"][data-pal="day"] .tabbar .nav-i { color: oklch(0.82 0.03 220); }
-html[data-dir="b"][data-pal="day"] .tabbar .nav-i.on { color: var(--loud); }
-html[data-dir="b"][data-pal="day"] .rail .wallet-chip { background: oklch(0.42 0.07 222); color: oklch(0.97 0.006 240); }
-html[data-dir="b"][data-pal="day"] .rail .demo { color: oklch(0.82 0.03 220); }
-[data-dir="b"][data-pal="day"] .b-st { fill: var(--bg); }
+html[data-dir="b"][data-tone="light"] .tabbar .nav-i { color: oklch(0.82 0.03 220); }
+html[data-dir="b"][data-tone="light"] .tabbar .nav-i.on { color: var(--loud); }
+html[data-dir="b"][data-tone="light"] .rail .wallet-chip { background: oklch(0.42 0.07 222); color: oklch(0.97 0.006 240); }
+html[data-dir="b"][data-tone="light"] .rail .demo { color: oklch(0.82 0.03 220); }
+[data-dir="b"][data-tone="light"] .b-st { fill: var(--bg); }
 
 /* ---------- Cobalt (alternate): Ink 60 · Cobalt 30 · Tangerine 10 ---------- */
 [data-dir="b"][data-pal="cobalt"] {
@@ -139,10 +139,10 @@ html[data-dir="b"][data-pal="day"] .rail .demo { color: oklch(0.82 0.03 220); }
 [data-dir="b"][data-pal] .cta .cta-pic { border-radius: 12px; background: var(--loud-ink); color: var(--loud); }
 [data-dir="b"][data-pal] .cta.is-danger .cta-pic { background: var(--danger-ink); color: var(--danger); }
 [data-dir="b"][data-pal] .cta-quiet { border-radius: 16px; background: var(--second-2); color: var(--text-2); }
-[data-dir="b"][data-pal="day"] .cta-quiet { background: var(--bg-2); color: var(--text-2); }
+[data-dir="b"][data-tone="light"] .cta-quiet { background: var(--bg-2); color: var(--text-2); }
 [data-dir="b"][data-pal] .btn { border-radius: 14px; }
 [data-dir="b"][data-pal] .menu-cell { background: var(--second-2); color: var(--text); }
-[data-dir="b"][data-pal="day"] .menu-cell { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+[data-dir="b"][data-tone="light"] .menu-cell { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 [data-dir="b"][data-pal] .menu-cell[aria-checked="true"] { background: var(--loud); color: var(--loud-ink); box-shadow: none; }
 [data-dir="b"][data-pal] .menu-cell[aria-checked="true"] small { color: var(--loud-ink); }
 [data-dir="b"][data-pal] .menu-cell[aria-checked="true"] b::before { border-color: var(--loud-ink); background: var(--loud); }
@@ -156,15 +156,93 @@ html[data-dir="b"][data-pal="day"] .rail .demo { color: oklch(0.82 0.03 220); }
 [data-dir="b"][data-pal] .check[aria-checked="true"] .check-box { background: var(--loud); border-color: var(--loud); color: var(--loud-ink); }
 [data-dir="b"][data-pal] .wallet-chip { background: var(--second); color: var(--text); }
 [data-dir="b"][data-pal] .wallet-chip .dot { background: var(--loud); }
-[data-dir="b"][data-pal="day"] .wallet-chip { background: var(--bg-2); }
+[data-dir="b"][data-tone="light"] .wallet-chip { background: var(--bg-2); }
 [data-dir="b"][data-pal] .tabbar { border-top: 0; }
 [data-dir="b"][data-pal] .tabbar .nav-i { color: var(--text-3); }
 [data-dir="b"][data-pal] .done-ic { background: var(--loud); color: var(--loud-ink); }
 [data-dir="b"][data-pal] .opt.on { --opt-on: var(--loud); --opt-on-bg: var(--second); }
-[data-dir="b"][data-pal="day"] .opt.on { --opt-on: var(--second); --opt-on-bg: var(--surface); }
+[data-dir="b"][data-tone="light"] .opt.on { --opt-on: var(--second); --opt-on-bg: var(--surface); }
 [data-dir="b"][data-pal][data-screen="notice"], [data-dir="b"][data-pal][data-screen="auction"] { --opt-on: var(--danger); --opt-on-bg: var(--danger-soft); }
 [data-dir="b"][data-pal] .chip[aria-checked="true"] { border-color: var(--loud); background: var(--second-2); }
-[data-dir="b"][data-pal="day"] .chip[aria-checked="true"] { border-color: var(--second); background: var(--accent-soft); }
+[data-dir="b"][data-tone="light"] .chip[aria-checked="true"] { border-color: var(--second); background: var(--accent-soft); }
 [data-dir="b"][data-pal] .ltv.is-warn { background: var(--warn-soft); }
 [data-dir="b"][data-pal] .note { background: var(--bg-2); }
 [data-dir="b"][data-pal] .cta:disabled { background: var(--bg-2); color: var(--text-3); }
+
+/* ---------- your daisyUI themes as 60-30-10 palettes (light) ---------- */
+/* Sky · Navy · Apricot: theme 3, tuned. Recommended. */
+[data-dir="b"][data-pal="sky"] {
+  color-scheme: light;
+  --main: oklch(97% 0.014 254.6); --second: oklch(28% 0.091 268); --second-2: oklch(33% 0.1 266);
+  --loud: oklch(80% 0.14 62); --loud-ink: oklch(26% 0.079 36);
+  --bg: var(--main); --bg-2: oklch(93% 0.032 255.6); --surface: oklch(99.3% 0.005 255); --line: oklch(88% 0.04 255);
+  --text: oklch(28% 0.091 268); --text-2: oklch(40% 0.09 266); --text-3: oklch(47% 0.07 262);
+  --accent: var(--loud); --accent-ink: var(--loud-ink); --accent-soft: oklch(93% 0.05 70); --focus: oklch(37% 0.146 265.5);
+  --l30: oklch(28% 0.091 268); --l40: oklch(45% 0.14 264); --l50: oklch(60% 0.15 55); --line-cur: var(--l30);
+  --danger: oklch(56% 0.21 25); --danger-ink: oklch(98.5% 0.008 25); --danger-soft: oklch(95% 0.03 25);
+  --warn: oklch(60% 0.15 55); --warn-soft: oklch(95.5% 0.04 75); --warn-ink: oklch(38% 0.09 50);
+  --ok: var(--second); --ok-soft: oklch(93% 0.032 255.6);
+  --sel-bg: var(--second); --sel-ink: oklch(97% 0.014 254.6);
+  --track-bands: linear-gradient(to right, var(--l30) 0 50%, var(--l40) 50% 75%, var(--l50) 75% 100%); --track-fill: transparent;
+  --thumb: var(--loud); --thumb-ring: var(--second);
+  --meter-b1: oklch(88% 0.04 255); --meter-b2: oklch(91% 0.03 255); --meter-b3: oklch(94% 0.02 255); --meter-fill: var(--second);
+  --tr-s: var(--second); --tr-s-ink: oklch(97% 0.014 254.6); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second); --nav-on: var(--loud); --link: oklch(37% 0.146 265.5); --brand: var(--second);
+}
+/* Aqua · Lilac: your theme 1, as given */
+[data-dir="b"][data-pal="aqua"] {
+  color-scheme: light;
+  --main: oklch(98% 0.019 200.873); --second: oklch(45% 0.085 224.283); --second-2: oklch(50% 0.08 224);
+  --loud: oklch(82% 0.119 306.383); --loud-ink: oklch(29% 0.149 302.717);
+  --bg: var(--main); --bg-2: oklch(95% 0.045 203.388); --surface: oklch(99.5% 0.008 200); --line: oklch(91% 0.08 205.041);
+  --text: oklch(39% 0.07 227.392); --text-2: oklch(45% 0.06 226); --text-3: oklch(52% 0.05 224);
+  --accent: var(--loud); --accent-ink: var(--loud-ink); --accent-soft: oklch(94% 0.04 306); --focus: var(--second);
+  --l30: oklch(45% 0.085 224.283); --l40: oklch(80% 0.105 251.813); --l50: oklch(83% 0.128 66.29); --line-cur: var(--l30);
+  --danger: oklch(63% 0.237 25.331); --danger-ink: oklch(97% 0.013 17.38); --danger-soft: oklch(95% 0.03 25);
+  --warn: oklch(76% 0.188 70.08); --warn-soft: oklch(96% 0.04 80); --warn-ink: oklch(40% 0.09 60);
+  --ok: var(--second); --ok-soft: oklch(95% 0.045 203.388); --sel-bg: var(--second); --sel-ink: oklch(98% 0.019 200.873);
+  --track-bands: linear-gradient(to right, var(--l30) 0 50%, var(--l40) 50% 75%, var(--l50) 75% 100%); --track-fill: transparent;
+  --thumb: var(--loud); --thumb-ring: var(--second); --meter-b1: oklch(91% 0.08 205); --meter-b2: oklch(93% 0.06 205); --meter-b3: oklch(95% 0.04 205); --meter-fill: var(--second);
+  --tr-s: var(--second); --tr-s-ink: oklch(98% 0.019 200.873); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second); --nav-on: var(--loud); --link: var(--second); --brand: var(--second);
+}
+/* Mint · Gold: your theme 2, as given (its button text fails contrast: 1.8:1) */
+[data-dir="b"][data-pal="mint"] {
+  color-scheme: light;
+  --main: oklch(98% 0.018 155.826); --second: oklch(44% 0.119 151.328); --second-2: oklch(49% 0.11 151);
+  --loud: oklch(79% 0.184 86.047); --loud-ink: oklch(98% 0.026 102.212);
+  --bg: var(--main); --bg-2: oklch(96% 0.044 156.743); --surface: oklch(99.5% 0.008 155); --line: oklch(92% 0.084 155.995);
+  --text: oklch(39% 0.095 152.535); --text-2: oklch(44% 0.08 152); --text-3: oklch(50% 0.06 152);
+  --accent: var(--loud); --accent-ink: var(--loud-ink); --accent-soft: oklch(95% 0.05 90); --focus: var(--second);
+  --l30: oklch(44% 0.119 151.328); --l40: oklch(62% 0.214 259.815); --l50: oklch(79% 0.184 86.047); --line-cur: var(--l30);
+  --danger: oklch(63% 0.237 25.331); --danger-ink: oklch(97% 0.013 17.38); --danger-soft: oklch(95% 0.03 25);
+  --warn: oklch(76% 0.188 70.08); --warn-soft: oklch(96% 0.04 80); --warn-ink: oklch(40% 0.09 60);
+  --ok: var(--second); --ok-soft: oklch(96% 0.044 156.743); --sel-bg: var(--second); --sel-ink: oklch(98% 0.018 155.826);
+  --track-bands: linear-gradient(to right, var(--l30) 0 50%, var(--l40) 50% 75%, var(--l50) 75% 100%); --track-fill: transparent;
+  --thumb: var(--loud); --thumb-ring: var(--second); --meter-b1: oklch(92% 0.084 156); --meter-b2: oklch(94% 0.06 156); --meter-b3: oklch(96% 0.04 156); --meter-fill: var(--second);
+  --tr-s: var(--second); --tr-s-ink: oklch(98% 0.018 155.826); --tr-j: var(--danger); --tr-j-ink: var(--danger-ink);
+  --tab-bg: var(--second); --nav-on: var(--loud); --link: var(--second); --brand: var(--second);
+}
+/* light-tone surface rules shared by Sky, Aqua, Mint and Day */
+[data-dir="b"][data-tone="light"] .menu-cell { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); }
+[data-dir="b"][data-tone="light"] .menu-cell[aria-checked="true"] { background: var(--second); color: var(--sel-ink); box-shadow: none; }
+[data-dir="b"][data-tone="light"] .menu-cell[aria-checked="true"] small { color: var(--sel-ink); opacity: 0.85; }
+[data-dir="b"][data-tone="light"] .menu-cell[aria-checked="true"] b::before { border-color: var(--sel-ink); background: var(--loud); }
+[data-dir="b"][data-tone="light"] .cta-quiet { background: var(--bg-2); color: var(--text-2); }
+[data-dir="b"][data-tone="light"] .wallet-chip { background: var(--bg-2); color: var(--text); }
+[data-dir="b"][data-tone="light"] .opt.on { --opt-on: var(--second); --opt-on-bg: var(--surface); }
+[data-dir="b"][data-tone="light"] .chip[aria-checked="true"] { border-color: var(--second); background: var(--bg-2); }
+[data-dir="b"][data-tone="light"] .asset, [data-dir="b"][data-tone="light"] .validator, [data-dir="b"][data-tone="light"] .amount, [data-dir="b"][data-tone="light"] .ltv, [data-dir="b"][data-tone="light"] .opt { border-color: var(--line); }
+[data-dir="b"][data-tone="light"] .b-st { fill: var(--bg); stroke: var(--text); }
+[data-dir="b"][data-tone="light"] .b-here { fill: var(--loud); stroke: var(--second); stroke-width: 2; }
+[data-dir="b"][data-tone="light"] .b-halo { stroke: var(--second); }
+[data-dir="b"][data-tone="light"] .done-ic { background: var(--loud); color: var(--loud-ink); }
+html[data-dir="b"][data-tone="light"] .tabbar .nav-i { color: oklch(85% 0.03 255); }
+html[data-dir="b"][data-tone="light"] .tabbar .nav-i.on { color: var(--loud); }
+[data-dir="b"][data-tone="light"] .switch[aria-checked="true"] { background: var(--second); }
+[data-dir="b"][data-tone="light"] .switch[aria-checked="true"] i { background: var(--loud); }
+[data-dir="b"][data-tone="light"] .check[aria-checked="true"] .check-box { background: var(--second); border-color: var(--second); color: var(--sel-ink); }
+[data-dir="b"][data-tone="light"] .asset-ic.tok { background: var(--loud); color: var(--loud-ink); }
+[data-dir="b"][data-tone="light"] .note { background: var(--bg-2); }
+[data-dir="b"][data-tone="light"] .cta { box-shadow: 0 8px 20px -12px oklch(40% 0.1 50 / 0.55); }
+[data-dir="b"][data-tone="light"] .cta.is-danger { box-shadow: none; }

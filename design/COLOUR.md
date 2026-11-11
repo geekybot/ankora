@@ -1,5 +1,36 @@
 # Ankora colour system: 60-30-10
 
+## Revision 3 (2026-11-11): Sky · Navy · Apricot (your theme 3, tuned)
+
+| Role | Share | Value | Where |
+|---|---|---|---|
+| Main | 60% | Sky `oklch(97% 0.014 254.6)` `#eff6ff` | Page and app ground |
+| Second | 30% | Navy `oklch(28% 0.091 268)` `#162455` | Hero, bands, nav, tab bar, selected plan, text |
+| Loud | 10% | Apricot `oklch(80% 0.14 62)` | The one action. Text on it: brown `oklch(26% 0.079 36)` |
+| Danger | outside the split | Crimson `oklch(56% 0.21 25)` | Notice, auction, loss |
+
+Changes from your theme: the primary is deepened a step (82% to 80% lightness) and given a soft shadow so the button stands off the pale page; error moves from pink (`oklch(71% .202 350)`, 2.6:1 as text and too close to the rose secondary) to crimson (4.9:1). The lemon accent is used only for tiny markers; the rose secondary isn't used.
+
+Scoring of the three themes you sent (WCAG ratios measured in the browser):
+
+| | 1 Aqua · Lilac | 2 Mint · Gold | 3 Sky · Apricot |
+|---|---|---|---|
+| Body text on page | 9.0 | 8.7 | 9.9 |
+| Text on main button | 8.3 | **1.8 ✗** | 9.2 |
+| Warning text | **2.1 ✗** | **2.1 ✗** | 8.8 |
+| Error text | **3.6 ✗** | **3.6 ✗** | 5.3 |
+| Accent text | 7.9 | **3.5 ✗** | 11.1 |
+| Competence (Labrecque & Milne) | teal, soft | green, money | navy, strongest |
+| Category fit (Bottomley & Doyle) | lilac/peach = lifestyle | fits; wealth cliché, near Rhea/NEAR mint | fits |
+| Name risk | lilac sits next to Spectra Finance's violet | none | none |
+
+Trust is warmth plus competence (Kervyn, Fiske & Malone 2012, brands as intentional agents): theme 3 pairs a cool, competent navy with a warm, approachable apricot action, which neither of the other two does.
+
+Theme 1 and 2 are kept in the app's palette switch (`aqua`, `mint`) so the difference is visible, not just argued. The earlier dark Ink · Petrol · Lemon palette (below) is kept as `petrol`.
+
+---
+
+
 2026-11-11. Applies to the landing page (`design/landing/`) and the app (`design/proto/`, direction B "Line", palette `petrol`).
 
 ## The pick: Ink · Petrol · Lemon

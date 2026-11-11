@@ -3,347 +3,377 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ankora: dollar loans on staked NEAR</title>
-<meta name="description" content="Borrow USDC against staked NEAR on terms of up to 30 days. Ankora reads the price only when a term starts or renews, so an intraday wick can't liquidate you.">
-<meta name="theme-color" content="#0b0f18">
+<title>Ankora: fixed-term dollar loans on staked NEAR</title>
+<meta name="description" content="Borrow USDC against NEAR on terms of up to 30 days. Ankora checks the price only when a term starts or renews, so a dip in between can't sell your collateral.">
+<meta name="theme-color" content="#162455">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<link rel="stylesheet" href="site.css">
+<script src="../shared/labels.js" defer></script>
 <style>
-  /* Ankora brand, 60-30-10: Ink (main) · Petrol (second) · Lemon (loud). Danger crimson only for loss. */
-  :root {
-    --ink: oklch(0.17 0.02 262);
-    --ink-2: oklch(0.21 0.03 235);
-    --petrol: oklch(0.34 0.065 222);
-    --petrol-2: oklch(0.29 0.055 222);
-    --petrol-line: oklch(0.42 0.055 222);
-    --lemon: oklch(0.91 0.18 103);
-    --lemon-ink: oklch(0.18 0.03 103);
-    --text: oklch(0.965 0.006 250);
-    --text-2: oklch(0.86 0.025 220);
-    --text-3: oklch(0.76 0.03 220);
-    --danger: oklch(0.65 0.22 22);
-    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --gutter: 16px;
-    --max: 1200px;
-    color-scheme: dark;
-  }
-  @media (min-width: 720px) { :root { --gutter: 32px; } }
-  @media (min-width: 1100px) { :root { --gutter: 48px; } }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-padding-top: 80px; }
-  html.smooth { scroll-behavior: smooth; }
-  body { background: var(--ink); color: var(--text); font: 400 17px/1.55 "Archivo", ui-sans-serif, system-ui, sans-serif; font-stretch: 100%; -webkit-font-smoothing: antialiased; }
-  ::selection { background: var(--lemon); color: var(--lemon-ink); }
-  :focus-visible { outline: 2px solid var(--lemon); outline-offset: 3px; border-radius: 4px; }
-  a { color: inherit; }
-  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
-  .num { font-variant-numeric: tabular-nums; }
+  /* hero: one centred composition over a full-width particle ribbon */
+  .hero { position: relative; min-height: 100svh; padding: 120px 0 0; display: flex; flex-direction: column; overflow: hidden; text-align: center; }
+  .hero-copy { position: relative; z-index: 2; max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
+  .hero .tags { justify-content: center; margin-bottom: 26px; }
+  .hero h1 { font-size: clamp(2.4rem, 5.2vw, 4.6rem); max-width: 15em; margin: 0 auto; }
+  .hero .lead { margin: 22px auto 0; color: var(--text-2); font-size: clamp(1.0625rem, 1.5vw, 1.25rem); max-width: 40em; }
+  .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+  .hero .fine { margin-top: 18px; }
+  .h1-sub { display: block; color: var(--apricot); }
+  .flow { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px; margin-top: 26px; padding: 8px 10px; border-radius: 999px; background: oklch(33% 0.1 266 / 0.75); box-shadow: inset 0 0 0 1px var(--navy-line); font-size: 14.5px; font-weight: 650; }
+  .tok { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; background: oklch(97% 0.014 254.6 / 0.08); }
+  .tok img { width: 26px; height: 26px; }
+  .flow .arw { width: 18px; height: 18px; color: var(--apricot); }
+  .flow .meta { color: var(--text-3); font-weight: 550; padding-right: 8px; }
+  /* floating coins */
+  .coin-f { position: absolute; z-index: 1; width: var(--s); height: var(--s); transform: translate(calc(var(--px, 0) * var(--d, 14px)), calc(var(--py, 0) * var(--d, 14px))); transition: transform 600ms var(--ease-out); pointer-events: none; }
+  .coin-f img { width: 100%; height: 100%; display: block; border-radius: 50%; transform: rotate(var(--r)); box-shadow: 0 24px 40px -18px oklch(10% 0.05 266 / 0.8), 0 0 0 6px oklch(97% 0.014 254.6 / 0.06); animation: bob 7s ease-in-out infinite; }
+  .coin-f.c2 img { animation-delay: -2.4s; } .coin-f.c3 img { animation-delay: -4.6s; }
+  @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+  .c1 { --s: 132px; --r: -14deg; --d: 18px; left: max(2vw, calc(50% - 640px)); top: 168px; }
+  .c2 { --s: 112px; --r: 12deg; --d: 24px; right: max(2vw, calc(50% - 640px)); top: 228px; }
+  .c3 { --s: 64px; --r: 8deg; --d: 30px; left: max(9vw, calc(50% - 520px)); top: 410px; opacity: 0.9; }
+  @media (max-width: 999px) { .hero { padding-top: 148px; } .c1 { --s: 46px; top: 84px; left: 16px; } .c2 { --s: 40px; top: 90px; right: 16px; } .c3 { display: none; } }
 
-  /* nav */
-  .nav { position: fixed; inset: 0 0 auto; z-index: 20; height: 64px; background: var(--ink); border-bottom: 1px solid transparent; transition: border-color 200ms ease; }
-  .nav.scrolled { border-bottom-color: var(--petrol-line); }
-  .nav .wrap { height: 100%; display: flex; align-items: center; gap: 28px; }
-  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; text-decoration: none; letter-spacing: -0.01em; }
-  .brand svg { width: 30px; height: 24px; }
-  .nav-links { display: none; gap: 24px; font-size: 15px; color: var(--text-2); }
-  .nav-links a { text-decoration: none; transition: color 160ms ease; }
-  .nav-links a:hover { color: var(--text); }
-  @media (min-width: 900px) { .nav-links { display: flex; } }
-  .nav .btn { margin-left: auto; }
+  /* particle field: canvas for particles, svg for crisp labels, same world box (1200 x 360) */
+  .hero { padding-bottom: 12px; }
+  .viz { position: relative; z-index: 0; margin-top: auto; width: 100%; height: clamp(240px, 34vw, 430px); touch-action: pan-y; }
+  .viz canvas, .viz svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .viz svg { overflow: visible; pointer-events: none; }
+  .v-line { stroke: var(--crimson-on-navy); stroke-width: 2; stroke-dasharray: 8 8; vector-effect: non-scaling-stroke; }
+  .v-t { font: 650 15px/1 "Archivo", sans-serif; font-stretch: 90%; fill: var(--text-2); }
+  .v-t.strong { fill: var(--text); font-weight: 750; }
+  .v-t.apricot { fill: var(--apricot); font-weight: 750; }
+  .v-t.red { fill: var(--crimson-on-navy); font-weight: 750; }
+  .v-ank { stroke: var(--apricot); stroke-width: 2; stroke-dasharray: 3 9; stroke-linecap: round; opacity: 0.75; vector-effect: non-scaling-stroke; }
+  .v-tick { stroke: var(--apricot); stroke-width: 4; stroke-linecap: round; }
+  .v-st { fill: var(--navy); stroke: var(--apricot); stroke-width: 4.5; }
+  .v-st-dot { fill: var(--apricot); }
+  .v-ev { opacity: 0; transition: opacity 220ms ease; }
+  .viz.dip .v-ev { opacity: 1; }
+  .viz-cap { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 2; display: flex; justify-content: center; text-align: center; gap: 16px; padding: 0 var(--gutter); font-size: 13px; color: var(--text-3); }
+  .tk { width: 26px; height: 26px; vertical-align: -6px; margin-right: 10px; }
+  .pair { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; color: var(--text-3); }
+  .pair img { width: 30px; height: 30px; }
+  .lend-viz { display: flex; align-items: center; gap: 24px; justify-content: flex-start; }
+  .lend-viz img { width: 96px; height: 96px; filter: drop-shadow(0 18px 24px oklch(30% 0.09 266 / 0.25)); }
+  .built { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; color: var(--text-2); }
+  .built img { width: 18px; height: 18px; }
 
-  .btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 20px; border-radius: 14px; font: 650 16px/1 "Archivo", sans-serif; text-decoration: none; white-space: nowrap; transition: transform 140ms var(--ease-out), background-color 160ms ease, border-color 160ms ease; }
-  .btn:active { transform: scale(0.97); }
-  .btn-loud { background: var(--lemon); color: var(--lemon-ink); }
-  .btn-loud svg { width: 18px; height: 18px; }
-  .btn-2 { border: 1.5px solid var(--petrol-line); color: var(--text); }
-  @media (hover: hover) { .btn-loud:hover { background: oklch(0.94 0.17 103); } .btn-2:hover { border-color: var(--text-3); } }
-  .btn-lg { height: 56px; padding: 0 24px; font-size: 17px; }
+  /* stat */
+  .stat { display: grid; gap: 28px; margin-top: 48px; align-items: end; }
+  @media (min-width: 960px) { .stat { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
+  .stat-n { white-space: nowrap; font-size: clamp(4.5rem, 12vw, 9rem); line-height: 0.84; font-weight: 800; font-stretch: 72%; letter-spacing: -0.03em; color: var(--blue); }
+  .stat-n small { display: block; white-space: normal; max-width: 15em; margin-top: 14px; font-size: 1.15rem; line-height: 1.3; font-stretch: 100%; letter-spacing: 0; color: var(--text); font-weight: 700; }
 
-  /* hero */
-  .hero { min-height: 100svh; padding: 112px 0 56px; display: flex; align-items: center; }
-  .hero-grid { display: grid; gap: 40px; align-items: center; }
-  @media (min-width: 1000px) { .hero-grid { grid-template-columns: 1.05fr 1fr; gap: 56px; } }
-  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-  .tag { font-size: 13px; font-weight: 650; padding: 5px 10px; border-radius: 8px; background: var(--petrol); color: var(--text); }
-  .tag.warn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--petrol-line); color: var(--text-2); }
-  h1 { font-size: clamp(2.75rem, 7.4vw, 5.5rem); line-height: 0.96; font-weight: 800; font-stretch: 112%; letter-spacing: -0.035em; text-wrap: balance; }
-  h1 .w { display: inline-block; }
-  .sub { margin-top: 24px; font-size: clamp(1.0625rem, 1.6vw, 1.25rem); color: var(--text-2); max-width: 34em; text-wrap: pretty; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-  .fine { margin-top: 20px; font-size: 14px; color: var(--text-3); max-width: 40em; }
+  /* replay */
+  .replay { display: grid; gap: 28px; margin-top: 48px; }
+  @media (min-width: 1100px) { .replay { grid-template-columns: 330px minmax(0, 1fr); gap: 36px; align-items: start; } }
+  .controls { display: grid; gap: 20px; padding: 24px; border-radius: 1.25rem; background: var(--card); box-shadow: 0 1px 0 var(--line), 0 20px 40px -32px oklch(30% 0.09 266 / 0.4); }
+  @media (min-width: 1100px) { .controls { position: sticky; top: 92px; } }
+  .ctl label, .ctl .lbl { display: block; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .ctl input[type=number], .ctl input[type=date] { width: 100%; height: 48px; padding: 0 14px; border-radius: 1rem; border: 1.5px solid var(--line); background: var(--sky); font: 600 16px/1 "Archivo", sans-serif; color: var(--text); }
+  .ctl input:focus { outline: none; border-color: var(--blue); }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 1rem; background: var(--sky-2); }
+  .seg button { height: 40px; border: 0; border-radius: 0.75rem; background: transparent; font: 650 14px/1 "Archivo", sans-serif; color: var(--text-2); cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
+  .seg button[aria-checked="true"] { background: var(--navy); color: var(--sky); }
+  .presets { display: grid; gap: 6px; }
+  .presets button { text-align: left; padding: 11px 14px; border-radius: 0.85rem; border: 1.5px solid var(--line); background: transparent; font: 600 14px/1.25 "Archivo", sans-serif; color: var(--text); cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease; }
+  .presets button small { display: block; font-weight: 500; color: var(--text-3); margin-top: 2px; }
+  .presets button[aria-pressed="true"] { border-color: var(--navy); background: var(--sky-2); }
+  .results { display: grid; gap: 18px; min-width: 0; }
+  .sum { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: 1.25rem; overflow: hidden; background: var(--line); }
+  .sum > div { background: var(--card); padding: 20px 22px; }
+  .sum b { display: block; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1; font-weight: 800; font-stretch: 80%; }
+  .sum span { display: block; margin-top: 6px; font-size: 14px; color: var(--text-2); }
+  .sum .navy { background: var(--navy); color: var(--sky); }
+  .sum .navy span { color: oklch(87% 0.035 258); }
+  .sum .wide { grid-column: 1 / -1; font-size: 15px; color: var(--text-2); padding: 14px 22px; }
+  .sum .wide b { display: inline; font-size: inherit; font-stretch: 100%; color: var(--text); }
+  .sum .wide strong { color: var(--crimson); }
+  .lanes { display: grid; gap: 18px; }
+  @media (min-width: 760px) { .lanes { grid-template-columns: 1.4fr 1fr; } }
+  .lane { border-radius: 1.25rem; background: var(--card); padding: 18px; min-width: 0; }
+  .lane h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 1rem; }
+  .lane h3 i { width: 12px; height: 12px; border-radius: 50%; background: var(--navy); }
+  .lane.rhea h3 i { background: var(--crimson); }
+  .rows { list-style: none; display: grid; gap: 2px; max-height: 420px; overflow: auto; padding-right: 4px; font-size: 14px; }
+  .rows li { padding: 9px 10px; border-radius: 0.6rem; color: var(--text-2); }
+  .rows li b { color: var(--text); font-weight: 700; }
+  .rows li.notice { background: oklch(95% 0.035 70); color: oklch(35% 0.08 50); }
+  .rows li.paid, .rows li.recovered { background: var(--sky-2); }
+  .rows li.auction, .rows li.liq { background: oklch(95% 0.03 25); color: oklch(40% 0.14 25); }
+  .rows li.liq b, .rows li.auction b { color: var(--crimson); }
+  .rows li.end { background: var(--navy); color: var(--sky); }
+  .rows li.end b { color: var(--sky); }
+  .caveats { border-radius: 1.25rem; padding: 18px 20px; box-shadow: inset 0 0 0 1.5px var(--line); font-size: 14px; color: var(--text-2); }
+  .caveats h3 { font-size: 0.95rem; margin-bottom: 8px; color: var(--text); }
+  .caveats p + p { margin-top: 8px; }
+  .check { font-size: 13px; color: var(--text-3); }
+  .check b { color: var(--text); }
 
-  /* the wick chart (signature) */
-  .chart { position: relative; padding: 20px 20px 16px; border-radius: 20px; background: var(--petrol-2); }
-  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .chart-cap { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-3); margin-top: 10px; }
-  .c-grid { stroke: var(--petrol-line); stroke-width: 1; }
-  .c-liq { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 6 6; }
-  .c-price { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-  .c-term { fill: oklch(0.42 0.06 222 / 0.45); }
-  .c-st { fill: var(--ink); stroke: var(--lemon); stroke-width: 4; }
-  .c-st-dot { fill: var(--lemon); }
-  .c-hit { fill: var(--danger); }
-  .c-t { font: 600 17px/1 "Archivo", sans-serif; font-stretch: 88%; fill: var(--text-2); }
-  .c-t-strong { fill: var(--text); font-weight: 700; }
-  @media (max-width: 600px) { .c-t { font-size: 24px; } }
-  .c-t-lemon { fill: var(--lemon); font-weight: 700; }
-  .c-t-danger { fill: var(--danger); font-weight: 700; }
-  .draw .c-price { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1600ms var(--ease-out) 300ms forwards; }
-  .draw .c-hit, .draw .c-hit-t { opacity: 0; animation: pop 260ms var(--ease-out) 1250ms forwards; }
-  .draw .c-st, .draw .c-st-dot { transform-box: fill-box; transform-origin: center; animation: st 420ms var(--ease-out) both; }
-  .draw .c-st.end, .draw .c-st-dot.end { animation-delay: 1750ms; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  @keyframes pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
-  @keyframes st { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
-
-  /* sections */
-  section.s { padding: 96px 0; }
-  @media (min-width: 900px) { section.s { padding: 128px 0; } }
-  .band { background: var(--petrol); }
-  .band-2 { background: var(--petrol-2); }
-  h2 { font-size: clamp(2rem, 4.4vw, 3.5rem); line-height: 1.02; font-weight: 800; font-stretch: 108%; letter-spacing: -0.03em; max-width: 18em; text-wrap: balance; }
-  h3 { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.01em; }
-  .lead { margin-top: 20px; font-size: 1.125rem; color: var(--text-2); max-width: 40em; text-wrap: pretty; }
-  p + p { margin-top: 14px; }
-  .muted { color: var(--text-2); }
-
-  .stat { display: grid; gap: 32px; margin-top: 56px; align-items: end; }
-  @media (min-width: 900px) { .stat { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
-  .stat-n { white-space: nowrap; font-size: clamp(4.5rem, 13vw, 9.5rem); line-height: 0.82; font-weight: 800; font-stretch: 70%; letter-spacing: -0.03em; color: var(--lemon); }
-  .stat-n small { white-space: normal; line-height: 1.15; max-width: 16em; font-size: 0.3em; font-stretch: 100%; letter-spacing: 0; color: var(--text); font-weight: 700; display: block; margin-top: 12px; }
-  .stat p { max-width: 36em; color: var(--text-2); }
-
-  /* four stations */
-  .steps { margin-top: 56px; display: grid; gap: 0; position: relative; counter-reset: st; }
-  @media (min-width: 960px) { .steps { grid-template-columns: repeat(4, 1fr); gap: 28px; } }
-  .step { position: relative; padding: 0 0 36px 44px; }
-  .step::before { content: ""; position: absolute; left: 12px; top: 26px; bottom: 0; width: 6px; border-radius: 3px; background: var(--petrol-line); }
-  .step:last-child::before { display: none; }
-  .step i { position: absolute; left: 0; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); border: 5px solid var(--text); }
-  .step.read i { border-color: var(--lemon); }
-  @media (min-width: 960px) {
-    .step { padding: 52px 0 0; }
-    .step::before { left: 30px; right: -28px; top: 12px; bottom: auto; width: auto; height: 6px; }
-    .step:last-child::before { display: block; right: 0; height: 0; background: none; border-top: 6px dotted var(--petrol-line); border-radius: 0; }
-    .step i { top: 0; }
-  }
-  .step h3 { margin-bottom: 8px; }
-  .step p { font-size: 15px; color: var(--text-2); }
-  .step .read-t { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--lemon); }
+  /* product showcase: steps scroll on the left, a phone shows the matching app screen */
+  .show { display: grid; gap: 40px; margin-top: 56px; }
+  @media (min-width: 1000px) { .show { grid-template-columns: minmax(0, 1fr) 380px; gap: 72px; align-items: start; } }
+  .show-steps { display: grid; gap: 0; counter-reset: st; }
+  .sstep { position: relative; padding: 0 0 48px 64px; }
+  @media (min-width: 1000px) { .sstep { min-height: 62vh; padding-bottom: 0; display: flex; flex-direction: column; justify-content: center; } }
+  .sstep::before { content: ""; position: absolute; left: 21px; top: 50px; bottom: -2px; width: 4px; border-radius: 2px; background: var(--sky-3); }
+  .sstep:last-child::before { display: none; }
+  @media (min-width: 1000px) { .sstep { display: grid; grid-template-columns: 46px minmax(0, 1fr); column-gap: 18px; align-content: center; padding-left: 0; } .sstep > :not(i) { grid-column: 2; } .sstep i { position: static; grid-row: 1 / span 4; } .sstep::before { display: none; } }
+  .sstep i { position: absolute; left: 0; top: 0; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: inset 0 0 0 2px var(--sky-3); transition: box-shadow 260ms var(--ease-out), background-color 260ms ease; }
+  .sstep i img { width: 30px; height: 30px; }
+  .sstep h3 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); line-height: 1.15; margin-bottom: 10px; transition: color 260ms ease; }
+  .sstep p { max-width: 34em; color: var(--text-2); }
+  .sstep .read-t { display: inline-block; align-self: flex-start; margin-top: 12px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 750; background: var(--apricot); color: var(--apricot-ink); }
+  .sstep .shot-m { display: block; width: min(300px, 78vw); margin-top: 22px; }
+  @media (min-width: 1000px) { .sstep .shot-m { display: none; } .sstep:not(.on) h3 { color: var(--text-3); } .sstep:not(.on) i img { opacity: 0.55; } .sstep i img { transition: opacity 260ms ease; } .sstep.on i { box-shadow: inset 0 0 0 3px var(--navy); } }
+  .phone { position: relative; width: 100%; max-width: 340px; aspect-ratio: 390 / 844; border-radius: 48px; padding: 10px; background: var(--navy); box-shadow: 0 40px 80px -40px oklch(28% 0.09 266 / 0.55), 0 0 0 1px oklch(40% 0.08 266); }
+  .phone .scr { position: relative; width: 100%; height: 100%; border-radius: 38px; overflow: hidden; background: var(--sky); }
+  .phone img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.02); transition: opacity 420ms var(--ease-out), transform 520ms var(--ease-out); }
+  .phone img.on { opacity: 1; transform: none; }
+  .show-phone { display: none; }
+  @media (min-width: 1000px) { .show-phone { display: block; position: sticky; top: calc(50vh - 330px); } }
+  .shot-m .phone, .shot-m .scr { display: block; }
+  .shot-m .phone { max-width: none; aspect-ratio: auto; border-radius: 40px; }
+  .shot-m .scr { height: auto; border-radius: 31px; }
+  .shot-m .phone img { opacity: 1; transform: none; position: static; height: auto; }
+  .caption { margin-top: 14px; font-size: 13px; color: var(--text-3); text-align: center; }
 
   /* plans */
-  .plans { margin-top: 56px; display: grid; border-radius: 20px; overflow: hidden; background: var(--petrol-line); gap: 1.5px; }
+  .plans { margin-top: 48px; display: grid; gap: 1.5px; border-radius: 1.25rem; overflow: hidden; background: var(--navy-line); }
   @media (min-width: 800px) { .plans { grid-template-columns: repeat(3, 1fr); } }
-  .plan { background: var(--petrol-2); padding: 28px 28px 32px; display: grid; gap: 6px; }
-  .plan-name { font-size: 15px; font-weight: 700; color: var(--text-2); }
-  .plan-ltv { font-size: 4.5rem; line-height: 0.9; font-weight: 800; font-stretch: 70%; }
-  .plan-ltv small { font-size: 0.3em; font-stretch: 100%; font-weight: 650; color: var(--text-2); margin-left: 6px; }
+  .plan { background: var(--navy-2); padding: 28px; display: grid; gap: 4px; }
+  .plan-ltv { font-size: 4.25rem; line-height: 0.9; font-weight: 800; font-stretch: 72%; }
+  .plan-ltv small { margin-left: 8px; font-size: 1rem; font-stretch: 100%; font-weight: 650; color: var(--text-2); }
   .plan dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin-top: 14px; font-size: 15px; }
-  .plan dt { color: var(--text-3); }
-  .plan dd { text-align: right; font-weight: 650; }
-  .note { margin-top: 24px; font-size: 15px; color: var(--text-2); max-width: 46em; }
+  .plan dt { color: var(--text-3); } .plan dd { text-align: right; font-weight: 700; }
+  .note { margin-top: 22px; color: var(--text-2); font-size: 15.5px; max-width: 48em; }
+  .note + .note { margin-top: 10px; }
 
   /* five days */
-  .days { margin-top: 56px; display: grid; gap: 28px; }
-  .bar { display: grid; grid-template-columns: 72fr 48fr 24fr; min-height: 76px; border-radius: 14px; overflow: hidden; gap: 2px; }
-  .bar > div { display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; font-weight: 750; font-size: 15px; line-height: 1.25; min-width: 0; }
-  .bar small { font-weight: 600; font-size: 13px; color: inherit; }
-  .b-notice { background: var(--text); color: var(--ink); }
-  .b-grace { background: var(--text-3); color: var(--ink); }
-  .b-auc { background: var(--danger); color: var(--ink); }
-  .rules { display: grid; gap: 20px; }
-  @media (min-width: 900px) { .rules { grid-template-columns: repeat(2, 1fr); gap: 24px 48px; } }
-  .rules div { padding-top: 16px; border-top: 1.5px solid var(--petrol-line); }
+  .fd-grid { display: grid; gap: 40px; }
+  @media (min-width: 1000px) { .fd-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 72px; align-items: start; } }
+  .fd-phone { max-width: 300px; }
+  @media (max-width: 999px) { .fd-phone { margin: 0 auto; } }
+  .fd-phone .phone img { opacity: 1; transform: none; }
+  .bar { display: grid; grid-template-columns: 72fr 48fr 24fr; min-height: 78px; margin-top: 48px; border-radius: 1rem; overflow: hidden; gap: 2px; }
+  .bar > div { display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; font-weight: 750; font-size: 15px; line-height: 1.3; min-width: 0; }
+  .bar small { font-weight: 600; font-size: 13px; }
+  .b1 { background: var(--navy); color: var(--sky); } .b2 { background: var(--blue); color: var(--sky); } .b3 { background: var(--crimson); color: oklch(98% 0.01 25); }
+  .rules { display: grid; gap: 22px; margin-top: 32px; }
+  @media (min-width: 900px) { .rules { grid-template-columns: repeat(2, 1fr); gap: 24px 56px; } }
+  .rules div { padding-top: 16px; border-top: 1.5px solid var(--line); }
   .rules b { display: block; margin-bottom: 6px; }
   .rules p { color: var(--text-2); font-size: 16px; }
+  .status { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 28px; padding: 16px 18px; border-radius: 1rem; background: oklch(95% 0.035 70); color: oklch(35% 0.08 50); font-size: 15.5px; }
+  .status b { color: oklch(30% 0.08 45); }
 
-  /* split */
-  .split { display: grid; gap: 48px; margin-top: 56px; }
-  @media (min-width: 900px) { .split { grid-template-columns: 1fr 1fr; gap: 64px; } }
-  .split h3 { font-size: 1.5rem; margin-bottom: 14px; }
-  .split h3 em { font-style: normal; color: var(--lemon); }
-  .split ul { list-style: none; display: grid; gap: 12px; }
-  .split li { padding-left: 22px; position: relative; color: var(--text-2); font-size: 16px; }
-  .split li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
-  .split .loss li::before { background: var(--danger); }
-
-  .cols3 { display: grid; gap: 40px; margin-top: 56px; }
-  @media (min-width: 900px) { .cols3 { grid-template-columns: repeat(3, 1fr); } }
-  .cols3 h3 { margin-bottom: 14px; }
-  .cols3 ul { list-style: none; display: grid; gap: 12px; }
-  .cols3 li { color: var(--text-2); font-size: 16px; padding-left: 22px; position: relative; }
-  .cols3 li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
-
-  /* faq */
-  .faq { margin-top: 48px; max-width: 820px; }
-  .faq details { border-top: 1.5px solid var(--petrol-line); }
-  .faq details:last-child { border-bottom: 1.5px solid var(--petrol-line); }
+  /* teasers, faq */
+  .teaser { display: grid; gap: 28px; align-items: center; }
+  @media (min-width: 960px) { .teaser { grid-template-columns: 1.2fr 1fr; } }
+  .faq { margin-top: 44px; max-width: 860px; }
+  .faq details { border-top: 1.5px solid var(--line); }
+  .faq details:last-child { border-bottom: 1.5px solid var(--line); }
   .faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; padding: 22px 0; font-size: 1.125rem; font-weight: 700; }
   .faq summary::-webkit-details-marker { display: none; }
   .faq summary svg { width: 22px; height: 22px; flex: none; transition: transform 200ms var(--ease-out); }
   .faq details[open] summary svg { transform: rotate(45deg); }
-  .faq details p { padding: 0 0 22px; color: var(--text-2); max-width: 44em; }
-
-  /* close */
-  .close { text-align: left; }
-  .close .ctas { margin-top: 36px; }
-  footer { padding: 48px 0 64px; border-top: 1px solid var(--petrol-line); color: var(--text-3); font-size: 14px; }
-  footer .wrap { display: grid; gap: 16px; }
-  footer p { max-width: 60em; }
-
-  /* reveal on scroll: content is visible by default; JS adds the class only when motion is allowed */
-  .js-motion .rv { opacity: 0; transform: translateY(16px); transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); }
-  .js-motion .rv.in { opacity: 1; transform: none; }
-  .js-motion h1 .w { opacity: 0; transform: translateY(14px); animation: wordin 620ms var(--ease-out) forwards; }
+  .faq details p { padding: 0 0 22px; color: var(--text-2); max-width: 46em; }
+  .js-motion .w { display: inline-block; opacity: 0; transform: translateY(16px); animation: wordin 640ms var(--ease-out) forwards; }
   @keyframes wordin { to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .draw .c-price { stroke-dashoffset: 0; } .draw .c-hit, .draw .c-hit-t { opacity: 1; } }
 </style>
 </head>
 <body>
 <header class="nav" id="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="Ankora on NEAR, home">
-      <svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 12h18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="12" r="4.2" fill="var(--ink)" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="12" r="4.2" fill="var(--lemon)" stroke="var(--lemon)" stroke-width="2.6"/></svg>
+    <a class="brand" href="#top" aria-label="Ankora, home">
+      <svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 12h18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="12" r="4.4" fill="#ffb667"/></svg>
       Ankora
     </a>
-    <nav class="nav-links" aria-label="Sections"><a href="#how">How it works</a><a href="#plans">Borrow</a><a href="#lend">Lend</a><a href="#risks">Risks</a><a href="#faq">Questions</a></nav>
-    <a class="btn btn-loud" href="../proto/index.html?d=b&p=petrol">Open the app</a>
+    <nav class="nav-links" aria-label="Sections"><a href="#how">Borrow</a><a href="lend.html">Lend</a><a href="#replay">Replay</a><a href="#risks">Risks</a><a href="#faq">Questions</a></nav>
+    <a class="btn btn-loud" href="../proto/index.html?d=b&p=sky">Open the app</a>
   </div>
 </header>
 
 <main id="top">
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <div class="tags"><span class="tag">On NEAR</span><span class="tag warn">Testnet</span><span class="tag warn">Unaudited</span></div>
-        <h1 id="h1">A wick can't liquidate your NEAR.</h1>
-        <p class="sub">Borrow dollars against staked NEAR on terms of up to 30 days. Ankora reads the price when your term starts and when it renews. In between, nothing can sell your collateral.</p>
-        <div class="ctas">
-          <a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=petrol#/review">See what you can borrow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
-          <a class="btn btn-2 btn-lg" href="#lend">Lend dollars</a>
-        </div>
-        <p class="fine">Up to 50% LTV, at 9.7–11.3% a year in normal markets. Each term's rate is fixed when it starts.</p>
+  <section class="hero on-navy" id="hero">
+    <span class="coin-f c1"><img src="assets/near-coin.svg" alt=""></span>
+    <span class="coin-f c2"><img src="assets/usdc.svg" alt=""></span>
+    <span class="coin-f c3"><img src="assets/near-coin.svg" alt=""></span>
+    <div class="hero-copy">
+      <div class="tags"><span class="tag">On NEAR</span><span class="tag line">Unaudited</span><span class="tag line">Testnet: launching this week</span></div>
+      <h1 id="h1">Borrow dollars against your NEAR. <span class="h1-sub">A 3am dip can't sell it.</span></h1>
+      <p class="lead">Ankora checks the price when your loan starts and when it renews, and at no other time. If NEAR has fallen too far by renewal, you get five days to pay some back before anything is auctioned.</p>
+      <div class="ctas">
+        <a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=sky#/review">See what you can borrow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
+        <a class="btn btn-ghost btn-lg" href="#replay" data-preset="y2022">Replay a loan through 2022</a>
       </div>
-
-      <figure class="chart" aria-labelledby="chart-cap">
-        <svg id="wick" viewBox="0 0 640 400" role="img" aria-label="Illustration: a NEAR price path over one 30-day term. An intraday wick dips below a live liquidation line on day 18 and recovers. Ankora reads the price only on day 0 and day 30.">
-          <rect class="c-term" x="40" y="24" width="560" height="296" rx="6"/>
-          <line class="c-grid" x1="40" y1="320" x2="600" y2="320"/>
-          <line class="c-liq" x1="40" y1="258" x2="600" y2="258"/>
-          <text class="c-t c-t-danger" x="52" y="248">Live liquidation line (≈ 66.5% LTV)</text>
-          <path class="c-price" pathLength="1" d="M40 112 L68 120 L96 104 L124 126 L152 118 L180 140 L208 132 L236 150 L264 138 L292 158 L320 150 L348 166 L376 156 L404 172 L418 168 L432 294 L446 176 L474 164 L502 150 L530 158 L558 140 L586 132 L600 128"/>
-          <circle class="c-hit" cx="432" cy="294" r="8"/>
-          <text class="c-t c-t-danger c-hit-t" x="416" y="300" text-anchor="end">Liquidated elsewhere</text>
-          <text class="c-t" x="320" y="54" text-anchor="middle">No price read during the term</text>
-          <circle class="c-st" cx="40" cy="112" r="11"/><circle class="c-st-dot" cx="40" cy="112" r="4"/>
-          <circle class="c-st end" cx="600" cy="128" r="11"/><circle class="c-st-dot end" cx="600" cy="128" r="4"/>
-          <text class="c-t c-t-strong" x="40" y="350">Day 0</text><text class="c-t c-t-lemon" x="40" y="374">price read</text>
-          <text class="c-t c-t-strong" x="432" y="350" text-anchor="middle">Day 18</text><text class="c-t" x="432" y="374" text-anchor="middle">wick</text>
-          <text class="c-t c-t-strong" x="600" y="350" text-anchor="end">Day 30</text><text class="c-t c-t-lemon" x="600" y="374" text-anchor="end">price read</text>
-        </svg>
-        <figcaption class="chart-cap" id="chart-cap"><span>Illustrative path, not real prices.</span><span>On Ankora the day-18 wick does nothing.</span></figcaption>
-      </figure>
+      <div class="flow"><span class="tok"><img src="assets/near-coin.svg" alt="">Bring NEAR</span><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg><span class="tok"><img src="assets/usdc.svg" alt="">Get USDC</span><span class="meta">Up to 50% LTV · 9.7–11.3% a year in normal markets</span></div>
+    </div>
+    <div class="viz" id="viz">
+      <canvas id="pf" aria-hidden="true"></canvas>
+      <svg id="vsvg" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Illustration: NEAR's price over one 30-day term drawn as a stream of particles. At 3am on day 19 a sharp dip crosses Rhea's liquidation line and recovers. Ankora checks the price only on day 0 and day 30, so the dip does nothing.">
+        <line class="v-line" x1="0" y1="270" x2="1200" y2="270"/>
+        <text class="v-t red" x="72" y="258">Rhea's liquidation line (≈ 66.5% LTV)</text>
+        <line class="v-ank" id="ankl" x1="0" y1="233" x2="1200" y2="233"/>
+        <text class="v-t apricot" id="ankt" x="1128" y="223" text-anchor="end">Ankora's renewal limit (50% LTV)</text>
+        <path class="v-tick" id="ank0" d="M52 233h16"/><path class="v-tick" id="ank1" d="M1132 233h16"/>
+        <circle class="v-st" id="st0" cx="60" cy="120" r="12"/><circle class="v-st-dot" id="sd0" cx="60" cy="120" r="4.5"/>
+        <circle class="v-st" id="st1" cx="1140" cy="190" r="12"/><circle class="v-st-dot" id="sd1" cx="1140" cy="190" r="4.5"/>
+        <text class="v-t strong" id="lb0a" x="60" y="92" text-anchor="start">Day 0 · Ankora checks</text>
+        <text class="v-t strong" id="lb1a" x="1140" y="160" text-anchor="end">Day 30 · Ankora checks</text>
+        <g class="v-ev"><text class="v-t strong" id="dpa" x="0" y="300">3am, day 19</text><text class="v-t red" id="dpb" x="0" y="320">Rhea would liquidate</text></g>
+      </svg>
+      <div class="viz-cap"><span>Illustrative price path, 30% plan. The dip crosses Rhea's line and recovers, so on Ankora it sets nothing off. If NEAR were still below Ankora's limit on day 30, you'd get a notice.</span></div>
     </div>
   </section>
 
-  <section class="s band rv" id="wicks">
+  <section class="s rv" id="dips">
     <div class="wrap">
-      <h2>Most liquidations in our backtest were wicks.</h2>
+      <h2>On Rhea, a dip that's gone by the end of the day can still sell your NEAR.</h2>
       <div class="stat">
-        <div class="stat-n num">60–68%<small>of liquidated borrowers were caught by an intraday low</small></div>
+        <div class="stat-n num">60–68%<small>In our backtest, the share of liquidated borrowers caught on a day NEAR closed back above their line</small></div>
         <div>
-          <p>We replayed NEAR's daily prices from October 2020 to November 2026 against Rhea's liquidation line, at about 66.5% LTV. Each simulated borrower started at 30%, 40% or 50% and added nothing for a year. Of the borrowers who got liquidated, 60–68% were caught by an intraday low on a day that closed above their liquidation price.</p>
-          <p>Each of those liquidations would have come without notice. The liquidator would have taken the collateral at a discount, at a price that was gone by the close. Ankora doesn't read the price during a term, so a wick gives it nothing to act on.</p>
+          <p class="muted">Rhea liquidates a loan the moment NEAR's price touches its liquidation line, at any hour, and the liquidator buys the collateral at a discount.</p>
+          <p class="muted" style="margin-top:14px">We replayed NEAR's daily prices from October 2020 to November 2026 against Rhea's line, at about 66.5% LTV. Each simulated borrower started at 30%, 40% or 50% and added nothing for a year. Of the borrowers who were liquidated, 60–68% were caught on a day when NEAR closed back above their line.</p>
+          <p class="muted" style="margin-top:14px">Ankora doesn't look at the price in the middle of a term, so a dip like that has nothing to set off.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="s rv" id="how">
+  <section class="s band-2" id="replay">
     <div class="wrap">
-      <h2>Four steps and one price check per term.</h2>
-      <div class="steps">
-        <div class="step"><i></i><h3>Bring NEAR</h3><p>The loan's vault stakes it with your validator, as long as that validator is on NEAR Foundation's lockup whitelist. Already staked? You unstake once first, about 28 hours.</p></div>
-        <div class="step read"><i></i><h3>Pick a plan</h3><p>The app pushes a fresh Pyth price just before you borrow. A price older than 60 seconds, or one the feed is unsure of, is rejected and your NEAR goes back.</p><span class="read-t">Price read</span></div>
-        <div class="step"><i></i><h3>Get dollars</h3><p>The first term's interest comes off the top. Your staking rewards keep building in the vault.</p></div>
-        <div class="step read"><i></i><h3>Renew or repay</h3><p>At the end of the term the loan renews by itself if your LTV fits a plan. Repay instead, and the vault becomes yours, with the stake still staked.</p><span class="read-t">Price read</span></div>
+      <h2>Replay a loan on real NEAR prices.</h2>
+      <p class="lead">Pick a start date and a plan. The replay runs your loan through NEAR's daily prices from that day on, one renewal at a time, and runs the same loan under Rhea's rules beside it. Some start dates make Ankora look worse. Those are in the presets too.</p>
+      <div class="replay">
+        <form class="controls" id="rp-form" onsubmit="return false">
+          <div class="ctl"><label for="rp-amount">NEAR you'd bring</label><input id="rp-amount" type="number" min="100" step="100" value="10000" inputmode="numeric"></div>
+          <div class="ctl"><span class="lbl" id="rp-plan-l">Plan</span><div class="seg" role="radiogroup" aria-labelledby="rp-plan-l" id="rp-plan"><button type="button" role="radio" aria-checked="true" data-v="0">30% plan</button><button type="button" role="radio" aria-checked="false" data-v="1">40% plan</button><button type="button" role="radio" aria-checked="false" data-v="2">50% plan</button></div></div>
+          <div class="ctl"><label for="rp-start">Start date</label><input id="rp-start" type="date"></div>
+          <div class="ctl"><span class="lbl" id="rp-pay-l">When Ankora asks you to pay some back</span><div class="seg" role="radiogroup" aria-labelledby="rp-pay-l" id="rp-pay"><button type="button" role="radio" aria-checked="true" data-v="1">I pay it</button><button type="button" role="radio" aria-checked="false" data-v="0">I don't</button></div></div>
+          <div class="ctl"><span class="lbl">Or start from</span><div class="presets" id="rp-presets">
+            <button type="button" data-preset="worstAnk">Worst start for an Ankora borrower<small id="ps-worstAnk"></small></button>
+            <button type="button" data-preset="typical">A typical start<small id="ps-typical"></small></button>
+            <button type="button" data-preset="worstRhea">Fastest Rhea liquidation on a dip<small id="ps-worstRhea"></small></button>
+            <button type="button" data-preset="y2022">The 2022 crash<small>from 1 January 2022</small></button>
+          </div></div>
+        </form>
+        <div class="results" aria-live="polite">
+          <div class="sum" id="rp-sum"></div>
+          <div class="lanes">
+            <div class="lane"><h3><i></i>Ankora</h3><ol class="rows" id="rp-ank"></ol></div>
+            <div class="lane rhea"><h3><i></i>Rhea, same loan</h3><ol class="rows" id="rp-rhea"></ol></div>
+          </div>
+          <div class="caveats">
+            <h3>Read this before the numbers</h3>
+            <p>This replays past prices. It isn't a forecast. Prices are Binance's daily NEAR/USDT candles. One exchange's daily low can be deeper than the price Rhea's oracle saw, so the replay may count some Rhea liquidations that never happened. Rhea is shown at its ~66.5% line and its 12-month mean borrow rate of 8.91%; its real rate moved. Both loans earn staking rewards at 3.37% a year.</p>
+            <p>Ankora's renewals here read NEAR's daily close. The pool reads the lower of the spot price and its one-hour average (on testnet, worked out by the team's keeper), which can be lower, so the replay may show fewer requests to pay down than v1 would. Shorter stressed terms aren't modelled, so in volatile stretches the replay checks less often than v1 would. When you pay, the replay pays the minimum, back to 50%, so the loan sits at the limit and is asked again sooner; paying more means fewer requests. Auctions show the full range from 100% down to 50% of the vault's value, because nobody can know when a bid would have landed.</p>
+            <p class="check" id="rp-check">Checking the Rhea lane against the published backtest…</p>
+            <p class="check" id="rp-check2"></p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="s band-2 rv" id="plans">
+  <section class="s" id="how">
+    <div class="wrap">
+      <h2>How a loan works.</h2>
+      <div class="show">
+        <div class="show-steps">
+          <div class="sstep on" data-shot="0"><i><img src="assets/near-coin.svg" alt=""></i><h3>Bring NEAR</h3><p>Your loan gets its own vault, which stakes the NEAR with a validator you pick from the lockup whitelist. NEAR that's already staked has to be unstaked first, which takes about 28 hours.</p>
+            <span class="shot-m"><span class="phone"><span class="scr"><img src="assets/app/01-home.webp" alt="Home: the NEAR in your wallet and what it can borrow" loading="lazy"></span></span></span></div>
+          <div class="sstep" data-shot="1"><i><img src="assets/usdc.svg" alt=""></i><h3>Borrow</h3><p>Pick a plan and receive USDC on NEAR. The first term's interest comes off the top.</p><span class="read-t">Price checked</span>
+            <span class="shot-m"><span class="phone"><span class="scr"><img src="assets/app/02-review.webp" alt="Review: pick a plan, see exactly what you receive" loading="lazy"></span></span></span></div>
+          <div class="sstep" data-shot="2"><i><img src="assets/near-coin.svg" alt=""></i><h3>Keep earning</h3><p>Your staking rewards build up in the vault while the loan runs.</p>
+            <span class="shot-m"><span class="phone"><span class="scr"><img src="assets/app/03-borrowed.webp" alt="Your loan: nothing to do until the next check" loading="lazy"></span></span></span></div>
+          <div class="sstep" data-shot="3"><i><img src="assets/near-coin.svg" alt=""></i><h3>Renew or repay</h3><p>At the end of each term the loan renews by itself if it still fits a plan. Repay, and the vault and its stake are yours.</p><span class="read-t">Price checked</span>
+            <span class="shot-m"><span class="phone"><span class="scr"><img src="assets/app/11-repay.webp" alt="Repay: the vault and its stake come back to you" loading="lazy"></span></span></span></div>
+        </div>
+        <div class="show-phone" aria-hidden="true">
+          <div class="phone"><div class="scr" id="show-scr">
+            <img class="on" src="assets/app/01-home.webp" alt="Home: the NEAR in your wallet and what it can borrow" loading="eager">
+            <img class="" src="assets/app/02-review.webp" alt="Review: pick a plan, see exactly what you receive" loading="lazy">
+            <img class="" src="assets/app/03-borrowed.webp" alt="Your loan: nothing to do until the next check" loading="lazy">
+            <img class="" src="assets/app/11-repay.webp" alt="Repay: the vault and its stake come back to you" loading="lazy">
+          </div></div>
+          <p class="caption">Screens from the prototype. Balances and prices are demo values.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s on-navy rv" id="plans">
     <div class="wrap">
       <h2>Borrow more, renew more often.</h2>
       <div class="plans">
-        <div class="plan"><span class="plan-name">30% plan</span><span class="plan-ltv num">30%<small>of your collateral</small></span><dl><dt>Term</dt><dd>30 days</dd><dt>Rate, normal markets</dt><dd class="num">9.7%</dd></dl></div>
-        <div class="plan"><span class="plan-name">40% plan</span><span class="plan-ltv num">40%<small>of your collateral</small></span><dl><dt>Term</dt><dd>14 days</dd><dt>Rate, normal markets</dt><dd class="num">10.1%</dd></dl></div>
-        <div class="plan"><span class="plan-name">50% plan</span><span class="plan-ltv num">50%<small>of your collateral</small></span><dl><dt>Term</dt><dd>7 days</dd><dt>Rate, normal markets</dt><dd class="num">11.3%</dd></dl></div>
+        <div class="plan"><span class="pair"><img src="assets/near-coin.svg" alt="NEAR"> → <img src="assets/usdc.svg" alt="USDC"></span><span class="muted">30% plan</span><span class="plan-ltv num">30%<small>of your collateral</small></span><dl><dt>Term</dt><dd>30 days</dd><dt>Rate, normal markets</dt><dd class="num">9.7%</dd></dl></div>
+        <div class="plan"><span class="pair"><img src="assets/near-coin.svg" alt="NEAR"> → <img src="assets/usdc.svg" alt="USDC"></span><span class="muted">40% plan</span><span class="plan-ltv num">40%<small>of your collateral</small></span><dl><dt>Term</dt><dd>14 days</dd><dt>Rate, normal markets</dt><dd class="num">10.1%</dd></dl></div>
+        <div class="plan"><span class="pair"><img src="assets/near-coin.svg" alt="NEAR"> → <img src="assets/usdc.svg" alt="USDC"></span><span class="muted">50% plan</span><span class="plan-ltv num">50%<small>of your collateral</small></span><dl><dt>Term</dt><dd>7 days</dd><dt>Rate, normal markets</dt><dd class="num">11.3%</dd></dl></div>
       </div>
-      <p class="note">Each rate comes from pricing the loan as a put option on your collateral, using a jump-diffusion model of NEAR fitted to every day since October 2020. Once a term starts, its rate doesn't change. When NEAR is unusually volatile, Ankora switches new loans and renewals to shorter terms (14, 7 and 3 days); rates stay the same except the 50% plan's, which rises to 11.7%. In v1 the team flips that switch by hand.</p>
+      <p class="note">The rates come from a model of NEAR's price fitted to every day since October 2020. A term's rate is fixed when it starts. When NEAR is unusually volatile, terms get shorter: 14 days on the 30% plan, 7 on the 40% plan and 3 on the 50% plan. The 50% plan's rate rises to 11.7%, and no rate goes down. A term that's already running doesn't change. In v1 the team makes this switch by hand.</p>
+      <p class="note">At 30% LTV your staking rewards roughly cover the interest once NEAR's planned issuance cut (HSP-029) is complete. Borrow more and the interest outruns them.</p>
     </div>
   </section>
 
   <section class="s rv" id="five-days">
     <div class="wrap">
-      <h2>If the price has fallen, you get five days before any auction.</h2>
-      <p class="lead">At each renewal the pool reads the lower of Pyth's spot price and its average. Anyone can trigger the renewal once the term ends, so it can't be held back to wait for a better price.</p>
-      <div class="days">
-        <div class="bar" role="img" aria-label="72 hours of notice, then 48 hours of grace, then a 24-hour auction">
-          <div class="b-notice">72 h notice<small>repay part or all</small></div>
-          <div class="b-grace">48 h grace<small>same terms</small></div>
-          <div class="b-auc">24 h<small>auction</small></div>
-        </div>
-        <div class="rules">
-          <div><b>LTV 50% or lower</b><p>The loan renews into the plan that fits. The next term's interest is added to your debt.</p></div>
-          <div><b>LTV above 50%</b><p>72 hours of notice. Repay part of the debt in USDC to bring LTV to 50% or lower, and the loan renews at the next check. If NEAR recovers in that time, it renews without a payment.</p></div>
-          <div><b>After the grace period</b><p>A 24-hour Dutch auction of the vault, starting at its full value and falling to half. Lenders are repaid and anything above your debt goes to you. You can still repay in full until a bid lands.</p></div>
-          <div><b>No late fee</b><p>If the loan renews after its end date, you pay interest for the extra days at the new plan's rate. If an auction raises less than the debt, the lenders take the loss and you owe nothing more.</p></div>
-        </div>
+      <div class="fd-grid"><div>
+      <h2>If NEAR has fallen at renewal, you get five days before any auction.</h2>
+      <p class="lead">At each renewal the pool reads the lower of NEAR's spot price and its one-hour average, which on testnet the team's keeper works out. New loans also pause while the two are more than 3% apart. Anyone can trigger the renewal once the term ends, so it can't be held back to wait for a better price.</p>
+      <div class="bar" role="img" aria-label="72 hours of notice, then 48 hours of grace, then a 24-hour auction">
+        <div class="b1">72 h notice<small>pay back part</small></div>
+        <div class="b2">48 h grace<small>same terms</small></div>
+        <div class="b3">24 h<small>auction</small></div>
       </div>
+      <div class="rules">
+        <div><b>LTV 50% or lower</b><p>The loan renews into the plan that fits. The next term's interest is added to your debt.</p></div>
+        <div><b>LTV above 50%</b><p>72 hours of notice. Pay back part of the debt in USDC to bring LTV to 50% or lower, and the loan renews at the next check. If NEAR recovers in that time, it renews without a payment.</p></div>
+        <div><b>After the grace period</b><p>A 24-hour Dutch auction of the vault, starting at its full value and falling to half. The lenders are repaid, and anything above your debt goes to you. You can still repay in full until a bid lands.</p></div>
+        <div><b>If the auction raises less than the debt</b><p>Or nobody bids: the lenders take the loss, starting with First-loss deposits. You keep the dollars you borrowed and owe nothing more.</p></div>
+        <div><b>No late fee</b><p>If the loan renews after its expiry date, you pay interest for the days since expiry at the new plan's rate.</p></div>
+        <div><b>If you switch renewal off</b><p>You can switch renewal off whenever you like. If you then don't repay at expiry, the 48-hour grace period starts straight away, followed by the auction.</p></div>
+      </div>
+      </div>
+      <figure class="fd-phone"><div class="phone"><div class="scr"><img class="on" src="assets/app/05-notice.webp" alt="The renewal notice screen: pay down by a deadline, with the options to repay part or all" loading="lazy"></div></div><figcaption class="caption">Screen from the prototype. Balances and prices are demo values.</figcaption></figure>
+      </div>
+      <div class="status" role="note"><b>v1 sends no email or message when a notice starts.</b> The notice shows in the app and on-chain, so check in around your renewal date.</div>
+      <p class="note">In our replay of 2021–22, 53–81% of borrowers who added nothing were asked to pay down at least once in a year. On Rhea, 55–85% of the same borrowers were liquidated. On Ankora each of those requests came with five days to respond before any auction, and any auction surplus went back to the borrower.</p>
     </div>
   </section>
 
-  <section class="s band rv" id="native">
-    <div class="wrap">
-      <h2>Native stakers keep their validator.</h2>
-      <p class="lead">About 91% of staked NEAR, roughly $1.88B, is native stake with a validator its owner picked. Staking pools can't transfer stake between accounts, so moving it means unstaking once. Rhea doesn't accept native stake. Ankora's vault re-stakes with your validator, as long as it's on NEAR Foundation's lockup whitelist.</p>
-      <p class="lead">The move costs about 28 hours without rewards, roughly 0.017% of your stake. When you repay, the vault passes to you with the stake still staked.</p>
+  <section class="s band-2 rv" id="native">
+    <div class="wrap teaser">
+      <div>
+        <h2>Native stakers keep their validator.</h2>
+        <p class="lead">About 91% of staked NEAR, roughly $1.88B, is native stake with a validator its owner picked. Staking pools can't transfer stake between accounts, so moving it means unstaking once. Rhea doesn't accept native stake. Ankora's vault re-stakes with your validator, as long as it's on NEAR Foundation's lockup whitelist (<code>lockup-whitelist.near</code> on mainnet; testnet uses <code>whitelist.f863973.m0</code>).</p>
+      </div>
+      <p class="muted">The move costs about 28 hours without rewards, roughly 0.017% of your stake (about 1,700 NEAR on 10M). When you repay, ownership of the vault passes to you with the stake still staked. Stake inside lockup contracts and veNEAR in House of Stake can't be used.</p>
     </div>
   </section>
 
   <section class="s rv" id="lend">
-    <div class="wrap">
-      <h2>Lend dollars, and choose how much of the loss you take.</h2>
-      <p class="lead">Deposit USDC on NEAR and it goes straight into the pool. Every loan is backed by NEAR, so pooling can't remove crash risk. The two tranches decide who takes a loss first.</p>
-      <div class="split">
-        <div>
-          <h3>Senior: <em>fixed 6.5%</em> a year</h3>
-          <ul>
-            <li>Paid before the junior earns anything. Senior money is lost only after the borrowers' equity and the whole junior tranche are gone.</li>
-            <li>In a 2021–22 crash test with a rate model fitted only on later prices, senior was paid in full in every start-week when collateral sold within 2 days, and in 94.3% of them when sales took 5 days at a 10% discount.</li>
-            <li>Withdrawals are paid from cash the pool isn't lending. v1 has no queue, so when cash is short the first to withdraw is paid first.</li>
-          </ul>
-        </div>
-        <div class="loss">
-          <h3>Junior: first loss</h3>
-          <ul>
-            <li>You take losses before the senior. In a bad enough crash you lose your whole deposit.</li>
-            <li>You keep what the pool earns after the senior's 6.5% and Ankora's fee: 18.1–21.0% a year replaying 2021–22, in-sample; 11.3% when fitted only on 2023–26 prices, with losses in 4.8% of weeks.</li>
-            <li>Locked for 36 days from your latest junior deposit. After that, you can't withdraw below 15% junior cover.</li>
-          </ul>
-        </div>
+    <div class="wrap teaser">
+      <div>
+        <h2>Lend USDC.</h2>
+        <p class="lead">Two ways to lend. <b>Fixed 6.5%</b> earns a set 6.5% a year, is paid first, and loses money only after First-loss is used up. <b>First-loss</b> takes losses first and keeps what the pool earns after that. Fitted on 2023–26 prices and tested on the 2021–22 crash, it made 11.3% a year, and a bad enough crash wipes it out.</p>
       </div>
+      <div class="lend-viz"><img src="assets/usdc.svg" alt="USDC"><a class="btn btn-ghost btn-lg" href="lend.html">See how lending works</a></div>
     </div>
   </section>
 
-  <section class="s band-2 rv" id="rhea">
+  <section class="s on-navy rv" id="rhea">
     <div class="wrap">
       <h2>When Rhea is the better choice.</h2>
-      <div class="cols3" style="--dot: var(--text-3)">
-        <div><h3>More than 50% LTV</h3><p class="muted">Rhea lends up to about 66.5%, with no end date.</p></div>
-        <div><h3>A liquid staking token</h3><p class="muted">Rhea takes it directly. Ankora v1 takes plain NEAR only.</p></div>
-        <div><h3>The lowest rate in an ordinary year</h3><p class="muted">Rhea's 12-month median borrow rate is 7.8%. At that rate Ankora costs 2 to 3.5 points more.</p></div>
+      <div class="cols cols-3">
+        <div><h3>You want more than 50% LTV</h3><p class="muted" style="margin-top:10px">Rhea lends up to about 66.5%.</p></div>
+        <div><h3>You want a loan with no end date</h3><p class="muted" style="margin-top:10px">Rhea's loans are open-ended.</p></div>
+        <div><h3>You hold a liquid staking token</h3><p class="muted" style="margin-top:10px">Rhea takes it as collateral directly. Ankora v1 takes plain NEAR only.</p></div>
+        <div><h3>You borrow far below the line</h3><p class="muted" style="margin-top:10px">Rhea's main borrowers sit near 19% LTV and rarely get liquidated.</p></div>
+        <div><h3>You want the lowest rate in an ordinary year</h3><p class="muted" style="margin-top:10px">Rhea's 12-month median borrow rate is 7.8%, and at that rate Ankora costs 2 to 3.5 points more. On 10 Nov 2026 Rhea charged 13.99%, after a spike.</p></div>
       </div>
     </div>
   </section>
@@ -351,19 +381,25 @@
   <section class="s rv" id="risks">
     <div class="wrap">
       <h2>How you can lose money here.</h2>
-      <div class="cols3">
-        <div><h3>Borrowers</h3><ul>
-          <li>If your LTV is above 50% at a renewal and you don't pay down within 72 hours plus the 48-hour grace period, your vault is auctioned. The price can fall to half the vault's value before someone bids.</li>
-          <li>In our 2021–22 replay, 53–81% of borrowers who added nothing were asked to pay down at least once in a year; on Rhea, 55–85% were liquidated.</li>
-          <li>Repaying early doesn't refund the current term's interest.</li></ul></div>
-        <div><h3>Lenders</h3><ul>
-          <li>Senior and junior can both lose money in a fast NEAR crash, and the junior can lose all of it.</li>
+      <div class="cols cols-3">
+        <div><h3>Borrowers</h3><ul class="dots loss" style="margin-top:14px">
+          <li>If your LTV is above 50% at a renewal and you don't pay down within 72 hours plus the 48-hour grace period, your vault is auctioned. The auction price can fall to half the vault's value before someone bids.</li>
+          <li>v1 doesn't email or message you when a notice starts. If you don't check the app, the five days can pass without you seeing them.</li>
+          <li>Repaying early doesn't refund the current term's interest.</li>
+          <li>After NEAR's issuance cut, staking covers less of your interest.</li></ul></div>
+        <div><h3>Lenders</h3><ul class="dots loss" style="margin-top:14px">
+          <li>Fixed 6.5% and First-loss can both lose money in a fast NEAR crash, and First-loss can lose all of it.</li>
+          <li>Collateral sells slowly. Unstaking takes about 28 hours, and the liquid-staking pools on Rhea's DEX are $0.5–4.4M deep. In our tests, slow and discounted sales are what put Fixed 6.5% money at risk.</li>
           <li>Every loan is backed by the same asset, so they all fall together. Since 2020 NEAR has fallen 52% in 3 days and 70% in 35 days.</li>
-          <li>If an auction gets no bid, the team sells the NEAR by hand and books the USDC back to lenders.</li></ul></div>
-        <div><h3>Everyone</h3><ul>
-          <li>Ankora is new code and hasn't been audited. In v1 the pool contract can still be upgraded by its deployer. The loan vaults can't be upgraded.</li>
-          <li>Prices come from Pyth. If the feed is stale or unsure, loans don't start.</li>
-          <li>We haven't tested whether enough lenders, junior buyers or auction bidders will show up.</li></ul></div>
+          <li>Getting your money out depends on borrowers repaying, and v1 pays withdrawals first come, first served.</li>
+          <li>If an auction gets no bid, the vault goes to the pool. In v1 the team then sells the NEAR by hand and books the USDC back to lenders, so lenders rely on the team to do that promptly and honestly.</li></ul></div>
+        <div><h3>Everyone</h3><ul class="dots loss" style="margin-top:14px">
+          <li>Ankora is new code and hasn't been audited.</li>
+          <li>In v1 the pool contract can still be upgraded by its deployer, and the team switches to the stressed terms by hand. The loan vaults can't be upgraded.</li>
+          <li>The price is NEAR/USD from Pyth Pro, read through Rhea's oracle. On testnet a relay run by the team copies it to the pool and works out the one-hour average. The contract can't check the relay's numbers, so you rely on the team for the price used at every start and renewal.</li>
+          <li>If the price is stale, uncertain or missing, loans don't start or renew. A renewal held up this way charges the extra days at the new plan's rate.</li>
+          <li>Rates come from a model fitted on six years of data. When we fitted it on the calm years alone, it underpriced the 2021–22 crash.</li>
+          <li>We haven't tested whether enough lenders, First-loss lenders or auction bidders will show up.</li></ul></div>
       </div>
     </div>
   </section>
@@ -372,55 +408,253 @@
     <div class="wrap">
       <h2>Questions.</h2>
       <div class="faq">
-        <details><summary>Is Ankora the same as Spectra Finance?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>No. Ankora, spelled with a k, lends dollars against staked NEAR on the NEAR blockchain. It has no connection to Spectra Finance.</p></details>
         <details><summary>Do I have to unstake?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>If your NEAR is natively staked, yes, once. It takes about 28 hours and has ranged from 21 to 35. Then you bring plain NEAR and the vault stakes it with your validator. Getting your vault back after you repay needs no unstaking.</p></details>
-        <details><summary>Does Ankora use an oracle?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes. It reads Pyth when a loan starts and when it renews, at no other time, and uses the lower of spot and the average price. A bad price can stop a loan from starting or renewing. It can't take your collateral: only an auction can, and only after the term ends and the notice and grace periods have passed.</p></details>
+        <details><summary>Can I use LiNEAR, stNEAR or rNEAR?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Not in v1, which takes plain NEAR only. Liquid staking tokens are on the roadmap.</p></details>
+        <details><summary>Does Ankora use an oracle?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes. It reads NEAR's price when a loan starts and when it renews, at no other time, and uses the lower of the spot price and its one-hour average. The price is Pyth Pro's NEAR/USD, the same feed Rhea's lending reads through its aggregate oracle. On testnet a relay run by the team copies that price to the pool and computes the average, so you're trusting the team to copy it faithfully. A loan won't start if the price is more than 60 seconds old or the feed is unsure of it, and your NEAR goes back before anything is staked. A bad price can stop a loan from starting or renewing. It can't take your collateral: only an auction can, and only after the term ends and the notice and grace periods have passed.</p></details>
+        <details><summary>Will I be told when a notice starts?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>In v1, only in the app and on-chain. Check in around your renewal date.</p></details>
         <details><summary>Can I lose my NEAR?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes, if your LTV is above 50% at a renewal and you don't bring it down within 72 hours plus the 48-hour grace period. The vault then goes to a 24-hour auction whose price starts at the vault's value and falls to half. Anything above your debt comes back to you. You can never owe more than the vault is worth.</p></details>
-        <details><summary>What does it cost?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>A fixed rate for each term. You pay the first term's interest upfront, and each later term's interest is added to the debt. There's no late fee. Ankora keeps 5% of the interest. Each vault also holds back 1.5 NEAR from what you send, and about 1.2 NEAR of that pays for the vault account's storage.</p></details>
+        <details><summary>What does it cost?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>A fixed rate for each term. You pay the first term's interest upfront, and each later term's interest is added to the debt. If a loan renews late, out of notice or grace, the extra days are charged at the new plan's rate. There's no late fee. Ankora keeps 5% of the interest. Each vault also holds back 1.5 NEAR from what you send, and about 1.2 NEAR of that pays for the vault account's storage.</p></details>
         <details><summary>Can I repay early?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Yes, at any time, even during an auction until a bid lands. The current term's interest isn't refunded.</p></details>
+        <details><summary>Which validators can I use?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Any staking pool on the whitelist the pool was deployed with: <code>lockup-whitelist.near</code>, the list NEAR Foundation keeps for lockup accounts, on mainnet, and <code>whitelist.f863973.m0</code> on testnet.</p></details>
+        <details><summary>How is the rate set?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>In v1, from a fixed table. The table comes from a formula that prices each loan as a put option on its collateral, using a jump-diffusion model of NEAR fitted to every day since October 2020. It then adds a charge for First-loss capital and assumes 90% of the pool is lent out. A live version of the formula is on the roadmap. A quote is fixed when you borrow, and a term already running is never repriced.</p></details>
+        <details><summary>What's the difference between Fixed 6.5% and First-loss?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>Both lend your USDC to people borrowing against NEAR. Fixed 6.5% earns a set 6.5% a year and is paid first. It loses money only if a crash uses up every First-loss deposit. First-loss takes losses first and keeps what the pool earns after paying Fixed 6.5%. In our out-of-sample test on the 2021–22 crash that came to 11.3% a year, and a bad enough crash wipes it out. In tranche terms, Fixed 6.5% is the senior tranche and First-loss is the junior.</p></details>
+        <details><summary>What is the replay, and how far can I trust it?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p>It runs NEAR's past daily prices through Ankora's rules and Rhea's, side by side. It isn't a forecast, and it simplifies: one exchange's daily prices, one fixed Rhea rate, and auctions shown as a range.</p></details>
       </div>
     </div>
   </section>
 
-  <section class="s close rv">
+  <section class="s rv">
     <div class="wrap">
-      <h2>See what you can borrow. No wallet needed for a quote.</h2>
-      <div class="ctas">
-        <a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=petrol#/review">See what you can borrow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
-        <a class="btn btn-2 btn-lg" href="#risks">Read the risks first</a>
-      </div>
+      <h2>See what you can borrow. A quote needs no wallet.</h2>
+      <div class="ctas"><a class="btn btn-loud btn-lg" href="../proto/index.html?d=b&p=sky#/review">See what you can borrow</a><a class="btn btn-ghost btn-lg" href="#risks">Read the risks first</a></div>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <p>Ankora is experimental software running on NEAR testnet. Nothing on this site is investment advice. Ankora is not affiliated with Spectra Finance.</p>
-    <p>Design prototype, 2026. Figures come from Ankora's own model write-ups; the hero chart is illustrative.</p>
+    <p class="built"><img src="assets/near.svg" alt="" style="filter:none">Built on NEAR</p>
+    <p>Ankora is experimental software. Nothing on this site is investment advice.</p>
+    <p>Design prototype, 2026. Figures come from Ankora's own backtests; the hero animation is illustrative. Screens are from the prototype, with demo balances and prices. The replay uses Binance daily NEAR/USDT candles, 14 Oct 2020 to 10 Nov 2026.</p>
   </div>
 </footer>
 
 <script>
-  (() => {
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]still\b/.test(location.search);
-    // Review helper: ?only=<section id> shows just that section (used for screenshots)
-    const only = new URLSearchParams(location.search).get('only');
-    if (only) document.querySelectorAll('main > section').forEach(x => { if (x.id !== only) x.style.display = 'none'; else x.style.paddingTop = '120px'; });
-    const nav = document.getElementById('nav');
-    const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
-    addEventListener('scroll', onScroll, { passive: true }); onScroll();
-    // smooth scrolling only for in-page clicks, so arriving on #anchor jumps straight there
-    addEventListener('load', () => document.documentElement.classList.add('smooth'));
-    if (reduce) return;
-    document.documentElement.classList.add('js-motion');
-    // hero words rise in once, 40 ms apart
+(() => {
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]still\b/.test(location.search);
+  const html = document.documentElement;
+
+  /* ---------- nav ---------- */
+  const nav = document.getElementById('nav'), hero = document.querySelector('.hero');
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > hero.offsetHeight - 80);
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  addEventListener('load', () => html.classList.add('smooth'));
+
+  /* ---------- review helper: ?only=<section id> ---------- */
+  const only = new URLSearchParams(location.search).get('only');
+  if (only) { document.querySelectorAll('main > section').forEach(x => { if (x.id !== only) x.style.display = 'none'; else x.style.paddingTop = '120px'; }); nav.classList.add('light'); }
+
+  /* ---------- motion ---------- */
+  if (!still) {
+    html.classList.add('js-motion');
     const h1 = document.getElementById('h1');
-    h1.innerHTML = h1.textContent.split(' ').map((w, i) => `<span class="w" style="animation-delay:${80 + i * 40}ms">${w}</span>`).join(' ');
-    document.getElementById('wick').classList.add('draw');
-    // sections fade up once as they enter
-    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -12% 0px' });
+    let k = 0;
+    const wrap = text => text.split(/(\s+)/).map(w => (/^\s+$/.test(w) || !w ? w : `<span class="w" style="animation-delay:${80 + (k++) * 45}ms">${w}</span>`)).join('');
+    h1.innerHTML = [...h1.childNodes].map(n => (n.nodeType === 3 ? wrap(n.textContent) : `<span class="h1-sub">${wrap(n.textContent)}</span>`)).join('');
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
     document.querySelectorAll('.rv').forEach(el => io.observe(el));
-  })();
+  }
+
+  /* ---------- coin parallax (pointer, desktop only) ---------- */
+  if (!still && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const heroEl = document.getElementById('hero');
+    heroEl.addEventListener('pointermove', e => { const r = heroEl.getBoundingClientRect(); heroEl.style.setProperty('--px', ((e.clientX - r.left) / r.width - 0.5).toFixed(3)); heroEl.style.setProperty('--py', ((e.clientY - r.top) / r.height - 0.5).toFixed(3)); });
+    heroEl.addEventListener('pointerleave', () => { heroEl.style.setProperty('--px', 0); heroEl.style.setProperty('--py', 0); });
+  }
+
+  /* ---------- showcase: active step drives the phone screen ---------- */
+  const steps = [...document.querySelectorAll('.sstep')], shots = [...document.querySelectorAll('#show-scr img')];
+  const setStep = n => { steps.forEach((x, i) => x.classList.toggle('on', i === n)); shots.forEach((x, i) => x.classList.toggle('on', i === n)); };
+  let cur = -1, tick = 0;
+  const pick = () => { tick = 0; const mid = innerHeight / 2; let best = 0, bd = Infinity; steps.forEach((st, i) => { const r = st.getBoundingClientRect(), d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = i; } }); if (best !== cur) { cur = best; setStep(best); } };
+  addEventListener('scroll', () => { if (!tick) tick = setTimeout(pick, 40); }, { passive: true });
+  addEventListener('resize', pick); pick();
+
+  /* ---------- particle field (canvas 2D, spring physics, pointer repel) ---------- */
+  const viz = document.getElementById('viz'), cv = document.getElementById('pf'), ctx = cv.getContext('2d');
+  const W = 1200, H = 360, LINE = 270, X0 = 60, X1 = 1140, DIP_T = 0.66;
+  const base = t => 122 + 66 * t + 15 * Math.sin(Math.PI * 2 * t * 2.2 + 0.4) + 7 * Math.sin(Math.PI * 2 * t * 5.3 + 1.1);
+  const N = innerWidth < 760 ? 1300 : 3800;
+  const P = { t: new Float32Array(N), o: new Float32Array(N), y: new Float32Array(N), vy: new Float32Array(N), dx: new Float32Array(N), vx: new Float32Array(N), a: new Float32Array(N) };
+  const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  for (let i = 0; i < N; i++) { P.t[i] = Math.random(); P.o[i] = gauss() * 8; P.y[i] = base(P.t[i]) + P.o[i]; P.a[i] = 0.35 + Math.random() * 0.6; }
+  let scale = 1, VX = 0, VW = W;
+  const vsvg = document.getElementById('vsvg');
+  const place = () => { const dx = X0 + (X1 - X0) * DIP_T; document.getElementById('dpa').setAttribute('x', dx + 18); document.getElementById('dpb').setAttribute('x', dx + 18); ['st0', 'sd0'].forEach(id => document.getElementById(id).setAttribute('cy', base(0))); ['st1', 'sd1'].forEach(id => document.getElementById(id).setAttribute('cy', base(1))); document.getElementById('lb0a').setAttribute('y', base(0) - 26); document.getElementById('lb1a').setAttribute('y', base(1) - 26); const ay = base(0) + (LINE - base(0)) * (0.40 / 0.55); ['ankl'].forEach(id => { const el = document.getElementById(id); el.setAttribute('y1', ay); el.setAttribute('y2', ay); }); document.getElementById('ankt').setAttribute('y', ay - 10); document.getElementById('ank0').setAttribute('d', `M52 ${ay}h16`); document.getElementById('ank1').setAttribute('d', `M1132 ${ay}h16`); };
+  place();
+  const ptr = { x: -999, y: -999 };
+  const fit = () => { const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr)); VW = Math.min(W, H * r.width / r.height); VX = W - VW - (VW < W ? 40 : 0); if (VX < 0) VX = 0; vsvg.setAttribute('viewBox', `${VX} 0 ${VW} ${H}`); scale = (r.width / VW) * dpr; if (still) draw(); };
+  viz.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); ptr.x = VX + (e.clientX - r.left) / r.width * VW; ptr.y = (e.clientY - r.top) / r.height * H; });
+  viz.addEventListener('pointerleave', () => { ptr.x = ptr.y = -999; });
+  const PERIOD = 6.5;
+  const dipAmp = s => { const p = s % PERIOD; if (p < 1.2) return 0; if (p < 1.45) return (p - 1.2) / 0.25; if (p < 1.9) return 1; return Math.exp(-(p - 1.9) * 3.2); };
+  function step(dt, time) {
+    const A = still ? 1 : dipAmp(time);
+    viz.classList.toggle('dip', A > 0.55);
+    const flow = still ? 0 : 0.014 * dt, K = 140, C = 16, R = 48;
+    for (let i = 0; i < N; i++) {
+      let t = P.t[i] + flow; if (t >= 1) { t -= 1; P.y[i] = base(t) + P.o[i]; P.vy[i] = 0; } P.t[i] = t;
+      const d = (t - DIP_T) / 0.006, ty = base(t) + P.o[i] + A * 150 * Math.exp(-0.5 * d * d);
+      let ax = -K * P.dx[i] - C * P.vx[i], ay = K * (ty - P.y[i]) - C * P.vy[i];
+      const ex = X0 + (X1 - X0) * t + P.dx[i] - ptr.x, ey = P.y[i] - ptr.y, q = ex * ex + ey * ey;
+      if (q < R * R && q > 0.01) { const f = (1 - Math.sqrt(q) / R) * 2600 / Math.sqrt(q); ax += ex * f; ay += ey * f; }
+      P.vx[i] += ax * dt; P.vy[i] += ay * dt; P.dx[i] += P.vx[i] * dt; P.y[i] += P.vy[i] * dt;
+    }
+  }
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
+    const s = 2.1;
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.fillStyle = pass ? 'rgb(255,128,116)' : 'rgb(223,233,251)';
+      for (let i = 0; i < N; i++) {
+        if ((P.y[i] > LINE) !== !!pass) continue;
+        ctx.globalAlpha = P.a[i];
+        ctx.fillRect(X0 + (X1 - X0) * P.t[i] + P.dx[i] - s / 2, P.y[i] - s / 2, s, s);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  fit(); new ResizeObserver(fit).observe(cv);
+  if (still) { for (let k = 0; k < 120; k++) step(1 / 60, 1.7); draw(); }
+  else {
+    let last = performance.now(); const t0 = last; let running = true;
+    const loop = now => { if (!running) return; const dt = Math.min(0.033, (now - last) / 1000); last = now; step(dt, (now - t0) / 1000); draw(); requestAnimationFrame(loop); };
+    const resume = on => { const was = running; running = on; if (running && !was) { last = performance.now(); requestAnimationFrame(loop); } };
+    new IntersectionObserver(([e]) => resume(e.isIntersecting && !document.hidden)).observe(viz);
+    document.addEventListener('visibilitychange', () => resume(!document.hidden));
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- replay ---------- */
+  const PLANS = [{ ltv: 0.30, days: 30, rate: 0.097, name: '30%' }, { ltv: 0.40, days: 14, rate: 0.101, name: '40%' }, { ltv: 0.50, days: 7, rate: 0.113, name: '50%' }];
+  const RHEA = { rate: 0.0891, line: 0.665 }, STAKE = 0.0337, DAY = 864e5;
+  const planFor = l => (l <= 0.30 + 1e-9 ? PLANS[0] : l <= 0.40 + 1e-9 ? PLANS[1] : PLANS[2]);
+  const fmtD = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const usd = n => Math.round(n).toLocaleString('en-US');
+  const pr = n => '$' + n.toFixed(n < 10 ? 3 : 2);
+  const pc = n => (n * 100).toFixed(1) + '%';
+  let D, N0, T0;
+  const dateOf = i => new Date(T0 + i * DAY);
+  const g = t => Math.pow(1 + STAKE, t / 365);
+
+  function rhea(i, L0) {
+    const c0 = D.close[i];
+    for (let t = 0; t <= 365 && i + t < N0; t++) {
+      const debt = L0 * Math.exp(RHEA.rate * t / 365);
+      if (debt / (D.low[i + t] / c0 * g(t)) >= RHEA.line) return { t, idx: i + t, closedAbove: debt / (D.close[i + t] / c0 * g(t)) < RHEA.line };
+    }
+    return null;
+  }
+  function ankora(i, plan0, near0, pays) {
+    const p0 = D.close[i], rows = [];
+    let debt = plan0.ltv * near0 * p0, plan = plan0, t = 0, notices = 0, paid = 0;
+    let interest = debt * plan0.rate * plan0.days / 365;
+    rows.push({ k: 'start', html: `<b>${fmtD(dateOf(i))}</b> · NEAR ${pr(p0)} · Borrowed ${usd(debt)} USDC on the ${plan0.name} plan · ${usd(interest)} USDC interest paid upfront` });
+    for (;;) {
+      const te = t + plan.days;
+      if (te > 365 || i + te >= N0) break;
+      const near = near0 * g(te), p = D.close[i + te], ltv = debt / (near * p);
+      if (ltv <= 0.5) {
+        const np = planFor(ltv), add = debt * np.rate * np.days / 365; debt += add; interest += add;
+        rows.push({ k: 'renew', html: `<b>${fmtD(dateOf(i + te))}</b> · NEAR ${pr(p)} · LTV ${pc(ltv)} · Renewed into the ${np.name} plan · ${usd(add)} USDC interest added` });
+        plan = np; t = te; continue;
+      }
+      notices++;
+      const pay = debt - 0.5 * near * p;
+      rows.push({ k: 'notice', html: `<b>${fmtD(dateOf(i + te))}</b> · NEAR ${pr(p)} · LTV ${pc(ltv)} · Notice: pay back ${usd(pay)} USDC within 72 hours` });
+      if (pays) {
+        debt -= pay; paid += pay; const np = PLANS[2], add = debt * np.rate * np.days / 365; debt += add; interest += add;
+        rows.push({ k: 'paid', html: `<b>${fmtD(dateOf(i + te))}</b> · You paid back ${usd(pay)} USDC · Renewed into the 50% plan` });
+        plan = np; t = te; continue;
+      }
+      let rec = 0;
+      for (let d = 1; d <= 5 && i + te + d < N0; d++) { if (debt / (near0 * g(te + d) * D.close[i + te + d]) <= 0.5) { rec = d; break; } }
+      if (rec) {
+        const tt = te + rec, l2 = debt / (near0 * g(tt) * D.close[i + tt]), np = planFor(l2), late = debt * np.rate * rec / 365, add = debt * np.rate * np.days / 365;
+        debt += late + add; interest += late + add;
+        rows.push({ k: 'recovered', html: `<b>${fmtD(dateOf(i + tt))}</b> · NEAR recovered during the notice · Renewed with no payment` });
+        plan = np; t = tt; continue;
+      }
+      const ta = Math.min(te + 5, N0 - 1 - i), val = near0 * g(ta) * D.close[i + ta];
+      rows.push({ k: 'auction', html: `<b>${fmtD(dateOf(i + ta))}</b> · Grace ended · Vault auctioned. At the auction's range you'd have got back ${usd(Math.max(0, val - debt))} to ${usd(Math.max(0, 0.5 * val - debt))} USDC above your debt` });
+      return { rows, notices, interest, paid, auction: true, borrowed: plan0.ltv * near0 * p0 };
+    }
+    const te = Math.min(365, N0 - 1 - i);
+    rows.push({ k: 'end', html: `<b>${fmtD(dateOf(i + te))}</b> · One year on · You'd owe ${usd(debt)} USDC against ${usd(near0 * g(te))} NEAR in the vault` });
+    return { rows, notices, interest, paid, auction: false, borrowed: plan0.ltv * near0 * p0 };
+  }
+
+  const S = { amount: 10000, plan: 0, pays: true, start: 0, preset: 'typical' };
+  const $ = id => document.getElementById(id);
+  let presets = {};
+  function computePresets() {
+    const plan = PLANS[S.plan], last = N0 - 366, stats = [];
+    for (let i = 0; i <= last; i++) { const a = ankora(i, plan, 1000, S.pays); stats.push({ i, n: a.notices, au: a.auction, int: a.interest, r: rhea(i, plan.ltv) }); }
+    const score = s => (s.au ? 1000 : 0) + s.n;
+    const worstAnk = stats.reduce((m, s) => (score(s) > score(m) ? s : m));
+    const sev = x => (x.au ? 1000 : 0) + x.n, sorted = stats.slice().sort((a, b) => sev(a) - sev(b) || a.int - b.int);
+    const typical = sorted[Math.floor(sorted.length / 2)];
+    const rl = stats.filter(s => s.r && s.r.closedAbove);
+    const worstRhea = rl.length ? rl.reduce((m, s) => (s.r.t < m.r.t ? s : m)) : typical;
+    presets = { worstAnk: worstAnk.i, typical: typical.i, worstRhea: worstRhea.i, y2022: Math.round((Date.UTC(2022, 0, 1) - T0) / DAY) };
+    $('ps-worstAnk').textContent = `from ${fmtD(dateOf(worstAnk.i))}`;
+    $('ps-typical').textContent = `from ${fmtD(dateOf(typical.i))}`;
+    $('ps-worstRhea').textContent = `from ${fmtD(dateOf(worstRhea.i))}`;
+  }
+  const times = n => (n === 0 ? 'Never' : n === 1 ? 'Once' : n === 2 ? 'Twice' : `${n} times`);
+  function render() {
+    const plan = PLANS[S.plan], a = ankora(S.start, plan, S.amount, S.pays), r = rhea(S.start, plan.ltv);
+    const rheaT = r ? r.t : Math.min(365, N0 - 1 - S.start), rheaInt = a.borrowed * (Math.exp(RHEA.rate * rheaT / 365) - 1);
+    $('rp-ank').innerHTML = a.rows.map(x => `<li class="${x.k}">${x.html}</li>`).join('');
+    $('rp-rhea').innerHTML = r
+      ? `<li class="liq"><b>${fmtD(dateOf(r.idx))}</b> · Liquidated. The day's low was ${pr(D.low[r.idx])}; NEAR closed at ${pr(D.close[r.idx])}</li>${r.closedAbove ? '<li>That day NEAR closed above your liquidation line</li>' : ''}`
+      : '<li>Not liquidated in this year</li>';
+    const diff = a.interest - rheaInt;
+    $('rp-sum').innerHTML = `
+      <div class="navy"><b>${times(a.notices)}</b><span>Ankora asked you to pay back${a.auction ? ' · then the vault was auctioned' : ''}</span></div>
+      <div><b>${times(r ? 1 : 0)}</b><span>Rhea liquidated you${r && r.closedAbove ? ', on a day NEAR closed back above the line' : ''}</span></div>
+      <div class="wide">Interest over the replay · Ankora <b class="num">${usd(a.interest)}</b> USDC · Rhea <b class="num">${usd(rheaInt)}</b> USDC${diff > 0 ? ` · <strong>Ankora cost ${usd(diff)} USDC more than Rhea in this replay</strong>` : ''}${S.pays && a.paid > 0 ? ` · You'd have needed <b class="num">${usd(a.paid)}</b> USDC on hand to pay down` : ''}</div>`;
+    $('rp-start').value = dateOf(S.start).toISOString().slice(0, 10);
+    document.querySelectorAll('#rp-presets button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === S.preset)));
+  }
+  function verify() {
+    const out = [];
+    for (const L0 of [0.3, 0.4, 0.5]) {
+      let liq = 0, dip = 0;
+      for (let i = 0; i < N0 - 365 - 31; i++) { const r = rhea(i, L0); if (r) { liq++; dip += r.closedAbove; } }
+      out.push(Math.round(dip / liq * 100));
+    }
+    const i0 = Math.round((Date.UTC(2021, 0, 1) - T0) / DAY), i1 = Math.round((Date.UTC(2022, 11, 31) - T0) / DAY);
+    const asked = PLANS.map(pl => { let n = 0, k = 0; for (let i = i0; i <= i1 && i <= N0 - 366; i++) { k++; if (ankora(i, pl, 1000, false).notices > 0) n++; } return Math.round(n / k * 100); });
+    const lo = Math.min(...asked), hi = Math.max(...asked);
+    $('rp-check2').innerHTML = `Second check: across 2021–22 start dates, this replay asks <b>${lo}–${hi}%</b> of borrowers who don't pay to pay down at least once in a year (30%, 40% and 50% plans: ${asked.join('%, ')}%). The page's 53–81% comes from the published backtest, which uses a different renewal price${lo >= 53 && hi <= 81 ? ', and this replay lands inside it' : '; the difference is the simplification described above'}.`;
+    $('rp-check').innerHTML = `Check: across every start date, this replay's Rhea lane finds <b>${out.join('%, ')}%</b> of liquidations on a day NEAR closed back above the line, for 30%, 40% and 50% starts. The published backtest found 60%, 68% and 64%.`;
+  }
+  const setSeg = (id, v) => document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === String(v))));
+  const usePreset = name => { S.preset = name; S.start = presets[name]; render(); };
+
+  fetch('near-daily.json').then(r => r.json()).then(data => {
+    D = data; N0 = D.close.length; T0 = Date.parse(D.start + 'T00:00:00Z');
+    const startEl = $('rp-start'); startEl.min = D.start; startEl.max = dateOf(N0 - 366).toISOString().slice(0, 10);
+    computePresets(); usePreset('typical'); setTimeout(verify, 50);
+    $('rp-plan').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.plan = +b.dataset.v; setSeg('rp-plan', S.plan); computePresets(); usePreset(S.preset || 'typical'); });
+    $('rp-pay').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.pays = b.dataset.v === '1'; setSeg('rp-pay', b.dataset.v); computePresets(); usePreset(S.preset || 'typical'); });
+    $('rp-presets').addEventListener('click', e => { const b = e.target.closest('button'); if (b) usePreset(b.dataset.preset); });
+    $('rp-amount').addEventListener('input', e => { S.amount = Math.max(100, +e.target.value || 10000); render(); });
+    startEl.addEventListener('change', e => { const i = Math.round((Date.parse(e.target.value + 'T00:00:00Z') - T0) / DAY); if (i >= 0 && i <= N0 - 366) { S.start = i; S.preset = ''; render(); } });
+    document.querySelectorAll('a[data-preset]').forEach(a => a.addEventListener('click', () => usePreset(a.dataset.preset)));
+  }).catch(() => { $('rp-sum').innerHTML = '<div class="wide">The price data didn\'t load, so the replay can\'t run here.</div>'; });
+})();
 </script>
 </body>
 </html>

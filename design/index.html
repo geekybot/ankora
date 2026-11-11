@@ -82,34 +82,44 @@
 <body>
 <div class="wrap">
   <header>
-    <p class="meta">Ankora · UX proof · revision 2, 11 Nov 2026 · v1 contracts · demo data only</p>
-    <h1>One recommendation: the Line app and landing page in Ink, Petrol and Lemon.</h1>
-    <p>A 60-30-10 colour split: Ink is the ground, Petrol carries panels and the loan line, and Lemon marks the one thing to do next. <b>NEAR in your wallet to USDC takes 3 taps</b>, measured by the prototype's own counter. Every screen below is live, not a picture.</p>
-    <div class="docs"><a href="landing/index.html">Open the landing page</a><a href="proto/index.html?d=b&p=petrol">Open the app</a><a href="COLOUR.md">COLOUR.md</a><a href="FLOWS.md">FLOWS.md</a><a href="RATIONALE.md">RATIONALE.md</a></div>
+    <p class="meta">Ankora · UX proof · revision 3, 11 Nov 2026 · web-first · demo data only</p>
+    <h1>Sky · Navy · Apricot, a web-first app, and a crypto landing page with real NEAR and USDC assets.</h1>
+    <p>Your theme 3 won the scoring (below), with two token fixes. 60% Sky ground, 30% Navy for bands, hero and navigation, 10% Apricot for the one action. <b>NEAR in your wallet to USDC still takes 3 taps</b>, measured by the prototype's own counter.</p>
+    <div class="docs"><a href="landing/index.html">Open the landing page</a><a href="landing/lend.html">/lend page</a><a href="proto/index.html?d=b&p=sky">Open the app</a><a href="COLOUR.md">COLOUR.md</a><a href="FLOWS.md">FLOWS.md</a><a href="RATIONALE.md">RATIONALE.md</a></div>
   </header>
 
   <section>
-    <div class="sec-head"><h2>The colour system</h2><p>Dark, low-chroma blue-green reads as competent and fits a lending product; Lemon is reserved for the next action, so a quick glance finds it. Danger stays crimson and never shares a screen role with Lemon.</p></div>
-    <div class="pal">
-      <div class="sw" style="--c:#0b0f18;--w:60"><b>Ink</b><span>60% · main</span><code>#0b0f18</code></div>
-      <div class="sw" style="--c:#003f50;--w:30"><b>Petrol</b><span>30% · second</span><code>#003f50</code></div>
-      <div class="sw loud" style="--c:#f8e533;--w:10"><b>Lemon</b><span>10%</span><code>#f8e533</code></div>
+    <div class="sec-head"><h2>Your three themes, scored</h2><p>Trust in lending comes from competence (dark, low-chroma blue reads competent), fit (functional products suit functional colours), standing out from the 63% of payments brands that use blue, a button that pops, and text people can read.</p></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th></th><th>1 · Aqua · Lilac</th><th>2 · Mint · Gold</th><th>3 · Sky · Apricot</th></tr></thead>
+      <tbody>
+        <tr><td><b>Competence</b></td><td>Teal text, pastel actions: soft</td><td>Green: money, not competence</td><td class="ok">Navy and indigo text</td></tr>
+        <tr><td><b>Fit for lending</b></td><td>Lilac and peach read beauty or lifestyle</td><td>Fits, but green and gold is the wealth cliché, next to Rhea and NEAR mint</td><td class="ok">Blue for trust, warm apricot for action</td></tr>
+        <tr><td><b>Name risk</b></td><td>Lilac is next to Spectra Finance's violet</td><td>None</td><td class="ok">None</td></tr>
+        <tr><td><b>Text on the main button</b></td><td class="n">8.3:1</td><td class="n" style="color:#c0262d">1.8:1 ✗</td><td class="n">9.2:1</td></tr>
+        <tr><td><b>Warning / error text</b></td><td class="n" style="color:#c0262d">2.1 / 3.6 ✗</td><td class="n" style="color:#c0262d">2.1 / 3.6 ✗</td><td class="n">8.8 / 5.3</td></tr>
+        <tr><td><b>Verdict</b></td><td>Playful, wrong category</td><td>Fails accessibility</td><td class="ok">Pick, with two fixes: button deepened a step, error changed from pink to crimson</td></tr>
+      </tbody></table></div>
+    <div class="pal" style="margin-top:20px">
+      <div class="sw" style="--c:#eff6ff;--w:60;color:#162455;box-shadow:inset 0 0 0 1px #c9d7f2"><b>Sky</b><span>60% · ground</span><code>#eff6ff</code></div>
+      <div class="sw" style="--c:#162455;--w:30"><b>Navy</b><span>30% · bands, hero, nav</span><code>#162455</code></div>
+      <div class="sw loud" style="--c:#ffa556;--w:10"><b>Apricot</b><span>10%</span><code>oklch(80% .14 62)</code></div>
     </div>
-    <p class="meta" style="margin-top:10px">Text Porcelain <code>#f0f4f7</code> (17.3:1 on Ink, 10.4:1 on Petrol) · Danger Crimson <code>#f93f4e</code> with Ink text (5.3:1) · <a href="https://coolors.co/0b0f18-003f50-f8e533-f0f4f7-f93f4e">Open in Coolors</a> · alternates in the app's palette switch.</p>
+    <p class="meta" style="margin-top:10px">Text Navy on Sky 13.6:1 · Brown on Apricot 9.2:1 · Crimson <code>oklch(56% .21 25)</code> for loss only. Your other two themes are in the app's palette switch for side-by-side comparison.</p>
   </section>
 
   <section>
     <div class="sec-head"><h2>Landing page and app</h2><p>The landing page shows the core claim in its first screen: a wick crosses a live liquidation line while Ankora reads the price only at the two stations.</p></div>
     <div class="row">
-      <figure class="shot"><div class="desk" style="--s:0.42"><iframe title="Landing page" loading="lazy" src="landing/index.html?still"></iframe></div><figcaption>Landing, first screen</figcaption></figure>
+      <figure class="shot"><div class="desk" style="--s:0.42"><iframe title="Landing page" loading="lazy" src="landing/index.html?still"></iframe></div><figcaption>Landing, first screen: one composition, real NEAR and USDC coins, particle price ribbon</figcaption></figure>
     </div>
     <div class="row">
-      <figure class="shot"><div class="phone"><iframe title="App home" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1#/home"></iframe></div><figcaption>1. Home: one offer</figcaption></figure>
-      <figure class="shot"><div class="phone"><iframe title="App review" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1#/review"></iframe></div><figcaption>2. Review: plans by LTV</figcaption></figure>
-      <figure class="shot"><div class="phone"><iframe title="App loan during a wick" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1&s=wick#/home"></iframe></div><figcaption>Your loan during a wick</figcaption></figure>
-      <figure class="shot"><div class="phone"><iframe title="App notice" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1&s=notice#/home"></iframe></div><figcaption>Renewal notice</figcaption></figure>
-      <figure class="shot"><div class="phone"><iframe title="App auction" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1&s=auction#/home"></iframe></div><figcaption>Auction: repay to stop it</figcaption></figure>
-      <figure class="shot"><div class="phone"><iframe title="App lend" loading="lazy" src="proto/index.html?d=b&p=petrol&embed=1#/lend"></iframe></div><figcaption>Lend: risk text first</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App home" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1#/home"></iframe></div><figcaption>1. Home: one offer</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App review" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1#/review"></iframe></div><figcaption>2. Review: plans by LTV</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App loan during a wick" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1&s=wick#/home"></iframe></div><figcaption>Your loan during a wick</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App notice" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1&s=notice#/home"></iframe></div><figcaption>Renewal notice</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App auction" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1&s=auction#/home"></iframe></div><figcaption>Auction: repay to stop it</figcaption></figure>
+      <figure class="shot"><div class="phone"><iframe title="App lend" loading="lazy" src="proto/index.html?d=b&p=sky&embed=1#/lend"></iframe></div><figcaption>Lend: risk text first</figcaption></figure>
     </div>
   </section>
 
@@ -159,7 +169,7 @@
         <tr><td><b>Risk</b></td><td>Risk tab, or "How this can fail" from the loan</td><td class="n">1</td><td></td></tr>
       </tbody>
     </table></div>
-    <p class="meta" style="margin-top:10px">Measured in the recommended app (B, Petrol). Assumes the wallet shows one approval for a batched <code>signAndSendTransactions</code>; a wallet that asks per transaction adds up to 3 taps to the borrow. Check in the build.</p>
+    <p class="meta" style="margin-top:10px">Measured in the recommended app. Borrowing is a single transaction (the price comes from a keeper-fed relay), so the count doesn't depend on wallet batching. If the price is over 60 seconds old at review, "Refresh the price" adds one tap.</p>
   </section>
 
   <section>

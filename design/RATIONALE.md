@@ -1,5 +1,24 @@
 # Ankora UX rationale
 
+## Revision 4 (2026-11-11): landing page, Aave and Slush principles, Sky · Navy · Apricot approved
+
+Principles taken (not looks): Slush keeps a short headline, one hero object and two CTAs; Aave leads with the product and with evidence. Applied:
+- **Product-forward.** Real app screens in phone frames: a scroll-linked showcase in How a loan works (steps on the left, the phone switches to home, review, loan and repay) and the notice screen beside the five-day timeline.
+- **Evidence instead of invented numbers.** Ankora has no TVL or users, so trust comes from the replay (its Rhea lane reproduces the published 60/68/64%), the risks section and When Rhea is the better choice.
+- **Assets.** NEAR and USDC coins (hero, flow pill, steps, plans, lend, footer) and 6 app screenshots (WebP, about 400 KB total). No partner logos, testimonials or USDT.
+- **Motion budget, three moments:** the hero entrance (words rise, coins float with pointer parallax, particle price ribbon), the scroll-linked product showcase, and the replay interaction. Sections fade up once. Everything is off under reduced motion.
+
+Reviews requested from the main thread (contract facts, [STATUS] values) and the messaging session (revision 4 strings, claims check); their corrections are applied when they arrive.
+
+## Revision 3 (2026-11-11): web-first, your palette, crypto landing
+
+- **Web-first.** The app's desktop shell is now the primary layout: top navigation, a 720 px task column and a sticky context panel. Under 960 px it becomes the phone layout with bottom tabs. Tap counts are unchanged (borrow 3, notice 2, repay 3, senior 5).
+- **Palette.** Your three daisyUI themes were scored on competence, category fit, name risk and contrast (`COLOUR.md`). Theme 3 (Sky · Navy · Apricot) wins and is the default, with two fixes: the button is a step deeper and the error is crimson instead of pink. Themes 1 and 2 stay in the palette switch.
+- **Landing hero.** One centred composition instead of text beside an animation. Real NEAR and USDC coins float around the headline (with pointer parallax on desktop), a "Bring NEAR → Get USDC" pill sits under the buttons, and the particle price ribbon runs the full width: a 3am dip springs through Rhea's liquidation line while Ankora's two price checks sit still. The particle method follows particles.casberry.in (spring physics, pointer repel), on canvas 2D at 3,800 particles; originkit.dev couldn't be read.
+- **Coins through the page.** In the steps, the plan cards, the lend block and the footer ("Built on NEAR"). USDT is downloaded but not shown: v1 lends USDC only, and the claims guide doesn't allow implying support. Sources and licences: `landing/assets/SOURCES.md`.
+- **Copy revision 3.** "Wick" is gone everywhere. New hero, the replay calculator (its Rhea lane reproduces the published 60/68/64% exactly), the no-alert notice, a short lend block and a separate `landing/lend.html`. The brand is Ankora, so the Spectra Finance FAQ is dropped.
+- **Open:** the replay's Ankora lane uses the daily close for renewals until the backtest's rule is confirmed (O4); stressed terms aren't modelled; the Testnet tag and footer are placeholders.
+
 ## Revision 2 (2026-11-11): one recommendation
 
 - **Recommended:** direction B "Line" with the Ink · Petrol · Lemon palette (60-30-10), plus a landing page in the same system. Why the colours: `COLOUR.md`. Tap counts: `FLOWS.md`.

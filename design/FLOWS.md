@@ -43,6 +43,6 @@
 | Lending: no deposit queue; both tranches need the risk box ticked (senior +1, now 5); junior locked 36 days from the latest junior deposit | copy D4, D12, 4.7 |
 | Anyone can trigger a renewal once the term ends (shown on the loan screen) | copy section 3 |
 
-## Assumption to check in the build
+## Borrowing is one transaction (contracts update, 2026-11-11)
 
-Wallets in Wallet Selector should show one approval for a batched `signAndSendTransactions` (price update, vault creation and deposit, stake, borrow). A wallet that asks per transaction adds up to 3 taps to flow 1.
+A keeper pushes NEAR/USD to the pool's price relay (Pyth Pro via Rhea's aggregate oracle; on testnet a relay run by the team), so the borrow no longer carries a price update. The wallet shows one transaction, so the 3-tap borrow no longer depends on wallets approving batches. The app checks the price age on the review screen: if it's over 60 seconds old, the button becomes "Refresh the price" (one extra tap, only then), because a stale price would refund the borrow. Prototype state: "Price over 60 s old at review".

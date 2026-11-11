@@ -19,3 +19,5 @@ design/.impeccable/
 .env
 .env.*
 *.pem
+dist/
+!.env.example

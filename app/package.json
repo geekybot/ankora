@@ -1,0 +1,21 @@
+{
+  "name": "@ankora/app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ankora web app: borrow USDC against NEAR, lend, repay. Reads and writes the pool through @ankora/client.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hot-labs/near-connect": "^0.12.0",
+    "near-kit": "^0.20.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0"
+  }
+}

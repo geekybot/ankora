@@ -1,0 +1,22 @@
+/* App-only additions on top of design/proto's base, directions and palettes. */
+.top .brand { text-decoration: none; }
+.top-nav a, .tabbar a { text-decoration: none; }
+.loan { display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line); }
+.loan.is-alert { border-color: var(--danger); background: var(--danger-soft); }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.cta-pic { font-weight: 800; }
+.price-age { display: flex; gap: 8px; font-size: var(--fs-xs); color: var(--text-3); }
+.price-age.stale { color: var(--warn-ink, var(--warn)); font-weight: 600; }
+.risktext { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line); }
+.coin { width: 22px; height: 22px; border-radius: 50%; }
+.recv-u { display: inline-flex; align-items: center; gap: 8px; }
+.field-row .input { font-size: var(--fs-l); }
+.toast:empty { display: none; }
+.countdown { font-size: var(--fs-xl, 2rem); font-weight: 750; letter-spacing: -0.02em; color: var(--text); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.short { color: var(--text-3); font-size: var(--fs-xs); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--surface); }
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-s, .9375rem); }
+.tbl th, .tbl td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl th { color: var(--text-3); font-weight: 600; font-size: var(--fs-xs); }
+.tbl tr:last-child td { border-bottom: 0; }
