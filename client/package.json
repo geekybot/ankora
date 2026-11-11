@@ -15,7 +15,8 @@
     "test:live": "LIVE=1 vitest run test/live.test.ts",
     "typecheck": "tsc --noEmit",
     "keeper": "tsx bin/keeper.ts",
-    "deploy:testnet": "tsx bin/deploy-testnet.ts"
+    "deploy:testnet": "tsx bin/deploy-testnet.ts",
+    "local": "tsx bin/local-chain.ts"
   },
   "dependencies": {
     "near-kit": "^0.20.2"

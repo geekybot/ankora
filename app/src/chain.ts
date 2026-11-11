@@ -1,6 +1,6 @@
 // Chain access for the app. Everything contract-shaped comes from client/ (@ankora/client); this file only
 // wires it to a reader, the connected wallet and the testnet accounts (TESTNET_STUB until deploy, .env.local overrides).
-import { Near, fromHotConnect } from "near-kit";
+import { InMemoryKeyStore, Near, fromHotConnect } from "near-kit";
 import { NearConnector } from "@hot-labs/near-connect";
 import { actions, views, vaultActions, type Action, type LoanView, type PlanView, type VaultInfo, type RawPrice } from "../../client/src/pool.ts";
 import { parsePythPrice, priceAge, collateralPrice, type SourcePrice } from "../../client/src/oracle.ts";
@@ -15,7 +15,13 @@ export const CFG: AnkoraConfig = {
   relay: env("VITE_RELAY") ?? TESTNET_STUB.relay,
   faucet: env("VITE_FAUCET") ?? env("VITE_RELAY") ?? TESTNET_STUB.faucet,
   validator: env("VITE_VALIDATOR") ?? TESTNET_STUB.validator,
+  rpc: env("VITE_RPC") ?? TESTNET_STUB.rpc,
 };
+/** Local sandbox only (client/bin/local-chain.ts): sign as a dev account with a key from .env.local, no wallet. */
+const DEV_ACCOUNT = env("VITE_DEV_ACCOUNT");
+const DEV_KEY = env("VITE_DEV_KEY");
+export const DEV_LOCAL = !!(DEV_ACCOUNT && DEV_KEY);
+export const KEEPER_CONTROL = DEV_LOCAL ? env("VITE_KEEPER_URL") : undefined;
 /** False while the app still points at TESTNET_STUB (nothing deployed there). */
 export const configured = () => CFG.pool !== TESTNET_STUB.pool;
 
@@ -47,6 +53,11 @@ function signedIn(id: string | undefined) {
 connector.on("wallet:signIn", (e) => signedIn(e.accounts[0]?.accountId));
 connector.on("wallet:signOut", () => signedIn(undefined));
 export async function restore() {
+  if (DEV_LOCAL) {
+    account = DEV_ACCOUNT!;
+    signer = new Near({ network: "testnet", rpcUrl: CFG.rpc, keyStore: new InMemoryKeyStore({ [DEV_ACCOUNT!]: DEV_KEY! }), defaultSignerId: DEV_ACCOUNT });
+    return emit();
+  }
   try { const c = await connector.getConnectedWallet(); signedIn(c.accounts[0]?.accountId); } catch { /* not connected */ }
 }
 export const connect = () => connector.connect().catch(() => undefined);
