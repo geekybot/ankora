@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en" data-type="software" data-radius="soft" data-ground="sky" data-buttons="solid" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ankora: USDC loans against staked NEAR, for NEAR holders</title>
+<meta name="description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Testnet build.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ankora: USDC loans against staked NEAR">
+<meta property="og:description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator.">
+<meta property="og:image" content="share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#eff6ff">
+<!-- <link rel="canonical" href="https://ankora.utpal.dev/"> -->
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/ui/cards.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<link rel="stylesheet" href="assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #eff6ff; --p-surface: #dde9fb; --p-ink: #162455; --p-muted: #53638a;
+  --p-accent: #fda856; --p-accent-ink: #421105; --p-action: #162455; --p-action-ink: #eff6ff;
+  --p-inv-bg: #162455; --p-inv-surface: #223160; --p-inv-ink: #eff6ff; --p-inv-muted: #94a1bd;
+  --p-inv-accent: #fda856; --p-inv-accent-ink: #421105; --p-inv-action: #fda856; --p-inv-action-ink: #421105;
+  --font-display: "Host Grotesk", system-ui, sans-serif;
+  --font-text: "Host Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 500;
+  --display-tracking: -0.035em;
+  --display-tracking-xl: -0.04em;
+}
+</style>
+<link rel="stylesheet" href="assets/ui/base.css">
+<link rel="stylesheet" href="assets/diagrams/diagram.css">
+<script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
+<script src="assets/backgrounds/backgrounds.js"></script>
+<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
+<link rel="modulepreload" href="assets/moments/moments.js">
+<link rel="modulepreload" href="assets/moments/lib.js">
+<link rel="modulepreload" href="assets/moments/word-highlight/moment.js">
+<link rel="modulepreload" href="assets/moments/iris-opens/moment.js">
+<style>
+  /* Browser surfaces in the palette (impeccable craft floor) */
+  .hero .hero__lead { color: #d7e0f5; }
+  ::selection { background: var(--p-accent); color: var(--p-accent-ink); }
+  html { scrollbar-color: color-mix(in oklab, var(--p-ink) 35%, transparent) transparent; }
+  .num, .calc__out b, .calc input, .steps-ui b, .tranche__rate { font-variant-numeric: tabular-nums; }
+
+  /* ---------- the hero window: Ankora's borrow screen, live ---------- */
+  .calc { --ease: cubic-bezier(0.23, 1, 0.32, 1); color: #eef3ff; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; text-align: left; }
+  .calc__in { padding: 20px 28px; display: grid; gap: 4px; align-content: start; }
+  .calc__out { padding: 20px 28px; display: grid; gap: 8px; align-content: start; border-left: 1px solid rgb(255 255 255 / 0.08); }
+  .calc label, .calc .calc__k { font: 500 13px/16px var(--font-text); color: #a9b6d6; }
+  .calc__amount { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 0 16px; height: 56px; border-radius: 12px; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.1); transition: border-color 160ms ease, background-color 160ms ease; }
+  .calc input[type="text"]:focus-visible { outline: 2px solid var(--p-accent); outline-offset: 8px; border-radius: 4px; }
+  .hero__window .loop-pause:focus-visible, .hero__window .ui-pause:focus-visible { outline: 2px solid #162455; outline-offset: 2px; }
+  .calc__amount:focus-within { border-color: var(--p-accent); background: rgb(255 255 255 / 0.09); }
+  .calc__amount img { width: 28px; height: 28px; flex: none; }
+  .calc__in > div { min-width: 0; }
+  .calc input[type="text"] { flex: 1; width: 100%; min-width: 0; background: none; border: 0; outline: 0; color: #fff; font: 500 32px/1 var(--font-display); letter-spacing: -0.02em; caret-color: var(--p-accent); }
+  .calc__unit { font: 500 16px/1 var(--font-text); color: #d7e0f5; }
+  .calc input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; margin: 0; background: transparent; cursor: pointer; --fill: 20%; }
+  .calc input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--p-accent) var(--fill), rgb(255 255 255 / 0.14) var(--fill)); }
+  .calc input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: rgb(255 255 255 / 0.14); }
+  .calc input[type="range"]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--p-accent); }
+  .calc input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border-radius: 50%; background: #fff; border: 5px solid var(--p-accent); box-shadow: 0 2px 8px rgb(0 0 0 / 0.35); transition: transform 160ms var(--ease); }
+  .calc input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 5px solid var(--p-accent); box-shadow: 0 2px 8px rgb(0 0 0 / 0.35); }
+  .calc input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+  .plans { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; padding: 4px; border-radius: 14px; background: rgb(255 255 255 / 0.06); }
+  .plans__pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 10px; background: var(--p-accent); box-shadow: 0 6px 18px rgb(253 168 86 / 0.25); transform: translateX(calc(var(--i, 0) * 100%)); transition: transform 240ms var(--ease); }
+  .plans button { position: relative; z-index: 1; display: grid; gap: 2px; min-height: 48px; padding: 6px 4px; border: 0; background: none; color: #d7e0f5; font: 500 15px/1.2 var(--font-text); cursor: pointer; border-radius: 10px; transition: color 160ms ease; }
+  .plans button small { font: 400 13px/1.2 var(--font-text); color: inherit; opacity: 0.8; }
+  .plans button[aria-pressed="true"] { color: var(--p-accent-ink); }
+  .plans button:active { transform: scale(0.97); }
+  .calc__big { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; }
+  .calc__big b { font: 500 clamp(40px, 4.2vw, 60px)/1 var(--font-display); letter-spacing: -0.035em; color: #fff; }
+  .calc__big span { display: inline-flex; align-items: center; gap: 6px; font: 500 16px/1 var(--font-text); color: #d7e0f5; }
+  .calc__big img { width: 20px; height: 20px; }
+  .calc__rows { display: grid; gap: 0; margin: 0; }
+  .calc__rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid rgb(255 255 255 / 0.08); font: 400 15px/20px var(--font-text); }
+  .calc__rows dt { color: #a9b6d6; } .calc__rows dd { margin: 0; color: #fff; text-align: right; }
+  .term { position: relative; margin-top: 8px; padding-top: 28px; }
+  .term__bar { position: relative; height: 8px; border-radius: 8px; background: repeating-linear-gradient(90deg, rgb(253 168 86 / 0.55) 0 6px, transparent 6px 10px); }
+  .term__dot { position: absolute; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: var(--p-accent); box-shadow: 0 0 0 4px rgb(22 36 85); }
+  .term__dot--a { left: -2px; } .term__dot--b { right: -2px; }
+  .term__lab { position: absolute; top: 0; font: 500 13px/16px var(--font-text); color: #d7e0f5; }
+  .term__lab--a { left: 0; } .term__lab--b { right: 0; text-align: right; }
+  .term__mid { margin: 12px 0 0; text-align: center; font: 400 14px/20px var(--font-text); color: #a9b6d6; }
+  .calc__price { font: 400 13px/18px var(--font-text); color: #a9b6d6; }
+  .calc__price i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #64d39a; vertical-align: 1px; }
+  .calc__price.is-example i { background: #a9b6d6; }
+  .d-win { height: 100%; background: #0d1636; color: #eef3ff; border-radius: 16px; overflow: hidden; font: 400 14px/1.4 var(--font-text);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 40px 80px -30px rgb(4 9 28 / 0.85); }
+  .d-win__bar { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 18px; border-bottom: 1px solid rgb(255 255 255 / 0.07); color: #a9b6d6; font-size: 13px; }
+  .d-win__dots { display: flex; gap: 6px; } .d-win__dots i { width: 10px; height: 10px; border-radius: 50%; background: #2a3566; }
+  .d-win__bar b { color: #eef3ff; font-weight: 500; } .d-win__bar .sp { flex: 1; }
+  @media (max-width: 639px) { .d-win__bar .sp ~ span { display: none; } }
+  @media (max-width: 1023px) { .calc { grid-template-columns: minmax(0, 1fr); } .calc__out { border-left: 0; border-top: 1px solid rgb(255 255 255 / 0.08); } .calc__rows > div:nth-child(n+2) { display: none; } }
+  @media (max-width: 639px) { .calc__rows, .calc__price, .calc input[type="range"] { display: none; } .calc__out { border-left: 0; } .calc__in, .calc__out { padding: 16px 20px; gap: 8px; } .calc input[type="text"] { font-size: 26px; } .calc__amount { height: 56px; } }
+  @media (prefers-reduced-motion: reduce) { .plans__pill, .calc input[type="range"]::-webkit-slider-thumb { transition: none; } }
+
+  /* ---------- the dip: one price path, two lenders ---------- */
+  #dip .chart { position: relative; border-radius: var(--r-lg); background: rgb(255 255 255 / 0.04); border: 1px solid rgb(255 255 255 / 0.08); padding: 24px; }
+  #dip .chart svg { display: block; width: 100%; height: auto; }
+  #dip .chart__key { display: none; margin: 16px 0 0; color: #d2dbf0; font-size: 14px; line-height: 20px; }
+  @media (max-width: 639px) { #dip .chart svg text { display: none; } #dip .chart__key { display: block; } }
+  #dip .chart .px { fill: none; stroke: #eef3ff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  #dip .chart .liq { stroke: #ff6b6b; stroke-width: 1.5; stroke-dasharray: 6 6; }
+  #dip .chart .low { fill: #ff6b6b; }
+  #dip .chart text { font: 500 13px var(--font-text); }
+  #dip .lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+  #dip .lane { display: flex; gap: 16px; align-items: flex-start; padding: 20px 24px; border-radius: var(--r-md); background: rgb(255 255 255 / 0.05); }
+  #dip .lane i { flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; }
+  #dip .lane b { display: block; font: 500 18px/26px var(--font-text); }
+  #dip .lane span { color: #d2dbf0; font-size: 16px; line-height: 24px; }
+  @media (max-width: 639px) { #dip .lanes { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+
+  /* ---------- renewal panels: the three states a loan can reach ---------- */
+  #vault .frame { aspect-ratio: 5 / 4; }
+  #renewal .panel { --p-h: 300px; }
+  @media (max-width: 639px) { #renewal .card:not(:first-of-type) .panel { display: none; } #renewal .panel { --p-h: 200px; } }
+  @media (min-width: 640px) and (max-width: 1023px) { #renewal { --h: 2 } #lend .panel { --p-h: 320px; } }
+  .steps-ui { position: absolute; left: 24px; right: 24px; top: 32px; display: grid; gap: 12px; padding: 20px; border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgb(22 36 85 / 0.12); font: 400 14px/20px var(--font-text); color: var(--p-ink); }
+  .steps-ui header { display: flex; justify-content: space-between; align-items: center; }
+  .steps-ui .chip { padding: 4px 10px; border-radius: 999px; font: 500 13px/16px var(--font-text); }
+  .chip--ok { background: #dff5e9; color: #0f5a37; } .chip--note { background: #ffe9d2; color: #6b2e05; } .chip--auc { background: #fde2e2; color: #8a1c1c; }
+  .steps-ui b { font: 500 28px/1 var(--font-display); letter-spacing: -0.02em; }
+  .steps-ui .bar { height: 6px; border-radius: 6px; background: var(--p-surface); overflow: hidden; }
+  .steps-ui .bar i { display: block; height: 100%; border-radius: 6px; background: var(--p-ink); }
+  .steps-ui small { color: var(--p-muted); font-size: 13px; }
+
+  /* ---------- lend: two layers ---------- */
+  #lend .panel { --p-h: 300px; }
+  .tranche { position: absolute; inset: 24px; display: grid; align-content: space-between; padding: 24px; border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgb(22 36 85 / 0.1); }
+  .tranche__rate { font: 500 56px/1 var(--font-display); letter-spacing: -0.035em; color: var(--p-ink); }
+  .tranche__layer { display: grid; gap: 6px; }
+  .tranche__layer span { display: block; height: 14px; border-radius: 4px; background: var(--p-surface); }
+  .tranche__layer span.is-on { background: var(--p-ink); }
+  .tranche__layer span.is-loss { background: #f05252; }
+  .tranche small { color: var(--p-muted); font-size: 13px; }
+
+  /* ---------- the statement ---------- */
+  #contact .close__word { overflow: visible; line-height: 1.1; }
+  #statement strong { color: #a8500a; }
+  #statement .mo-wh__text { max-width: 18ch; font: var(--display-weight) clamp(36px, 4.6vw, 72px)/1.08 var(--font-display); letter-spacing: var(--display-tracking); }
+</style>
+</head>
+<body>
+<!-- type: software (site-kind software): fixed-term USDC loans against staked NEAR; main action "Borrow USDC"
+     deal: hero centred (dealt collage, a text|window split: the founder rejected split heroes, so the brief overrides the deal),
+           nav nav-mega, close close-word, footer footer-dark, rhythm dark-band, buttons solid, mark dots,
+           palette: the client's own Sky #eff6ff 60 / Navy #162455 30 / Apricot #fda856 10 (start.mjs brand),
+           type host (Host Grotesk + JetBrains Mono; plex dealt first, refused by impeccable as a training-data default),
+           ground sky (dealt sand, clashes with the client's palette), effect grain-gradient (hero)
+     moments: word-highlight (#statement, the USP in one sentence), iris-opens (#dip, the turn onto the navy band)
+     screens: hero 1, vault 1, statement 1, dip 1, renewal 1, lend 1, questions 1, closing 1 -->
+
+<header class="nav">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">Skip to content</a>
+    <a class="nav__logo" href="#top"><span class="mark" data-mark="dots" aria-hidden="true"></span>Ankora</a>
+    <nav class="nav__links" aria-label="Main">
+      <div class="nav__item">
+        <a class="nav__link" href="#vault">Borrow <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <div class="nav__menu">
+          <div class="wrap grid">
+            <div class="menu-col span-3">
+              <p class="t-label">During a term</p>
+              <a href="#vault">Loan vault<span>Your NEAR stays staked</span></a>
+              <a href="#statement">Price checks<span>At start and renewal only</span></a>
+              <a href="#dip">Dips<span>What a dip can't do here</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">At renewal</p>
+              <a href="#renewal">Renewal<span>Renews at 50% LTV or lower</span></a>
+              <a href="#renewal">Notice<span>72 hours to pay down</span></a>
+              <a href="#renewal">Auction<span>Surplus comes back to you</span></a>
+            </div>
+            <a class="menu-card span-3 start-10" href="#hero-h">
+              <div class="panel" style="--p-h: 160px"><div class="stage"><div class="at-rise fit" style="--fit-max:220px;--ay:40px"><div class="ui ui-panel" style="padding:16px;display:flex;align-items:center;gap:12px"><img src="assets/brand/near-coin.svg" alt="" width="32" height="32"><span style="font:500 15px/20px var(--font-text)">1,000 NEAR</span><span style="margin-left:auto;font:500 15px/20px var(--font-text)">→ USDC</span></div></div></div></div>
+              <span class="t-card">Borrow calculator</span>
+              <span class="t-small muted">See what your NEAR gets</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="nav__item"><a class="nav__link" href="#lend">Lend</a></div>
+      <div class="nav__item"><a class="nav__link" href="#dip">Risks</a></div>
+      <div class="nav__item"><a class="nav__link" href="#questions">Questions</a></div>
+    </nav>
+    <div class="nav__actions">
+      <a class="btn btn--primary" href="app/">Borrow USDC</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero hero--centred ground-inverse" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text">
+      <div class="hero__c">
+        <h1 id="hero-h">USDC loans against your staked NEAR</h1>
+        <p class="hero__lead">Borrow dollars for 7 to 30 days. Your NEAR stays staked with your own validator, and the price is checked only when a term starts or renews.</p>
+        <div class="btn-row"><a class="btn btn--primary" href="app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="#lend">Lend USDC</a></div>
+      </div>
+      <div class="hero__window" data-fx="grain-gradient" data-fx-seed="7" role="group" aria-label="Borrow calculator">
+        <div class="ly-piece d-win d-win--dark">
+          <div class="d-win__bar"><span class="d-win__dots"><i></i><i></i><i></i></span><span><b>Ankora</b> · Borrow</span><span class="sp"></span><span>NEAR testnet</span></div>
+          <div class="calc" data-calc>
+            <div class="calc__in">
+              <div>
+                <label for="calc-near">NEAR you bring</label>
+                <div class="calc__amount"><img src="assets/brand/near-coin.svg" alt="" width="28" height="28"><input id="calc-near" type="text" inputmode="decimal" value="1,000" autocomplete="off" spellcheck="false"><span class="calc__unit">NEAR</span></div>
+                <input type="range" min="100" max="50000" step="50" value="1000" aria-label="NEAR you bring" data-calc-range>
+              </div>
+              <div>
+                <div class="plans" role="group" aria-label="Plan" data-calc-plans>
+                  <span class="plans__pill" aria-hidden="true"></span>
+                  <button type="button" aria-pressed="true" data-cap="3000" data-days="30" data-rate="970">30% LTV<small>30 days · 9.7%</small></button>
+                  <button type="button" aria-pressed="false" data-cap="4000" data-days="14" data-rate="1010">40% LTV<small>14 days · 10.1%</small></button>
+                  <button type="button" aria-pressed="false" data-cap="5000" data-days="7" data-rate="1130">50% LTV<small>7 days · 11.3%</small></button>
+                </div>
+              </div>
+            </div>
+            <div class="calc__out" aria-live="polite">
+              <span class="calc__k">You receive</span>
+              <div class="calc__big"><b data-calc-get>1,045.60</b><span><img src="assets/brand/usdc.svg" alt="" width="20" height="20">USDC</span></div>
+              <dl class="calc__rows">
+                <div><dt>Interest, paid up front</dt><dd data-calc-int>8.40 USDC</dd></div>
+                <div><dt>Next price read</dt><dd data-calc-end>Sat 12 Dec</dd></div>
+              </dl>
+              <p class="calc__price is-example" data-calc-price><i></i>Example price $3.62 a NEAR</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="vault" aria-labelledby="vault-h">
+    <div class="wrap">
+      <div class="grid">
+        <div class="span-6 stack-6">
+          <h2 id="vault-h">Your NEAR stays staked with your validator</h2>
+          <p class="t-lead">Each loan opens a vault account of its own. The vault stakes your NEAR with any validator on the lockup whitelist and hands the account back when you repay.</p>
+          <ul class="facts">
+            <li>One vault per loan, with no upgrade method</li>
+            <li>Native stakers unstake once, about 28 hours</li>
+            <li>Rewards keep accruing in your vault</li>
+          </ul>
+          <a class="link" href="#renewal">See what happens at renewal</a>
+        </div>
+        <div class="frame frame--split frame--lit span-6 start-7">
+          <div class="dg" data-diagram><script type="application/json">{"layout":"lanes","alt":"Your NEAR goes into a loan vault, which stakes it with your validator, sends USDC to your wallet and waits for the next price read at renewal.","input":{"label":"NEAR","icon":"near","sub":"1,000"},"core":{"label":"Vault","icon":"ui:lock"},"lanes":[{"label":"Staked","icon":"ui:shield-check","done":true,"sub":"Your validator"},{"label":"USDC","icon":"usdc","done":true,"sub":"To your wallet"},{"label":"Price read","icon":"ui:calendar-clock","sub":"At renewal"}]}</script></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section statement" id="statement" data-moment="word-highlight" aria-label="When the price is read">
+    <div class="wrap">
+      <p class="mo-wh__text">A dip during a term <strong>can't sell</strong> your NEAR. The price is read when a term starts and when it renews.</p>
+    </div>
+  </section>
+
+  <section class="section ground-inverse" id="dip" data-moment="iris-opens" data-moment-opts='{"from": "base"}' aria-labelledby="dip-h">
+    <div class="wrap">
+      <div class="section-head"><h2 id="dip-h">A one-day dip during a loan term</h2></div>
+      <div class="chart" role="img" aria-label="A NEAR price path dips through a dashed liquidation line for one day and recovers above it">
+        <svg viewBox="0 0 1200 380" aria-hidden="true">
+          <line class="liq" x1="0" y1="210" x2="1200" y2="210"/>
+          <text x="8" y="200" fill="#ff8a8a">Liquidation line</text>
+          <path class="px" d="M0 120 C 80 96 140 104 210 112 S 330 140 400 118 S 520 70 600 96 S 690 126 720 132 L 742 262 L 764 150 C 820 112 900 96 980 84 S 1120 64 1200 52"/>
+          <circle class="low" cx="742" cy="262" r="7"/>
+          <text x="760" y="286" fill="#ff8a8a">One day below the line</text>
+        </svg>
+        <p class="chart__key" aria-hidden="true">Dashed: the liquidation line. Red dot: one day below it.</p>
+      </div>
+      <div class="lanes">
+        <div class="lane"><i style="background:#ff6b6b"></i><div><b>Liquidation-line lender</b><span>Sells your collateral at the low, at a discount.</span></div></div>
+        <div class="lane"><i style="background:var(--p-accent)"></i><div><b>Ankora</b><span>Reads no price until renewal. 60–68% of backtested liquidations came on a day like this.<sup>1</sup></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="renewal" aria-labelledby="renewal-h">
+    <div class="wrap">
+      <div class="section-head"><h2 id="renewal-h">At renewal, one of 3 things happens</h2></div>
+      <div class="grid">
+        <article class="card card--row card--open span-4">
+          <span class="step-num">1</span>
+          <h3>Renews at 50% LTV or lower</h3>
+          <p>The next term starts and its interest joins the debt. Nothing to sign.</p>
+          <div class="panel"><div class="steps-ui" aria-hidden="true"><header><span>Loan renewed</span><span class="chip chip--ok">Active</span></header><b>37% LTV</b><div class="bar"><i style="width:37%"></i></div><small>40% plan · next price read in 14 days</small></div></div>
+        </article>
+        <article class="card card--row card--open span-4">
+          <span class="step-num">2</span>
+          <h3>Pay down within 72 hours</h3>
+          <p>Above 50%, you get notice to repay part of the loan in USDC. No late fee.</p>
+          <div class="panel"><div class="steps-ui" aria-hidden="true"><header><span>Notice</span><span class="chip chip--note">71 h left</span></header><b>640 USDC</b><div class="bar"><i style="width:58%"></i></div><small>Pay this to renew at 50%</small></div></div>
+        </article>
+        <article class="card card--row card--open span-4">
+          <span class="step-num">3</span>
+          <h3>Auction after 48 hours' grace</h3>
+          <p>A 24-hour auction falls from 100% to 50% of the price. Any surplus is yours.</p>
+          <div class="panel"><div class="steps-ui" aria-hidden="true"><header><span>Auction</span><span class="chip chip--auc">Live</span></header><b>96% of price</b><div class="bar"><i style="width:92%"></i></div><small>Surplus over the debt goes to you</small></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="questions" aria-labelledby="questions-h">
+    <div class="wrap">
+      <div class="section-head"><h2 id="questions-h">Questions before you borrow</h2></div>
+      <div class="faq">
+        <div class="faq__item"><h3>What if NEAR falls during a loan term?</h3><p>Nothing happens until renewal. The price is read only when a term starts or renews.</p></div>
+        <div class="faq__item"><h3>Does the loan vault keep my validator?</h3><p>Yes. Your loan's vault stakes with any validator on the lockup whitelist, yours included.</p></div>
+        <div class="faq__item"><h3>Where does the NEAR price come from?</h3><p>Pyth Pro prices via Rhea's aggregate oracle. On testnet a relay run by the team copies it into the pool.</p></div>
+        <div class="faq__item"><h3>What can a lender lose in Ankora?</h3><p>First-loss can lose everything in a crash. Fixed loses once First-loss is gone.</p></div>
+        <div class="faq__item"><h3>Has the Ankora contract been audited?</h3><p>No. This is a NEAR testnet build, and the pool contract can still be upgraded by its deployer.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ground-surface" id="lend" aria-labelledby="lend-h">
+    <div class="wrap">
+      <div class="section-head"><h2 id="lend-h">Lend USDC in one of 2 layers</h2><p>Borrowers' interest pays both. Ankora keeps 5% of it.</p></div>
+      <div class="grid">
+        <article class="card card--row card--open span-6">
+          <h3>Earn a fixed 6.5% in the Fixed tranche</h3>
+          <p>Earns a fixed 6.5% a year. Loses money only once every First-loss deposit is gone.</p>
+          <div class="panel"><div class="tranche" aria-hidden="true"><span class="tranche__rate">6.5%</span><div class="tranche__layer"><span></span><span class="is-on"></span><span class="is-on"></span><span class="is-on"></span></div><small>Paid before First-loss</small></div></div>
+        </article>
+        <article class="card card--row card--open span-6">
+          <h3>Take first losses for a variable rate</h3>
+          <p>Takes losses first and keeps what the pool earns above Fixed. Can lose everything. Locked 36 days.</p>
+          <div class="panel"><div class="tranche" aria-hidden="true"><span class="tranche__rate">Variable</span><div class="tranche__layer"><span class="is-loss"></span><span></span><span></span><span></span></div><small>Must cover at least 15% of loans</small></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer closing footer--dark ground-inverse" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--word">
+      <div class="section-head--split">
+        <div><h2 id="close-h">Borrow USDC against your NEAR</h2><p class="t-lead">On NEAR testnet now. Plans from 9.7% a year.</p></div>
+        <a class="btn btn--primary" href="app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+      </div>
+      <p class="close__word" aria-hidden="true">Ankora</p>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-6 stack-4">
+          <a class="nav__logo" href="#top"><span class="mark" data-mark="dots" aria-hidden="true"></span>Ankora</a>
+          <p class="footer__lede">Fixed-term USDC loans against staked NEAR.</p>
+        </div>
+        <div class="span-2 footer__col"><h3>Borrow</h3><ul><li><a href="#vault">Loan vault</a></li><li><a href="#renewal">Renewal</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Lend</h3><ul><li><a href="#lend">Fixed 6.5%</a></li><li><a href="#lend">First-loss</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Risks</h3><ul><li><a href="#dip">Dips</a></li><li><a href="#questions">Questions</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 Ankora &nbsp; NEAR testnet build, not audited</span>
+        <span class="t-small"><sup>1</sup> Backtest of NEAR daily prices, Oct 2020 to Nov 2026, against a 66.5% LTV liquidation line.</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* The hero calculator: the borrow maths of @ankora/client (97% of the plan cap, interest paid up front),
+   at the live NEAR/USD from aggregate-oracle.near, else the example price. Numbers ease between values. */
+(() => {
+  const root = document.querySelector('[data-calc]'); if (!root) return;
+  const $ = (s) => root.querySelector(s);
+  const input = $('#calc-near'), range = $('[data-calc-range]'), plans = $('[data-calc-plans]'), pill = plans.querySelector('.plans__pill');
+  const out = { get: $('[data-calc-get]'), int: $('[data-calc-int]'), end: $('[data-calc-end]'), price: $('[data-calc-price]') };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  let price = 3.622, near = 1000, plan = { cap: 3000, days: 30, rate: 970 }, shown = 1045.6, raf = 0;
+  const tween = (to) => {
+    cancelAnimationFrame(raf);
+    if (reduce) { shown = to; out.get.textContent = fmt(to); return; }
+    const from = shown, t0 = performance.now(), d = 320, ease = (t) => 1 - Math.pow(1 - t, 4);
+    const step = (t) => { const k = Math.min(1, (t - t0) / d); shown = from + (to - from) * ease(k); out.get.textContent = fmt(shown); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+  };
+  const render = () => {
+    const value = near * price, principal = Math.floor(value * plan.cap / 10000 * 0.97 * 100) / 100;
+    const interest = Math.floor(principal * plan.rate * plan.days / (10000 * 365) * 100) / 100;
+    tween(Math.max(0, principal - interest));
+    out.int.textContent = fmt(interest) + ' USDC';
+    const end = new Date(Date.now() + plan.days * 864e5).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    out.end.textContent = end + ', at renewal';
+    range.style.setProperty('--fill', ((Math.min(near, 50000) - 100) / 49900 * 100) + '%');
+  };
+  const setNear = (n, fromRange) => { near = Math.max(0, Math.min(1e7, n || 0)); if (!fromRange) range.value = String(Math.min(50000, Math.max(100, near))); render(); };
+  input.addEventListener('input', () => { setNear(Number(input.value.replace(/[^0-9.]/g, ''))); });
+  input.addEventListener('blur', () => { input.value = near.toLocaleString('en-US', { maximumFractionDigits: 2 }); });
+  range.addEventListener('input', () => { near = Number(range.value); input.value = near.toLocaleString('en-US'); render(); });
+  plans.querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => {
+    plans.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    pill.style.setProperty('--i', i);
+    plan = { cap: +b.dataset.cap, days: +b.dataset.days, rate: +b.dataset.rate }; render();
+  }));
+  render();
+  /* Live NEAR/USD: the same feed the testnet relay copies. Read-only view call; on any failure the example stays. */
+  const args = btoa(JSON.stringify({ price_id: 'c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750', age: 120 }));
+  fetch('https://free.rpc.fastnear.com', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'query', params: { request_type: 'call_function', finality: 'final', account_id: 'aggregate-oracle.near', method_name: 'get_price_no_older_than', args_base64: args } }) })
+    .then((r) => r.json()).then((j) => {
+      const p = JSON.parse(new TextDecoder().decode(new Uint8Array(j.result.result)));
+      if (!p || !p.price) return;
+      price = Number(p.price) * Math.pow(10, p.expo);
+      out.price.classList.remove('is-example');
+      out.price.lastChild.textContent = `NEAR $${price.toFixed(3)}, live from aggregate-oracle.near`;
+      render();
+    }).catch(() => {});
+})();
+</script>
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+<script type="module" src="assets/layout/layout.js"></script>
+<script type="module" src="assets/diagrams/mount.js"></script>
+</body>
+</html>

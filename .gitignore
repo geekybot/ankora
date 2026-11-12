@@ -8,6 +8,8 @@
 !/.github/
 !/scripts/
 !/app/
+!/site/
+!/PRODUCT.md
 
 # Build output and tool state
 target/
@@ -21,3 +23,7 @@ design/.impeccable/
 *.pem
 dist/
 !.env.example
+
+# Site build artefacts
+site/shots/
+site/.taste-skill/
