@@ -16,8 +16,9 @@ const toYocto = (s: string): bigint => { const [i, f = ""] = s.trim().split(".")
 const toUsdc = (s: string): bigint => { const [i, f = ""] = s.trim().split("."); return BigInt(i || "0") * U + BigInt((f + "000000").slice(0, 6) || "0"); };
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC";
-const left = (secs: number) => { const d = secs - Date.now() / 1000; if (d <= 0) return "now"; const h = Math.floor(d / 3600); return h >= 48 ? `${Math.floor(h / 24)} days` : `${h} h ${Math.floor((d % 3600) / 60)} m`; };
+const left = (secs: number) => { const d = secs - C.nowSecs(); if (d <= 0) return "now"; const h = Math.floor(d / 3600); return h >= 48 ? `${Math.floor(h / 24)} days` : `${h} h ${Math.floor((d % 3600) / 60)} m`; };
 const planLabel = (p: string) => `${p.slice(1)}% plan`;
+const VAULT_EXTRA = 24n * YOCTO / 100n; // 1.5 NEAR reserve minus ~1.26 NEAR of vault storage, measured on the local sandbox
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
 const S = {
@@ -28,7 +29,7 @@ const S = {
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
 // ---------- data ----------
-async function load() {
+async function load(soft = false) {
   if (!C.configured()) return render();
   try {
     const [plans, price, ledger, all] = await Promise.all([C.pool.plans(), C.readPrice(), C.pool.ledger(), C.allLoans()]);
@@ -38,7 +39,7 @@ async function load() {
       Object.assign(S, { nearBal: nb, usdcBal: ub, lender, claimable: BigInt(cl ?? "0"), vaults });
     }
   } catch (e) { S.error = (e as Error).message; }
-  render();
+  if (soft) softRender(); else render();
 }
 const REASONS: Record<string, string> = {
   Stale: "the price was over 60 seconds old when the transaction landed", WideConfidence: "the price feed was too unsure of the price",
@@ -62,6 +63,7 @@ async function run(a: C.Action, done: string) {
   S.busy = true; render();
   try { toast(explain(await C.send(a), done)); } catch (e) { toast((e as Error).message || "The wallet rejected the transaction. Nothing was sent."); }
   S.busy = false; await load();
+  setTimeout(load, 3000);
 }
 let toastT = 0;
 function toast(m: string) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = window.setTimeout(() => t.classList.remove("on"), 5200); }
@@ -87,7 +89,7 @@ function connectScreen() {
 function priceLine() {
   const p = S.price; if (!p) return "";
   const why = !p.ok ? `The pool can't use this price (${p.reason}).` : p.ageSecs > C.QUOTE_MAX_AGE_SECS ? `Over ${C.QUOTE_MAX_AGE_SECS} s old.` : p.gapBps > C.QUOTE_MAX_GAP_BPS ? "Spot is more than 3% from the one-hour average, so new loans are paused." : "";
-  return `<p class="price-age ${why ? "stale" : ""}"><span>NEAR/USD $${p.price.toFixed(3)} · ${Number.isFinite(p.ageSecs) ? `${p.ageSecs} s old` : "no price"} · Pyth Pro via Rhea's oracle, copied by the team's relay on testnet.${why ? " " + why : ""}</span></p>`;
+  return `<p class="price-age ${why ? "stale" : ""}"><span>NEAR/USD $${p.price.toFixed(3)} · ${Number.isFinite(p.ageSecs) ? `${p.ageSecs} s old` : "no price"} · Pyth Pro via Rhea's oracle, copied by the team's relay${C.DEV_LOCAL ? " into the local sandbox" : " on testnet"}.${why ? " " + why : ""}</span></p>`;
 }
 
 function quoteNow() {
@@ -101,7 +103,7 @@ function quoteNow() {
 function borrowScreen() {
   const p = S.price, Q = quoteNow(), q = Q?.q, plan = Q?.plan;
   const enough = q ? S.nearBal >= q.attachedYocto + YOCTO / 10n : false;
-  const due = plan ? Math.floor(Date.now() / 1000) + plan.term_secs : 0;
+  const due = plan ? C.nowSecs() + plan.term_secs : 0;
   return {
     html: `
       <div class="recv"><span class="recv-k">You receive</span><span class="recv-v num">${q?.ok ? usdc(q.payout) : "–"}</span><span class="recv-u"><img class="coin" src="/assets/usdc.svg" alt="">USDC</span></div>
@@ -116,7 +118,7 @@ function borrowScreen() {
       <ul class="facts">
         ${q?.ok ? `<li><span>${usdc(q.payout + q.termInterest)} loan, minus <b class="num">${usdc(q.termInterest)}</b> interest for the first ${Math.round(plan!.term_secs / 86400)} days, paid upfront. ${(plan!.rate_bps / 100).toFixed(1)}% a year, fixed for this term.</span></li>
         <li><span>Renews <b>${when(due)}</b> if your LTV is 50% or lower then. No price is read before that.</span></li>
-        <li><span>Send <b class="num">${near(q.attachedYocto, 2)} NEAR</b>: ${near(Q!.stake)} as collateral, plus 1.5 NEAR held back for your vault's storage.</span></li>
+        <li><span>Send <b class="num">${near(q.attachedYocto, 2)} NEAR</b>. About <b class="num">${near(Q!.stake + VAULT_EXTRA, 1)} NEAR</b> ends up staked as collateral; the rest of the 1.5 NEAR held back pays your vault's storage.</span></li>
         <li><span>To repay in full you'll need <b class="num">${usdc(q.payout + q.termInterest)}</b> USDC, more than you receive, because the first term's interest was taken upfront.</span></li>` : ""}
         <li><span>Your vault stakes with <b>${esc(S.validator)}</b>, which must be on the lockup whitelist (<code>whitelist.f863973.m0</code> on testnet).</span></li>
       </ul>
@@ -139,7 +141,7 @@ function loanCard(l: C.LoanView) {
   const value = p?.ok ? Number(coll) / 1e24 * p.price : 0;
   const ltv = value ? (Number(debt) / 1e6) / value * 100 : 0;
   const pay = p?.ok && p.priceRaw !== undefined ? paydownToRenew(debt, coll, { price: p.priceRaw, expo: p.expo! }) : 0n;
-  const overdue = l.deadline > 0 && l.deadline <= Date.now() / 1000;
+  const overdue = l.deadline > 0 && l.deadline <= C.nowSecs();
   const head: Record<string, string> = {
     Active: `Next price check ${when(l.deadline || l.expiry)}`,
     Notice: `Pay down by ${when(l.deadline)}`,
@@ -225,22 +227,47 @@ function lendScreen() {
 
 let keeper: Awaited<ReturnType<typeof C.keeperStatus>> = null;
 const NAV = [["home", "Borrow"], ["lend", "Lend"], ["loans", "Live loans"]];
+const last = new WeakMap<HTMLElement, string>();
+function put(el: HTMLElement, html: string) { if (last.get(el) !== html) { el.innerHTML = html; last.set(el, html); } }
+/** True while the user is pressing, hovering a control, or typing: background refreshes wait. */
+let pressed = false;
+const busyHand = () => pressed || !!document.querySelector("#app [data-act]:hover, #app a:hover") || (document.activeElement as HTMLElement)?.tagName === "INPUT";
+let pending = false;
+function softRender() { if (busyHand()) { pending = true; return; } pending = false; render(); }
+addEventListener("pointerdown", () => { pressed = true; }, true);
+addEventListener("pointerup", () => { pressed = false; if (pending) setTimeout(softRender, 250); }, true);
+document.addEventListener("pointerout", () => { if (pending) setTimeout(softRender, 250); });
 function render() {
   const r = route();
-  $("#keeper").innerHTML = keeper ? `<span class="badge ${keeper.ok ? "ok" : "lag"}">Price relay: ${keeper.ok ? "live" : "lagging"}</span>` : "";
-  $("#wallet").innerHTML = C.account ? `<span class="dot"></span><span>${esc(C.account)}</span>` : "Connect";
+  put($("#keeper"), keeper ? `<span class="badge ${keeper.ok ? "ok" : "lag"}">Price relay: ${keeper.ok ? "live" : "lagging"}</span>` : "");
+  put($("#wallet"), C.account ? `<span class="dot"></span><span>${esc(C.account)}</span>` : "Connect");
   const link = (cls: string) => NAV.map(([k, l]) => `<a class="${cls} ${r === k ? "on" : ""}" href="#/${k === "home" ? "" : k}"><span>${l}</span></a>`).join("") + `<a class="${cls}" href="/landing/index.html#risks"><span>Risks</span></a>`;
-  $("#top-nav").innerHTML = link("tn-i");
-  $("#tabbar").innerHTML = link("nav-i");
+  put($("#top-nav"), link("tn-i"));
+  put($("#tabbar"), link("nav-i"));
   const scr = !C.configured() ? notConfigured() : r === "loans" ? loansScreen() : !C.account ? connectScreen() : r === "lend" ? lendScreen() : homeScreen();
-  $("#screen").innerHTML = (S.error ? `<p class="note"><span>Couldn't read the pool: ${esc(S.error)}</span></p>` : "") + scr.html;
-  $("#dock").innerHTML = scr.dock; $("#dock").className = scr.dock ? "dock" : "dock empty";
-  $("#context").innerHTML = S.ledger ? `<div class="ctx-block"><h3 class="h3">Pool, live from testnet</h3><dl class="rows">
+  put($("#screen"), (S.error ? `<p class="note"><span>Couldn't read the pool: ${esc(S.error)}</span></p>` : "") + scr.html);
+  put($("#dock"), scr.dock); $("#dock").className = scr.dock ? "dock" : "dock empty";
+  put($("#context"), (S.ledger ? `<div class="ctx-block"><h3 class="h3">Pool, live from ${C.DEV_LOCAL ? "the local sandbox" : "testnet"}</h3><dl class="rows">
     <div><dt>Lent out</dt><dd class="num">${usdc(S.ledger.outstanding, 0)} USDC</dd></div>
     <div><dt>Free cash</dt><dd class="num">${usdc(S.ledger.cash, 0)} USDC</dd></div>
     <div><dt>Utilisation</dt><dd class="num">${(S.ledger.utilisation_bps / 100).toFixed(1)}%</dd></div>
     ${C.account ? `<div><dt>Your test USDC</dt><dd class="num">${usdc(S.usdcBal)}</dd></div>` : ""}</dl>
-    ${C.account ? `<button class="link" data-act="faucet">Get 1,000 test USDC</button>` : ""}</div>` : "";
+    ${C.account ? `<button class="link" data-act="faucet">Get 1,000 test USDC</button>` : ""}</div>` : "") + demoPanel());
+}
+
+/** Local sandbox only (DEV_LOCAL + KEEPER_CONTROL): crash the price and walk a loan through notice, grace and auction. */
+function demoPanel() {
+  if (!C.DEV_LOCAL || !C.KEEPER_CONTROL) return "";
+  const next = nextDeadline();
+  const dis = S.busy ? "disabled" : "";
+  return `<div class="ctx-block demo-panel"><h3 class="h3">Demo controls (local only)</h3>
+    <p class="fine">Moves the sandbox's price and clocks. Never shown on testnet.</p>
+    <div class="actions"><button class="btn btn-2 danger" data-act="dev-crash" ${dis}>Crash NEAR to $1</button><button class="btn btn-2" data-act="dev-live" ${dis}>Back to live price</button></div>
+    <div class="actions"><button class="btn btn-2" data-act="dev-next" ${dis || (next ? "" : "disabled")}>${next ? `Skip to next deadline (loan #${next.id}, ${left(next.deadline)})` : "Skip to next deadline"}</button></div></div>`;
+}
+/** The soonest deadline among this account's open loans. */
+function nextDeadline() {
+  return mine().filter((l) => l.deadline > 0).sort((a, b) => a.deadline - b.deadline)[0];
 }
 
 // ---------- events ----------
@@ -248,6 +275,24 @@ document.addEventListener("click", async (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>("[data-act]"); if (!el || (el as HTMLButtonElement).disabled) return;
   const a = el.dataset.act!, id = Number(el.dataset.id);
   if (a === "connect") return void C.connect();
+  if (a === "dev-crash" || a === "dev-live" || a === "dev-next") {
+    S.busy = true; render();
+    try {
+      if (a === "dev-crash") { await C.devControl("/price?usd=1"); toast("NEAR is held at $1 on the sandbox. Nothing happens until the next deadline."); }
+      else if (a === "dev-live") { await C.devControl("/price"); toast("Back to the live NEAR price."); }
+      else {
+        const l = nextDeadline();
+        if (l) {
+          await C.syncClock();
+          const secs = Math.max(0, l.deadline - C.nowSecs()) + 5;
+          await C.devControl(`/advance?secs=${secs}`);
+          await C.devControl(`/settle?id=${l.id}`);
+          toast(`Moved ${left(C.nowSecs() + secs)} ahead and settled loan #${l.id}.`);
+        }
+      }
+    } catch (err) { toast(`Demo control failed: ${(err as Error).message}`); }
+    S.busy = false; await load(); return;
+  }
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
   if (a === "refresh") { S.price = await C.readPrice().catch(() => S.price); return render(); }
   if (a === "tranche") { if (S.tranche !== el.dataset.v) S.ack = false; S.tranche = el.dataset.v as "senior" | "junior"; return render(); }
@@ -282,13 +327,15 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => { const t = e.target as HTMLInputElement; if (t.id === "val") { S.validator = t.value.trim(); render(); } });
 addEventListener("hashchange", () => { render(); if (route() === "loans") load(); });
 C.onWallet(load);
-if (C.KEEPER_URL) { const k = async () => { keeper = await C.keeperStatus(); render(); }; k(); setInterval(k, 30_000); }
+if (C.KEEPER_URL) { const k = async () => { keeper = await C.keeperStatus(); softRender(); }; k(); setInterval(k, 30_000); }
 // Countdowns tick locally; the price refreshes every 15 s (never mid-typing).
 setInterval(() => document.querySelectorAll<HTMLElement>("[data-deadline]").forEach((n) => (n.textContent = left(Number(n.dataset.deadline)))), 30_000);
-setInterval(async () => {
-  if (!C.configured() || S.busy || (document.activeElement as HTMLElement)?.tagName === "INPUT") return;
-  S.price = await C.readPrice().catch(() => S.price); render();
-}, 15_000);
+setInterval(() => { if (C.configured() && !S.busy) refresh(); }, C.DEV_LOCAL ? 8_000 : 15_000);
+let refreshing = false;
+async function refresh() {
+  if (refreshing) return; refreshing = true;
+  try { await load(true); } finally { refreshing = false; }
+}
 C.restore().then(async () => {
   const outs = await C.outcomesFromUrl().catch(() => []);
   if (outs.length) toast(outs.map((o) => explain(o, "Done. The chain confirmed it.")).join(" "));

@@ -90,7 +90,7 @@ export async function send(a: Action): Promise<Outcome> {
   if (!signer || !account) throw new Error("Connect a wallet first.");
   const res = await signer.transaction(account)
     .functionCall(a.receiverId, a.methodName, a.args, { gas: `${Number(a.gas / 1_000_000_000_000n)} Tgas`, attachedDeposit: `${a.deposit} yocto` })
-    .send();
+    .send({ waitUntil: "FINAL" });
   return readOutcome(res);
 }
 
@@ -116,6 +116,14 @@ export async function myVaults(loans: LoanView[], id: string): Promise<MyVault[]
   return out.filter((x): x is MyVault => !!x && (x.stakedNow > 0n || x.unstaked > 0n || x.transferable > 0n));
 }
 
+/** Chain time. On the local sandbox the pool's and relay's clocks can be moved ahead, so ask the relay; elsewhere it's wall time. */
+let clockOffset = 0;
+export const nowSecs = () => Math.floor(Date.now() / 1000) + clockOffset;
+export async function syncClock() {
+  const t = await reader.view<number>(CFG.relay, "now_secs", {}).catch(() => undefined);
+  if (typeof t === "number") clockOffset = t - Math.floor(Date.now() / 1000);
+}
+
 export interface PriceRead {
   ok: boolean; fresh: boolean; price: number; priceRaw?: bigint; expo?: number; ageSecs: number; gapBps: number; reason?: string;
 }
@@ -123,7 +131,8 @@ const fromRaw = (r: RawPrice | null): SourcePrice | null => (r ? parsePythPrice(
 /** The price a new loan would use (lower of spot and EMA) plus the app's freshness and breaker gate. */
 export async function readPrice(): Promise<PriceRead> {
   const { spot: s, ema: e } = await pool.relayPrice();
-  const spot = fromRaw(s), ema = fromRaw(e), now = Math.floor(Date.now() / 1000);
+  if (DEV_LOCAL) await syncClock();
+  const spot = fromRaw(s), ema = fromRaw(e), now = nowSecs();
   const age = spot ? priceAge(spot, now) : Infinity;
   const sv = spot ? Number(spot.price) * 10 ** spot.expo : 0, ev = ema ? Number(ema.price) * 10 ** ema.expo : 0;
   const gapBps = sv && ev ? Math.round((Math.abs(sv - ev) / sv) * 10_000) : Infinity; // |spot − EMA| / spot, per client/
@@ -131,6 +140,15 @@ export async function readPrice(): Promise<PriceRead> {
   if (!c.ok) return { ok: false, fresh: false, price: sv, ageSecs: age, gapBps, reason: c.error };
   const fresh = age <= QUOTE_MAX_AGE_SECS && gapBps <= QUOTE_MAX_GAP_BPS;
   return { ok: true, fresh, price: Number(c.price) * 10 ** c.expo, priceRaw: c.price, expo: c.expo, ageSecs: age, gapBps };
+}
+
+/** Local sandbox only: move the pool's and relay's clocks, or settle a loan, through the dev control server. */
+export async function devControl(path: string): Promise<string> {
+  if (!KEEPER_CONTROL) throw new Error("No dev control server.");
+  const r = await fetch(KEEPER_CONTROL.replace(/\/$/, "") + path, { method: "POST" });
+  const t = await r.text();
+  if (!r.ok) throw new Error(t || `HTTP ${r.status}`);
+  return t;
 }
 
 /** Keeper health badge; hidden when VITE_KEEPER_URL is unset. */

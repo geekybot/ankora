@@ -26,3 +26,5 @@
 .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .badge.ok::before { background: oklch(62% .14 150); }
 .badge.lag { color: var(--danger); border-color: var(--danger); }
+.demo-panel { margin-top: 16px; display: grid; gap: 10px; }
+.demo-panel .fine { font-size: var(--fs-xs); color: var(--text-3); }
