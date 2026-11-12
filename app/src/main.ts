@@ -191,6 +191,14 @@ function notConfigured() {
 }
 
 function connectScreen() {
+  if (route() === "lend") return { html: `<header class="scr-head"><h1 class="h1 xl">Lend USDC to people borrowing against NEAR.</h1>
+    <p class="lede">Pick a layer: Fixed 6.5%, paid first, or First-loss, which takes losses first, earns what the pool makes above Fixed, can lose everything and is locked for 36 days.</p></header>
+    <ul class="steps-3">
+      <li><b>1</b><span>Connect a NEAR testnet wallet with a little NEAR for gas.</span></li>
+      <li><b>2</b><span>Get 1,000 test USDC from the faucet in the app.</span></li>
+      <li><b>3</b><span>Choose Fixed 6.5% or First-loss, confirm the risk, and deposit.</span></li>
+    </ul>
+    <p class="demo">NEAR testnet. Test USDC only. <a class="link inline" href="#/loans">See live loans without a wallet</a></p>`, dock: cta("Connect a NEAR wallet", "connect") };
   return { html: `<header class="scr-head"><h1 class="h1 xl">Borrow dollars against your NEAR. A 3am dip can't sell it.</h1>
     <p class="lede">Ankora checks the price when your loan starts and when it renews, and at no other time. If NEAR has fallen too far by renewal, you get five days to pay some back before anything is auctioned.</p></header>
     <ul class="steps-3">
