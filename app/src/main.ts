@@ -246,8 +246,8 @@ function quoteNow() {
 
 function validatorPicker() {
   const cur = S.vals.find((v) => v.id === S.validator);
-  const fee = (v: C.ValidatorRow) => v.eligible === false ? `<span class="fee-no">Not eligible</span>` : v.feePct === undefined ? `<span class="fee-wait">fee …</span>` : v.feePct === null ? "" : `<span class="num ${v.feePct > 20 ? "fee-hi" : ""}">${v.feePct.toFixed(0)}% fee</span>`;
-  const meta = (v?: C.ValidatorRow) => v ? `<span class="num">${v.sharePct.toFixed(1)}%</span>${fee(v)}` : `<span>Custom</span>`;
+  const fee = (v: C.ValidatorRow) => v.eligible === false ? `<span class="fee-no">Not eligible</span>` : v.feePct === undefined ? "" : v.feePct === null ? "" : `<span class="num ${v.feePct > 20 ? "fee-hi" : ""}">${v.feePct.toFixed(0)}% fee</span>`;
+  const meta = (v?: C.ValidatorRow) => v ? `<span class="num">${v.sharePct.toFixed(1)}% of stake</span>${fee(v)}` : `<span>Custom</span>`;
   const list = S.valOpen ? `<div class="vp-pop" role="listbox" id="vp-list" aria-label="Validators">
       ${S.vals.length ? `<p class="vp-head"><span>Validator</span><span>Stake · fee</span></p>` + S.vals.map((v, i) => `<button class="vp-opt ${i === S.valActive ? "is-active" : ""}" role="option" id="vp-${i}" aria-selected="${v.id === S.validator}" aria-disabled="${v.eligible === false}" ${v.eligible === false ? "disabled" : ""} data-act="val-pick" data-v="${esc(v.id)}"><b>${esc(v.id.replace(/\.pool\..*$/, ""))}</b><small class="num">${esc(v.id)}</small>${meta(v)}</button>`).join("") : `<p class="vp-wait">Loading validators…</p>`}
       <div class="vp-own"><input id="val" class="val num" value="${S.vals.some((v) => v.id === S.validator) ? "" : esc(S.validator)}" placeholder="Or type a whitelisted pool account" autocomplete="off" spellcheck="false" aria-label="Validator account"></div>
@@ -393,7 +393,7 @@ function poolNow() {
   const L = S.ledger; if (!L) return "";
   const m = aprModel(), open = S.all.filter((l) => l.state === "Active" || l.state === "Notice" || l.state === "Grace").length, auc = auctions().length;
   const row = (k: string, v: string, end = "") => `<div><dt>${k}</dt><dd class="num">${v}</dd><dd class="end">${end}</dd></div>`;
-  return `<section class="acct-sec"><h3 class="h3">The pool right now</h3><dl class="pool-dl">
+  return `<section class="acct-sec"><h3 class="h3">Current pool</h3><dl class="pool-dl">
     ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, `<span class="num">6.5%</span> APR`)}
     ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `<span class="num ${m.now < 0 ? "neg" : "pos"}">${pct(m.now)}</span> now` : "")}
     ${row("Open loans", String(open), `<span class="num">${usdc(L.outstanding, 0)}</span> USDC lent`)}
@@ -406,16 +406,20 @@ function account() {
   const sen = S.lender && L ? Number(BigInt(S.lender.senior_shares)) * share(L.senior_value, L.senior_shares) : 0;
   const jun = S.lender && L ? Number(BigInt(S.lender.junior_shares)) * share(L.junior_value, L.junior_shares) : 0;
   const locked = !!S.lender && S.lender.junior_unlocks_at > C.nowSecs();
-  const dep = (name: string, val: number, tr: string, sh: string, ok: boolean, sub: string) => `<li class="acct-i"><div class="acct-top"><span>${name}</span><span class="badge ${tr === "junior" ? "st-warn" : "st-ok"}">${tr === "junior" ? "Variable" : "6.5% APR"}</span></div>
-    <div class="acct-main"><b class="num">${usdc(BigInt(Math.floor(val)))} <small>USDC</small></b><span>${sub}</span></div>
-    <div class="acct-acts"><button class="btn btn-2 sm" data-act="withdraw" data-t="${tr}" data-sh="${sh}" ${ok && !S.busy ? "" : "disabled"}>Withdraw</button></div></li>`;
+  const m = aprModel();
+  const dep = (name: string, val: number, tr: string, sh: string, ok: boolean, lockedUntil = 0) => `<li class="dep">
+    <span class="dep-n">${name}</span>
+    <span class="dep-apr num ${tr === "junior" && m && m.now < 0 ? "neg" : ""}">${tr === "junior" ? (m ? `${pct(m.now)} est.` : "Variable") : "6.5% APR"}</span>
+    <b class="dep-v num">${usdc(BigInt(Math.floor(val)))} <small>USDC</small></b>
+    ${ok ? `<button class="btn btn-2 sm" data-act="withdraw" data-t="${tr}" data-sh="${sh}" ${S.busy ? "disabled" : ""}>Withdraw</button>` : `<span class="dep-lock" title="First-loss is locked 36 days after your latest First-loss deposit">Locked to ${new Date(lockedUntil * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>`}
+  </li>`;
   const loans = mine().map(loanItem).join(""), vaults = S.vaults.map(vaultItem).join("");
-  const deps = (sen ? dep("Fixed", sen, "senior", S.lender!.senior_shares, true, "Paid first") : "") + (jun ? dep("First-loss", jun, "junior", S.lender!.junior_shares, !locked, locked ? `Locked until ${when(S.lender!.junior_unlocks_at)}` : "Unlocked") : "");
+  const deps = (sen ? dep("Fixed", sen, "senior", S.lender!.senior_shares, true) : "") + (jun ? dep("First-loss", jun, "junior", S.lender!.junior_shares, !locked, S.lender!.junior_unlocks_at) : "");
   const claim = S.claimable > 0n ? `<li class="acct-i tone-ok"><div class="acct-main"><b class="num">${usdc(S.claimable)} <small>USDC</small></b><span>Auction surplus, yours to claim</span></div><div class="acct-acts"><button class="btn btn-1 sm" data-act="claim" ${S.busy ? "disabled" : ""}>Claim</button></div></li>` : "";
   const sec = (h: string, body: string) => body ? `<section class="acct-sec"><h3 class="h3">${h}</h3><ul>${body}</ul></section>` : "";
   const nothing = !loans && !vaults && !deps && !claim;
   return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div><button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button></div>
-    ${sec("Claim", claim)}${sec("Loans", loans)}${sec("Vaults", vaults)}${sec("Deposits", deps)}
+    ${sec("To claim", claim)}${sec("Your loans", loans)}${sec("Your vaults", vaults)}${deps ? `<section class="acct-sec"><h3 class="h3">Your deposits</h3><ul class="deps">${deps}</ul></section>` : ""}
     ${nothing ? `<div class="acct-empty sm"><span>No loans or deposits yet. Use the card to start one.</span></div>` : ""}${poolNow()}${demoPanel()}`;
 }
 
