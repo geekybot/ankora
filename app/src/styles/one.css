@@ -82,7 +82,7 @@
 .terms.sm > div { padding: 6px 0; }
 [data-dir="b"][data-pal="zinc"] .panel .cta { margin-top: 4px; min-height: 56px; border-radius: 16px; font-size: 16px; }
 .fine { font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.5; }
-.fine a, .inline-link { color: var(--link); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(94 234 212 / 0.35); font-size: inherit; font-weight: 500; }
+.fine a, .inline-link { color: var(--link); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(var(--link-rgb) / 0.35); font-size: inherit; font-weight: 500; }
 .inline-link:disabled { opacity: 0.5; }
 .more { border-top: 1px solid var(--hair); margin-top: 4px; }
 .more summary { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 10px 0 4px; font-size: 13px; color: var(--text-3); cursor: pointer; list-style: none; transition: color 160ms var(--e-out); }
@@ -225,7 +225,7 @@
 .pool-dl dd small { font-size: 12px; color: var(--text-3); }
 
 /* the landing's kinetic grid, behind the app too */
-.kg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; --kg-line: #2dd4bf; --kg-dot: #fafafa; --kg-trail: #2dd4bf;
+.kg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; --kg-line: var(--accent); --kg-dot: #fafafa; --kg-trail: var(--accent);
   -webkit-mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 100%); mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 100%); }
 [data-dir="b"][data-pal="zinc"] .app { position: relative; z-index: 1; }
 [data-dir="b"][data-pal="zinc"] .toasts { z-index: 70; }
@@ -286,3 +286,14 @@
 .acct-sec.demo { padding: 10px 12px; gap: 6px; }
 .acct-sec.demo .h3 { font-size: 11px; margin: 0; }
 .acct-sec.demo .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
+
+/* accent: teal by default, apricot on toggle (same keys as the landing) */
+html[data-accent="apricot"][data-dir="b"][data-pal="zinc"] { --accent: #fda856; --accent-ink: #421105; --accent-rgb: 253 168 86; --accent-soft: #2e2015; --focus: #fdba74; --link: #fdba74; --link-rgb: 253 186 116; --loud: var(--accent); --loud-ink: var(--accent-ink); }
+.accent-toggle { display: inline-flex; align-items: center; height: 44px; padding: 0 12px; margin-left: 12px; border-radius: 8px; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); transition: background-color 180ms var(--e-out), transform 140ms var(--e-out); }
+.accent-toggle:hover { background: rgb(255 255 255 / 0.07); } .accent-toggle:active { transform: scale(0.96); }
+.accent-toggle i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); transition: transform 220ms var(--e-out), opacity 220ms var(--e-out); }
+.accent-toggle i:first-child { background: #2dd4bf; position: relative; z-index: 1; } .accent-toggle i:last-child { background: #fda856; margin-left: -4px; opacity: 0.55; transform: scale(0.85); }
+html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transform: scale(0.85); z-index: 0; } html[data-accent="apricot"] .accent-toggle i:last-child { opacity: 1; transform: none; position: relative; z-index: 1; }
+[data-dir="b"][data-pal="zinc"] .top .accent-toggle + .wallet-chip { margin-left: 8px; }
+[data-dir="b"][data-pal="zinc"] .top .keeper:empty + .accent-toggle { margin-left: auto; }
+@media (max-width: 959px) { [data-dir="b"][data-pal="zinc"] .top .accent-toggle { margin-left: auto; height: 36px; padding: 0 9px; } }

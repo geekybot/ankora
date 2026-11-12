@@ -42,7 +42,7 @@
 </style>
 <link rel="stylesheet" href="assets/ui/base.css">
 <link rel="stylesheet" href="assets/diagrams/diagram.css">
-<script>if(/[?&]accent=apricot\b/.test(location.search))document.documentElement.dataset.accent='apricot';</script>
+<script>try{var a=localStorage.getItem('ankora.accent')||(/[?&]accent=apricot\b/.test(location.search)?'apricot':'');if(a==='apricot')document.documentElement.dataset.accent='apricot'}catch(e){}</script>
 <script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
 <script src="assets/backgrounds/backgrounds.js"></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
@@ -486,6 +486,11 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
 .logo-mark { width: 22px; height: 22px; flex: none; fill: var(--acc); }
 .nav__link { border-radius: 8px; transition: color 180ms var(--e-out), background-color 180ms var(--e-out); }
 .nav__link:hover { background: rgb(255 255 255 / 0.06); }
+.accent-toggle { display: inline-flex; align-items: center; gap: 0; height: 36px; padding: 0 10px; border-radius: 8px; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); cursor: pointer; transition: background-color 180ms var(--e-out), transform 140ms var(--e-out); }
+.accent-toggle:hover { background: rgb(255 255 255 / 0.07); } .accent-toggle:active { transform: scale(0.96); }
+.accent-toggle i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #09090b; transition: transform 220ms var(--e-out), opacity 220ms var(--e-out); }
+.accent-toggle i:first-child { background: #2dd4bf; z-index: 1; } .accent-toggle i:last-child { background: #fda856; margin-left: -4px; opacity: 0.55; transform: scale(0.85); }
+html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transform: scale(0.85); z-index: 0; } html[data-accent="apricot"] .accent-toggle i:last-child { opacity: 1; transform: none; z-index: 1; }
 .btn { white-space: nowrap; }
 /* narrow phones: the hero's own buttons are on screen, so the nav keeps only the logo and the menu */
 @media (max-width: 479px) { .nav:not(.is-open) .nav__actions { display: none; } .nav:not(.is-open) .nav__actions + .nav__toggle { margin-left: auto; } }
@@ -545,6 +550,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
       <div class="nav__item"><a class="nav__link" href="#questions">Questions</a></div>
     </nav>
     <div class="nav__actions">
+      <button class="accent-toggle" type="button" data-accent-toggle aria-label="Switch accent colour"><i></i><i></i></button>
       <a class="btn btn--primary" href="/app/">Open app</a>
     </div>
     <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
@@ -796,6 +802,16 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
 </script>
 <script src="kinetic-grid.js?v=4" defer></script>
 <script src="bento.js?v=6" defer></script>
+<script>
+/* Accent toggle (teal or apricot), shared with the app through localStorage. */
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-accent-toggle]')) return;
+  const next = document.documentElement.dataset.accent === 'apricot' ? '' : 'apricot';
+  if (next) document.documentElement.dataset.accent = next; else delete document.documentElement.dataset.accent;
+  try { localStorage.setItem('ankora.accent', next); } catch (_) {}
+  dispatchEvent(new Event('ankora:accent'));
+});
+</script>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>

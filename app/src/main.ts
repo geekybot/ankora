@@ -8,7 +8,8 @@ import "./styles/palettes.css";
 import "./styles/zinc.css";
 import "./styles/one.css";
 import "./app.css";
-import "../../site/kinetic-grid.js"; // the landing's background, one source for both pages
+import "../../site/kinetic-grid.js";
+import "./accent.ts"; // the landing's background, one source for both pages
 import * as C from "./chain.ts";
 import { quoteBorrow, maxPrincipal, paydownToRenew, NEAR as YOCTO, type PlanName } from "../../client/src/quote.ts";
 
