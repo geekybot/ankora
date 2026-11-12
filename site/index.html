@@ -103,7 +103,8 @@
   .d-win__dots { display: flex; gap: 6px; } .d-win__dots i { width: 10px; height: 10px; border-radius: 50%; background: #2a3566; }
   .d-win__bar b { color: #eef3ff; font-weight: 500; } .d-win__bar .sp { flex: 1; }
   @media (max-width: 639px) { .d-win__bar .sp ~ span { display: none; } }
-  @media (max-width: 1023px) { .calc { grid-template-columns: minmax(0, 1fr); } .calc__out { border-left: 0; border-top: 1px solid rgb(255 255 255 / 0.08); } .calc__rows > div:nth-child(n+2) { display: none; } }
+  @media (min-width: 640px) and (max-width: 1023px) { .calc__in, .calc__out { padding: 16px 20px; } .calc input[type="text"] { font-size: 26px; } .calc__price { display: none; } }
+  @media (max-width: 639px) { .calc { grid-template-columns: minmax(0, 1fr); } .calc__out { border-top: 1px solid rgb(255 255 255 / 0.08); } }
   @media (max-width: 639px) { .calc__rows, .calc__price, .calc input[type="range"] { display: none; } .calc__out { border-left: 0; } .calc__in, .calc__out { padding: 16px 20px; gap: 8px; } .calc input[type="text"] { font-size: 26px; } .calc__amount { height: 56px; } }
   @media (prefers-reduced-motion: reduce) { .plans__pill, .calc input[type="range"]::-webkit-slider-thumb { transition: none; } }
 
