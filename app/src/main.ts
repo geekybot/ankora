@@ -397,6 +397,8 @@ function render() {
   const r = route();
   put($("#keeper"), keeper ? `<span class="badge ${keeper.ok ? "st-ok" : "st-bad"}">Price relay ${keeper.ok ? "live" : "lagging"}</span>` : "");
   put($("#wallet"), C.account ? `<span class="dot"></span><span>${esc(C.account)}</span>` : "Connect wallet");
+  $("#wallet").classList.toggle("is-out", !C.account);
+  $("#wallet").setAttribute("aria-label", C.account ? `Signed in as ${C.account}. Disconnect` : "Connect a NEAR wallet");
   const link = (cls: string) => NAV.map(([k, l]) => `<a class="${cls} ${r === k ? "on" : ""}" href="#/${k === "home" ? "" : k}" ${r === k ? `aria-current="page"` : ""}><span>${l}</span></a>`).join("") + `<a class="${cls}" href="/#questions"><span>Risks</span></a>`;
   put($("#top-nav"), link("tn-i"));
   put($("#tabbar"), link("nav-i"));

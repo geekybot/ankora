@@ -6,5 +6,5 @@ cd "$(dirname "$0")/.."
 rm -rf dist-web
 mkdir -p dist-web
 rsync -a --exclude shots --exclude .taste-skill site/ dist-web/
-(cd app && npx vite build --base /app/ --outDir ../dist-web/app --emptyOutDir)
+(cd app && npx vite build --outDir ../dist-web/app --emptyOutDir)
 echo "built dist-web/: landing at /, app at /app/"

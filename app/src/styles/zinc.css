@@ -257,3 +257,30 @@
   [data-dir="b"][data-pal="zinc"] .pos { grid-template-columns: minmax(0, 1fr) auto; }
   [data-dir="b"][data-pal="zinc"] .pos .btn { grid-column: 1 / -1; }
 }
+
+/* ---------- one header for landing and app: measured from the landing's nav ---------- */
+[data-dir="b"][data-pal="zinc"] .brand { font: 500 22px/1 var(--font-ui); letter-spacing: -0.02em; gap: 8px; color: #fafafa; }
+[data-dir="b"][data-pal="zinc"] .brand .logo-mark { width: 28px; height: 22px; flex: none; color: #fafafa; }
+[data-dir="b"][data-pal="zinc"] .wallet-chip { height: 44px; padding: 0 18px; border-radius: 8px; font: 500 14px/1 var(--font-num); background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); }
+[data-dir="b"][data-pal="zinc"] .wallet-chip:hover { background: rgb(255 255 255 / 0.07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.26); }
+[data-dir="b"][data-pal="zinc"] .wallet-chip.is-out { font: 600 15px/1 var(--font-ui); background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 28px -6px rgb(var(--accent-rgb) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35); }
+[data-dir="b"][data-pal="zinc"] .wallet-chip.is-out:hover { background: color-mix(in oklab, var(--accent) 90%, #fff); }
+@media (min-width: 960px) {
+  [data-dir="b"][data-pal="zinc"] .app { width: min(100% - 160px, 1160px); max-width: none; padding: 0; column-gap: 48px; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); }
+  [data-dir="b"][data-pal="zinc"] .top { height: 72px; margin: 0 calc(50% - 50vw); padding: 0 calc(50vw - 50%); gap: 64px; background: rgb(9 9 11 / 0.66); box-shadow: 0 1px 0 rgb(255 255 255 / 0.08); }
+  [data-dir="b"][data-pal="zinc"] .top-nav { gap: 4px; }
+  [data-dir="b"][data-pal="zinc"] .tn-i { position: relative; display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border-radius: 8px; font: 500 15px/1 var(--font-ui); color: #d4d4d8; background: none; box-shadow: none; }
+  [data-dir="b"][data-pal="zinc"] .tn-i:hover { color: #fafafa; background: rgb(255 255 255 / 0.06); }
+  [data-dir="b"][data-pal="zinc"] .tn-i.on { color: #fafafa; background: none; box-shadow: none; }
+  [data-dir="b"][data-pal="zinc"] .tn-i.on::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -18px; height: 2px; border-radius: 2px; background: var(--accent); }
+  [data-dir="b"][data-pal="zinc"] .top .keeper { margin-left: auto; margin-right: 0; }
+  [data-dir="b"][data-pal="zinc"] .top .wallet-chip { margin-left: 12px; }
+  [data-dir="b"][data-pal="zinc"] .top .keeper:empty + .wallet-chip { margin-left: auto; }
+}
+/* phone: same 56px bar and 24px edge as the landing's nav */
+[data-dir="b"][data-pal="zinc"] { --gutter: 24px; }
+[data-dir="b"][data-pal="zinc"] .cta { justify-content: center; text-align: center; }
+@media (max-width: 959px) {
+  [data-dir="b"][data-pal="zinc"] .top { height: 56px; padding: 0 var(--gutter); background: rgb(9 9 11 / 0.66); box-shadow: 0 1px 0 rgb(255 255 255 / 0.08); }
+  [data-dir="b"][data-pal="zinc"] .main { padding-top: 24px; }
+}
