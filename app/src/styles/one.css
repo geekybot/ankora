@@ -287,13 +287,16 @@
 .acct-sec.demo .h3 { font-size: 11px; margin: 0; }
 .acct-sec.demo .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
 
-/* accent: teal by default, apricot on toggle (same keys as the landing) */
-html[data-accent="apricot"][data-dir="b"][data-pal="zinc"] { --accent: #fda856; --accent-ink: #421105; --accent-rgb: 253 168 86; --accent-soft: #2e2015; --focus: #fdba74; --link: #fdba74; --link-rgb: 253 186 116; --loud: var(--accent); --loud-ink: var(--accent-ink); }
-.accent-toggle { display: inline-flex; align-items: center; height: 44px; padding: 0 12px; margin-left: 12px; border-radius: 8px; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); transition: background-color 180ms var(--e-out), transform 140ms var(--e-out); }
-.accent-toggle:hover { background: rgb(255 255 255 / 0.07); } .accent-toggle:active { transform: scale(0.96); }
-.accent-toggle i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); transition: transform 220ms var(--e-out), opacity 220ms var(--e-out); }
-.accent-toggle i:first-child { background: #2dd4bf; position: relative; z-index: 1; } .accent-toggle i:last-child { background: #fda856; margin-left: -4px; opacity: 0.55; transform: scale(0.85); }
-html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transform: scale(0.85); z-index: 0; } html[data-accent="apricot"] .accent-toggle i:last-child { opacity: 1; transform: none; position: relative; z-index: 1; }
-[data-dir="b"][data-pal="zinc"] .top .accent-toggle + .wallet-chip { margin-left: 8px; }
-[data-dir="b"][data-pal="zinc"] .top .keeper:empty + .accent-toggle { margin-left: auto; }
-@media (max-width: 959px) { [data-dir="b"][data-pal="zinc"] .top .accent-toggle { margin-left: auto; height: 36px; padding: 0 9px; } }
+
+
+/* auction history: one line per auction, one line of detail */
+.auc-none { font-size: 13px; color: var(--text-3); padding: 6px 8px 2px; }
+.hist { display: grid; gap: 8px; margin-top: 8px; }
+.hist .h3 { margin: 0 8px; }
+.hist ul { display: grid; padding: 2px 14px; border-radius: 14px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--hair); }
+.hist-i { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 2px; padding: 10px 0; border-top: 1px solid var(--hair); }
+.hist-i:first-child { border-top: 0; }
+.hist-id { font-size: 13px; color: var(--text); }
+.hist-v { font-size: 14px; font-weight: 500; text-align: right; } .hist-v small { font-size: 11px; color: var(--text-3); font-weight: 400; }
+.hist-t { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.hist-sub { grid-column: 1 / -1; font-size: 11px; color: var(--text-3); }

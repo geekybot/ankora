@@ -88,6 +88,47 @@ pub struct LedgerView {
     pub cash: U128, pub outstanding: U128, pub unearned: U128, pub treasury: U128, pub reserved: U128,
     pub nav: U128, pub senior_value: U128, pub junior_value: U128, pub senior_shares: U128, pub junior_shares: U128, pub utilisation_bps: u32,
 }
+/// One auction, from start to its end. Stored under its own storage keys (not in the contract's state struct),
+/// so adding it needs no state migration. outcome: "live", "sold", "repaid" (borrower stopped it) or "no_buyer".
+#[near(serializers = [borsh, json])]
+#[derive(Clone)]
+pub struct AuctionRecord {
+    pub id: u64,
+    pub started_at: u64,
+    pub start_value: U128,
+    pub debt: U128,
+    pub collateral: U128,
+    pub validator: String,
+    pub outcome: String,
+    pub ended_at: u64,
+    pub price: U128,
+    pub buyer: Option<AccountId>,
+    pub surplus: U128,
+}
+const AUC_N: &[u8] = b"auc:n";
+fn auc_key(i: u64) -> Vec<u8> { [b"auc:r".as_slice(), &i.to_le_bytes()].concat() }
+fn auc_idx_key(loan: u64) -> Vec<u8> { [b"auc:l".as_slice(), &loan.to_le_bytes()].concat() }
+fn auc_count() -> u64 { env::storage_read(AUC_N).map(|b| u64::from_le_bytes(b.try_into().unwrap_or([0; 8]))).unwrap_or(0) }
+fn auc_put(i: u64, r: &AuctionRecord) { env::storage_write(&auc_key(i), &near_sdk::borsh::to_vec(r).unwrap()); }
+fn auc_get(i: u64) -> Option<AuctionRecord> { env::storage_read(&auc_key(i)).and_then(|b| near_sdk::borsh::from_slice(&b).ok()) }
+/// Open a record when a loan's auction starts.
+fn auc_open(l: &Loan, t: u64) {
+    let start_value = match l.state { LoanState::Auction { start_value, .. } => start_value, _ => 0 };
+    let i = auc_count();
+    auc_put(i, &AuctionRecord { id: l.id, started_at: t, start_value: U128(start_value), debt: U128(l.debt), collateral: U128(l.collateral_yocto), validator: l.validator.clone(),
+        outcome: "live".into(), ended_at: 0, price: U128(0), buyer: None, surplus: U128(0) });
+    env::storage_write(&auc_idx_key(l.id), &i.to_le_bytes());
+    env::storage_write(AUC_N, &(i + 1).to_le_bytes());
+}
+/// Close the loan's open record with how it ended.
+fn auc_close(loan: u64, outcome: &str, t: u64, price: u128, buyer: Option<AccountId>, surplus: u128) {
+    let Some(i) = env::storage_read(&auc_idx_key(loan)).map(|b| u64::from_le_bytes(b.try_into().unwrap_or([0; 8]))) else { return };
+    let Some(mut r) = auc_get(i) else { return };
+    if r.outcome != "live" { return; }
+    r.outcome = outcome.into(); r.ended_at = t; r.price = U128(price); r.buyer = buyer; r.surplus = U128(surplus);
+    auc_put(i, &r);
+}
+
 #[near(serializers = [json])]
 pub struct LoanView {
     pub id: u64, pub borrower: AccountId, pub vault: AccountId, pub validator: AccountId, pub collateral: U128, pub debt: U128,
@@ -302,12 +343,14 @@ impl Pool {
             }
             FtMsg::Repay(id) => {
                 let mut l = self.loan(id);
+                let was_auction = matches!(l.state, LoanState::Auction { .. });
                 let v = l.vest_to(t);
                 self.ledger.vest(v);
                 let pay = amount.0.min(l.debt);
                 let out = l.repay(pay, t).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
                 self.ledger.repay(pay);
                 if let RepayOutcome::Full { vest_now } = out {
+                    if was_auction { auc_close(id, "repaid", t, pay, None, 0); }
                     self.ledger.vest(vest_now);
                     Self::release_vault(&l.vault.parse().unwrap(), l.borrower.parse().unwrap());
                 }
@@ -319,6 +362,7 @@ impl Pool {
                 let debt = l.debt;
                 match l.bid(amount.0, t) {
                     Ok(o) => {
+                        auc_close(id, "sold", t, amount.0, Some(sender_id.clone()), o.surplus_to_borrower);
                         self.ledger.close_default(debt, 0, o.recovered);
                         self.pay_surplus(l.borrower.parse().unwrap(), o.surplus_to_borrower);
                         Self::release_vault(&l.vault.parse().unwrap(), sender_id);
@@ -359,7 +403,9 @@ impl Pool {
         self.ledger.vest(l.take_vest_owed());
         match out {
             SettleOutcome::Renewed(_) => self.ledger.renew(l.debt - debt_before),
+            SettleOutcome::AuctionStarted => auc_open(&l, t),
             SettleOutcome::AuctionExpired => {
+                auc_close(id, "no_buyer", t, 0, None, 0);
                 self.ledger.close_default(l.debt, 0, 0);
                 // The owner unstakes and sells the NEAR, then books the USDC with a `recovery` message.
                 Self::release_vault(&l.vault.parse().unwrap(), self.owner.clone());
@@ -448,6 +494,11 @@ impl Pool {
         }
     }
     pub fn get_loan(&self, id: u64) -> Option<LoanView> { self.loans.get(&id).map(|l| self.view(l)) }
+    /// Auction records, newest first. `from_index` counts from the newest.
+    pub fn get_auction_history(&self, from_index: u32, limit: u32) -> Vec<AuctionRecord> {
+        let n = auc_count();
+        (0..n).rev().skip(from_index as usize).take(limit.min(50) as usize).filter_map(auc_get).collect()
+    }
     pub fn get_loans(&self, from_index: u32, limit: u32) -> Vec<LoanView> {
         self.loans.values().skip(from_index as usize).take(limit.min(100) as usize).map(|l| self.view(l)).collect()
     }
@@ -726,6 +777,35 @@ mod tests {
         assert!(matches!(r, PromiseOrValue::Value(U128(0))));
         assert_eq!(state(&p, id), "Closed");
         assert_eq!(p.get_ledger().outstanding.0, 0);
+    }
+
+    #[test]
+    fn auction_history_records_start_and_sale() {
+        let mut p = funded();
+        let id = booked(&mut p);
+        let t = to_auction(&mut p, id);
+        let h = p.get_auction_history(0, 10);
+        assert_eq!(h.len(), 1);
+        assert_eq!((h[0].id, h[0].outcome.as_str(), h[0].started_at), (id, "live", t));
+        assert!(h[0].start_value.0 > 0 && h[0].debt.0 > 0);
+        set("usdc.testnet", 0, t + 60);
+        let _ = p.ft_on_transfer(acc("bidder.testnet"), U128(15_000 * U), format!(r#"{{"bid":{id}}}"#));
+        let h = p.get_auction_history(0, 10);
+        assert_eq!(h[0].outcome, "sold");
+        assert_eq!(h[0].price.0, 15_000 * U);
+        assert_eq!(h[0].buyer.as_ref().map(|a| a.as_str()), Some("bidder.testnet"));
+        assert_eq!(h[0].ended_at, t + 60);
+    }
+
+    #[test]
+    fn auction_history_records_no_buyer() {
+        let mut p = funded();
+        let id = booked(&mut p);
+        let t = to_auction(&mut p, id);
+        set("pool.testnet", 0, t + 86_400);
+        assert_eq!(p.on_settle_priced(id, Ok(None), Ok(None)), "AuctionExpired");
+        let h = p.get_auction_history(0, 10);
+        assert_eq!((h[0].outcome.as_str(), h[0].ended_at, h[0].buyer.is_none()), ("no_buyer", t + 86_400, true));
     }
 
     #[test]

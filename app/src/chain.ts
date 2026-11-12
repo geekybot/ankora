@@ -59,6 +59,7 @@ export const pool = views(reader as never, CFG.pool, { usdc: CFG.usdc, relay: CF
 export const act = actions({ pool: CFG.pool, usdc: CFG.usdc });
 export const vault = vaultActions;
 export type { LoanView, PlanView, Action, VaultInfo };
+export type { AuctionRecord } from "../../client/src/pool.ts";
 
 // ---------- wallet ----------
 const connector = new NearConnector({ network: "testnet", footerBranding: null });

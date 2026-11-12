@@ -8,7 +8,7 @@
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  let LINE = '#2dd4bf', DOT = '#fafafa', TRAIL = '#2dd4bf';
+  let LINE = '#fda856', DOT = '#fafafa', TRAIL = '#fda856';
   const readColors = () => {
     const css = getComputedStyle(canvas);
     LINE = css.getPropertyValue('--kg-line').trim() || LINE;

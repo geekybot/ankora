@@ -4,10 +4,10 @@
   color-scheme: dark;
   --bg: #09090b; --bg-2: #1f1f23; --surface: #18181b; --line: #27272a; --line-2: #3f3f46;
   --text: #fafafa; --text-2: #c4c4cc; --text-3: #a1a1aa;
-  --accent: #2dd4bf; --accent-ink: #042f2e; --accent-rgb: 45 212 191; --accent-soft: #0f2e2b; --focus: #5eead4; --link: #5eead4; --link-rgb: 94 234 212; --brand: #fafafa;
+  --accent: #fda856; --accent-ink: #421105; --accent-rgb: 253 168 86; --accent-soft: #2e2015; --focus: #fdba74; --link: #fdba74; --link-rgb: 253 186 116; --brand: #fafafa;
   --ok: #4ade80; --ok-soft: #10251a; --warn: #fdba74; --warn-soft: #2a1d10; --warn-ink: #fed7aa;
   --danger: #f87171; --danger-ink: #1f0707; --danger-soft: #2a1212;
-  --l30: #2dd4bf; --l40: #fdba74; --l50: #f87171; --line-cur: var(--l30);
+  --l30: #fda856; --l40: #fdba74; --l50: #f87171; --line-cur: var(--l30);
   --sel-bg: var(--accent); --sel-ink: var(--accent-ink);
   --track-bands: linear-gradient(to right, var(--l30) 0 50%, var(--l40) 50% 75%, var(--l50) 75% 100%); --track-fill: transparent;
   --thumb: var(--bg); --thumb-ring: var(--accent);

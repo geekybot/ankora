@@ -26,8 +26,8 @@
 <link rel="stylesheet" href="assets/icons/icon.css">
 <style>
 :root {
-  /* Deep dark: zinc-950 ground, zinc-900 cards, one accent (teal; ?accent=apricot swaps it for comparison) */
-  --acc: #2dd4bf; --acc-ink: #042f2e; --acc-rgb: 45 212 191;
+  /* Deep dark: zinc-950 ground, zinc-900 cards, one accent: Apricot */
+  --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86;
   --p-bg: #09090b; --p-surface: #18181b; --p-ink: #fafafa; --p-muted: #a1a1aa;
   --p-accent: var(--acc); --p-accent-ink: var(--acc-ink); --p-action: var(--acc); --p-action-ink: var(--acc-ink);
   --p-inv-bg: #09090b; --p-inv-surface: #18181b; --p-inv-ink: #fafafa; --p-inv-muted: #a1a1aa;
@@ -42,7 +42,6 @@
 </style>
 <link rel="stylesheet" href="assets/ui/base.css">
 <link rel="stylesheet" href="assets/diagrams/diagram.css">
-<script>try{var a=localStorage.getItem('ankora.accent')||(/[?&]accent=apricot\b/.test(location.search)?'apricot':'');if(a==='apricot')document.documentElement.dataset.accent='apricot'}catch(e){}</script>
 <script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
 <script src="assets/backgrounds/backgrounds.js"></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
@@ -157,7 +156,6 @@
 </style>
 <style>
 /* ================= Deep dark layer: ground, glow, bento, badges, motion ================= */
-html[data-accent="apricot"] { --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86; }
 :root {
   color-scheme: dark;
   --z-950: #09090b; --z-900: #18181b; --z-850: #1f1f23; --z-800: #27272a;
@@ -486,11 +484,6 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
 .logo-mark { width: 22px; height: 22px; flex: none; fill: var(--acc); }
 .nav__link { border-radius: 8px; transition: color 180ms var(--e-out), background-color 180ms var(--e-out); }
 .nav__link:hover { background: rgb(255 255 255 / 0.06); }
-.accent-toggle { display: inline-flex; align-items: center; gap: 0; height: 36px; padding: 0 10px; border-radius: 8px; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12); cursor: pointer; transition: background-color 180ms var(--e-out), transform 140ms var(--e-out); }
-.accent-toggle:hover { background: rgb(255 255 255 / 0.07); } .accent-toggle:active { transform: scale(0.96); }
-.accent-toggle i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #09090b; transition: transform 220ms var(--e-out), opacity 220ms var(--e-out); }
-.accent-toggle i:first-child { background: #2dd4bf; z-index: 1; } .accent-toggle i:last-child { background: #fda856; margin-left: -4px; opacity: 0.55; transform: scale(0.85); }
-html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transform: scale(0.85); z-index: 0; } html[data-accent="apricot"] .accent-toggle i:last-child { opacity: 1; transform: none; z-index: 1; }
 .btn { white-space: nowrap; }
 /* narrow phones: the hero's own buttons are on screen, so the nav keeps only the logo and the menu */
 @media (max-width: 479px) { .nav:not(.is-open) .nav__actions { display: none; } .nav:not(.is-open) .nav__actions + .nav__toggle { margin-left: auto; } }
@@ -534,7 +527,7 @@ html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transf
 <!-- type: software (site-kind software): fixed-term USDC loans against staked NEAR; main action "Borrow USDC"
      deal: hero centred (dealt collage, a text|window split: the founder rejected split heroes, so the brief overrides the deal),
            nav nav-mega, close close-word, footer footer-dark, rhythm dark-band, buttons solid, mark dots,
-           palette: the client's own founder brief 2026-11-12: zinc-950 #09090b ground, zinc-900 #18181b cards, teal #2dd4bf accent (Apricot via ?accent=apricot),
+           palette: the client's own founder brief 2026-11-12: zinc-950 #09090b ground, zinc-900 #18181b cards, Apricot #fda856 accent,
            type host (Host Grotesk + JetBrains Mono; plex dealt first, refused by impeccable as a training-data default),
            ground sky (dealt sand, clashes with the client's palette), effect grain-gradient (hero)
      moments: word-highlight (#statement, the USP in one sentence), iris-opens (#dip, the turn onto the navy band)
@@ -550,7 +543,6 @@ html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transf
       <div class="nav__item"><a class="nav__link" href="#questions">Questions</a></div>
     </nav>
     <div class="nav__actions">
-      <button class="accent-toggle" type="button" data-accent-toggle aria-label="Switch accent colour"><i></i><i></i></button>
       <a class="btn btn--primary" href="/app/">Open app</a>
     </div>
     <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
@@ -802,16 +794,6 @@ html[data-accent="apricot"] .accent-toggle i:first-child { opacity: 0.55; transf
 </script>
 <script src="kinetic-grid.js?v=4" defer></script>
 <script src="bento.js?v=6" defer></script>
-<script>
-/* Accent toggle (teal or apricot), shared with the app through localStorage. */
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('[data-accent-toggle]')) return;
-  const next = document.documentElement.dataset.accent === 'apricot' ? '' : 'apricot';
-  if (next) document.documentElement.dataset.accent = next; else delete document.documentElement.dataset.accent;
-  try { localStorage.setItem('ankora.accent', next); } catch (_) {}
-  dispatchEvent(new Event('ankora:accent'));
-});
-</script>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>

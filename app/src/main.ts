@@ -8,8 +8,7 @@ import "./styles/palettes.css";
 import "./styles/zinc.css";
 import "./styles/one.css";
 import "./app.css";
-import "../../site/kinetic-grid.js";
-import "./accent.ts"; // the landing's background, one source for both pages
+import "../../site/kinetic-grid.js"; // the landing's background, one source for both pages
 import * as C from "./chain.ts";
 import { quoteBorrow, maxPrincipal, paydownToRenew, NEAR as YOCTO, type PlanName } from "../../client/src/quote.ts";
 
@@ -36,7 +35,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?: string; hash?: string; act?: { label: string; act: string } };
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
-  nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
+  history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
   tab: "borrow" as "borrow" | "lend" | "auctions", details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
@@ -47,6 +46,7 @@ async function load(soft = false) {
   try {
     const [plans, price, ledger, all] = await Promise.all([C.pool.plans(), C.readPrice(), C.pool.ledger(), C.allLoans()]);
     Object.assign(S, { plans, price, ledger, all, error: "" });
+    S.history = await C.pool.auctionHistory(0, 10).catch(() => S.history); // older pools have no history view
     if (C.account) {
       const [nb, ub, lender, cl, vaults] = await Promise.all([C.nearBalance(C.account), C.usdcBalance(C.account), C.pool.lender(C.account), C.pool.claimable(C.account), C.myVaults(all, C.account)]);
       Object.assign(S, { nearBal: nb, usdcBal: ub, lender, claimable: BigInt(cl ?? "0"), vaults });
@@ -331,8 +331,10 @@ function lendPanel() {
 }
 
 function auctionsPanel() {
-  const list = auctions();
-  if (!list.length) return `<div class="empty"><b>No auctions right now</b><span>A loan reaches auction only after 72 h notice and 48 h grace. Its price then falls from 100% to 50% of the vault's value over 24 h.</span></div>`;
+  const list = auctions(), past = S.history.filter((h) => h.outcome !== "live");
+  if (!list.length) return past.length
+    ? `<p class="auc-none">No live auctions. A loan reaches auction after 72 h notice and 48 h grace.</p>${historyList(past)}`
+    : `<div class="empty"><b>No auctions yet</b><span>A loan reaches auction only after 72 h notice and 48 h grace. Its price then falls from 100% to 50% of the vault's value over 24 h.</span></div>`;
   return `<ul class="auc">${list.map((l) => {
     const price = BigInt(l.auction_price), coll = BigInt(l.collateral);
     const can = !!C.account && S.usdcBal >= price;
@@ -342,7 +344,21 @@ function auctionsPanel() {
         <div class="r"><span class="k">Price now</span><b class="num">${usdc(price)} USDC</b><small>Falling</small></div></div>
       ${!C.account ? connectBtn() : can ? `<button class="cta" data-act="bid" data-id="${l.id}" data-amt="${price}" ${S.busy ? "disabled" : ""}><span class="cta-label">Buy for ${usdc(price)} USDC</span></button>` : btn("Not enough USDC", "noop", false)}
     </li>`; }).join("")}</ul>
-    <p class="fine">You buy the loan's vault: the NEAR stays staked and becomes yours to unstake.</p>`;
+    <p class="fine">You buy the loan's vault: the NEAR stays staked and becomes yours to unstake.</p>${historyList(past)}`;
+}
+
+const ago = (secs: number) => { const d = Math.max(0, C.nowSecs() - secs); return d < 3600 ? `${Math.max(1, Math.round(d / 60))} m ago` : d < 172_800 ? `${Math.round(d / 3600)} h ago` : `${Math.round(d / 86400)} d ago`; };
+/** Finished auctions, newest first: what sold, for how much, to whom; or that nobody bought. */
+function historyList(past: C.AuctionRecord[]) {
+  if (!past.length) return "";
+  const row = (h: C.AuctionRecord) => {
+    const out = h.outcome === "sold" ? { tone: "ok", label: "Sold", v: `${usdc(h.price)} <small>USDC</small>`, sub: `to ${esc(h.buyer === C.account ? "you" : (h.buyer ?? "").replace(/\.(testnet|near)$/, ""))}${BigInt(h.surplus) > 0n ? ` · ${usdc(h.surplus)} USDC surplus to the borrower` : ""}` }
+      : h.outcome === "repaid" ? { tone: "mute", label: "Stopped", v: `${usdc(h.price)} <small>USDC</small>`, sub: "repaid in full by the borrower" }
+      : { tone: "bad", label: "No buyer", v: "–", sub: "vault went to the pool for recovery" };
+    return `<li class="hist-i"><span class="num hist-id">Loan #${h.id}</span><span class="badge st-${out.tone}">${out.label}</span><b class="num hist-v">${out.v}</b><span class="hist-t">${h.ended_at ? ago(h.ended_at) : ""}</span>
+      <span class="hist-sub num">${near(h.collateral)} NEAR · opened at ${usdc(h.start_value)} USDC · ${out.sub}</span></li>`;
+  };
+  return `<section class="hist"><h3 class="h3">History</h3><ul>${past.map(row).join("")}</ul></section>`;
 }
 
 // ---------- your account ----------

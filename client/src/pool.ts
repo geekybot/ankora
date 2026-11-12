@@ -23,6 +23,11 @@ export interface LedgerView {
   senior_value: string; junior_value: string; senior_shares: string; junior_shares: string; utilisation_bps: number;
 }
 export interface LenderView { senior_shares: string; junior_shares: string; junior_unlocks_at: number }
+/** One auction from start to end. outcome: live, sold, repaid (the borrower stopped it) or no_buyer. */
+export interface AuctionRecord {
+  id: number; started_at: number; start_value: string; debt: string; collateral: string; validator: string;
+  outcome: "live" | "sold" | "repaid" | "no_buyer" | string; ended_at: number; price: string; buyer: string | null; surplus: string;
+}
 export interface PlanView { plan: PlanName; ltv_cap_bps: number; term_secs: number; rate_bps: number }
 
 export function actions(c: { pool: string; usdc: string }) {
@@ -82,6 +87,8 @@ export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: st
     lender: (accountId: string) => v.view<LenderView | null>(pool, "get_lender", { account_id: accountId }, OPT),
     plans: () => v.view<PlanView[]>(pool, "get_plans", {}, OPT),
     claimable: (accountId: string) => v.view<string>(pool, "get_claimable", { account_id: accountId }, OPT),
+    /** Newest first. Pools deployed before auction records existed answer with an error: callers treat that as none. */
+    auctionHistory: (from = 0, limit = 10) => v.view<AuctionRecord[]>(pool, "get_auction_history", { from_index: from, limit }, OPT),
     usdcBalance: (accountId: string) => v.view<string>(need(more.usdc, "usdc"), "ft_balance_of", { account_id: accountId }, OPT),
     vaultInfo: (vault: string) => v.view<VaultInfo | null>(vault, "get_info", {}, OPT),
     /** After repay: transfer `transferable` now; `unstaked` becomes withdrawable when `canWithdraw` (about 4 epochs after unstake). */
