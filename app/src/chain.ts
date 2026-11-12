@@ -111,7 +111,8 @@ export const allLoans = (): Promise<LoanView[]> => pagedLoans(pool.loans);
 export type MyVault = VaultInfo & { vault: string; loanId: number; transferable: bigint; stakedNow: bigint; unstaked: bigint; canWithdraw: boolean };
 /** Vaults the borrower got back after repaying: NEAR still staked until they unstake and withdraw. */
 export async function myVaults(loans: LoanView[], id: string): Promise<MyVault[]> {
-  const closed = loans.filter((l) => l.borrower === id && l.state === "Closed");
+  // A closed loan's vault belongs to its borrower after repay, or to the winning bidder after an auction.
+  const closed = loans.filter((l) => l.state === "Closed");
   const out = await Promise.all(closed.map(async (l) => {
     const info = await pool.vaultInfo(l.vault).catch(() => null);
     if (!info?.released || info.owner !== id) return null;
