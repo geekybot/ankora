@@ -245,10 +245,10 @@ h1, h2 { color: #fafafa; letter-spacing: -0.03em; }
 @media (max-width: 639px) { .calc__out { border-top: 1px solid var(--hair); border-left: 0; } .calc__big { flex-wrap: wrap; row-gap: 4px; } .calc__big b { font-size: 28px; } }
 
 /* ---------- Cards: zinc-900, hairline, lift on hover ---------- */
-.bento-card, #renewal .card, #lend .card, .faq > .faq__item, #dip .lane, #dip .chart {
+.bento-card, #renewal .card, #lend .card, #dip .lane, #dip .chart {
   background: var(--z-900); border: 1px solid var(--hair); border-radius: 16px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04); transition: var(--t-move); }
 #renewal .card, #lend .card { padding: 24px; display: flex; flex-direction: column; }
-#renewal .card:hover, #lend .card:hover, .faq > .faq__item:hover, #dip .lane:hover {
+#renewal .card:hover, #lend .card:hover, #dip .lane:hover {
   transform: translateY(-2px); border-color: var(--hair-lit); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 18px 40px -24px rgb(0 0 0 / 0.9); }
 #renewal .card > h3, #lend .card > h3, .faq__item > h3 { color: #fafafa; }
 .card.card--open > .panel { margin-top: auto; padding-top: 0; }
@@ -283,15 +283,6 @@ h1, h2 { color: #fafafa; letter-spacing: -0.03em; }
 .tranche__layer span.is-on { background: rgb(255 255 255 / 0.32); }
 .tranche__layer span.is-loss { background: #f87171; }
 .tranche small { color: #a1a1aa; }
-
-/* ---------- Questions: a bento of five ---------- */
-.faq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.faq > .faq__item { padding: 24px; border-bottom: 1px solid var(--hair); align-content: start; gap: 10px; }
-.faq > .faq__item:first-child { padding-top: 24px; grid-column: span 2; }
-.faq__item > h3 { font-size: 18px; line-height: 1.35; }
-.faq > .faq__item:first-child > h3 { font-size: 22px; }
-@media (max-width: 1023px) { .faq { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faq > .faq__item:first-child { grid-column: 1 / -1; } }
-@media (max-width: 639px) { .faq { grid-template-columns: minmax(0, 1fr); gap: 12px; } .faq > .faq__item, .faq > .faq__item:first-child { grid-column: auto; padding: 20px; } }
 
 /* ---------- Vault, statement, dip ---------- */
 #vault .frame { background: var(--z-900); border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; --ink: #fafafa; --muted: #a1a1aa; --bg: var(--z-900); --surface: var(--z-850); --card: var(--z-900); --accent: var(--acc); --accent-ink: var(--acc-ink); --line: var(--hair); --line-strong: var(--hair-2); color: #fafafa; }
@@ -360,15 +351,6 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 .tranche__layer { gap: 5px; } .tranche__layer span { height: 10px; }
 .tranche__rate { font-size: clamp(30px, 2.8vw, 40px); }
 
-/* Questions bento: the core question is the tall card on the left, the other four in a 2 x 2 */
-@media (min-width: 1024px) {
-  .faq { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
-  .faq > .faq__item:first-child { grid-column: 1; grid-row: 1 / span 2; align-content: end; padding: 32px;
-    background: radial-gradient(100% 80% at 0% 0%, rgb(var(--acc-rgb) / 0.10), transparent 60%), var(--z-900); border-color: rgb(var(--acc-rgb) / 0.22); }
-  .faq > .faq__item:first-child > h3 { font-size: 28px; line-height: 1.15; letter-spacing: -0.025em; max-width: 14ch; }
-  .faq > .faq__item:first-child p { font-size: 17px; color: var(--tx-2); max-width: 32ch; }
-}
-.faq > .faq__item { padding: 24px; gap: 10px; }
 
 /* Dip: chart and its legend read as one figure */
 #dip .chart { border-radius: 16px 16px 0 0; border-bottom: 0; padding: 32px 32px 24px; }
@@ -382,12 +364,16 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 
 @media (max-width: 639px) { .hero--centred .hero__window { margin-top: 24px; } .hero .hero__lead { font-size: 16px; } .hero .hero__c { gap: 14px; } }
 .card > p, .faq__item p { color: #c4c4cc; }
-@media (min-width: 1024px) { .faq { grid-template-rows: repeat(2, minmax(220px, 1fr)); } #dip .chart { padding: 48px 40px 36px; } }
+@media (min-width: 1024px) { #dip .chart { padding: 48px 40px 36px; } }
 /* Vault: text and diagram share one centre line */
 #vault .grid { align-items: start; }
 
 /* Close: the CTA is the focus; the big word recedes */
-.close__word { -webkit-text-stroke: 1px rgb(255 255 255 / 0.07); }
+.close__word { -webkit-text-stroke: 1px rgb(255 255 255 / 0.14); -webkit-mask-image: linear-gradient(180deg, #000 20%, transparent 95%); mask-image: linear-gradient(180deg, #000 20%, transparent 95%); text-align: center; }
+.closing__cta .section-head--split { display: grid; justify-items: center; text-align: center; gap: 28px; }
+.closing__cta .section-head--split > div { display: grid; justify-items: center; gap: 12px; }
+#close-h { max-width: 18ch; margin-inline: auto; font-size: clamp(36px, 4.4vw, 64px); }
+footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radial-gradient(closest-side, rgb(var(--acc-rgb) / 0.18), transparent); }
 </style>
 <style>
 /* ================= Bento pass: narrower column, varied cells, spotlight, product loops ================= */
@@ -412,31 +398,16 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 #vault .facts li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 4px rgb(var(--acc-rgb) / 0.14); position: static; }
 #vault .frame { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05); }
 
-/* ---- Renewal bento: tall card left, two wide cards stacked right ---- */
+/* ---- Lend: two wide cards, the layer picture beside its words ---- */
 @media (min-width: 1024px) {
-  #renewal .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto; gap: 16px; }
-  #renewal .card:nth-of-type(1) { grid-column: 1 / span 5; grid-row: 1 / span 2; }
-  #renewal .card:nth-of-type(1) > .panel { --p-h: 300px; }
-  #renewal .card:nth-of-type(2), #renewal .card:nth-of-type(3) { grid-column: 6 / span 7; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-rows: auto auto 1fr; align-items: start; }
-  #renewal .card:nth-of-type(2) { grid-row: 1; } #renewal .card:nth-of-type(3) { grid-row: 2; }
-  #renewal .card:nth-of-type(n+2) > .panel { grid-column: 1; grid-row: 1 / span 3; height: 100%; min-height: 200px; border-bottom: 0; border-right: 1px solid var(--hair); }
-  #renewal .card:nth-of-type(n+2) > :not(.panel) { grid-column: 2; }
-  #renewal .card:nth-of-type(n+2) > .step-num { margin-top: 24px; }
+  #lend .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gutter); }
+  #lend .grid > .card { grid-column: auto; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); grid-template-rows: 1fr auto 1fr; min-height: 300px; }
+  #lend .card > .panel { grid-column: 1; grid-row: 1 / span 3; height: 100%; min-height: 260px; border-bottom: 0; border-right: 1px solid var(--hair); }
+  #lend .card > h3 { grid-column: 2; grid-row: 1; align-self: end; margin-top: 0; }
+  #lend .card > p { grid-column: 2; grid-row: 2 / span 2; align-self: start; }
+  #lend .tranche { inset: 20px; padding: 16px 18px; }
+  #lend .tranche__rate { font-size: clamp(22px, 1.9vw, 30px); padding: 6px 14px; }
 }
-
-/* ---- Lend bento: the heading is a text cell, then the two layers ---- */
-@media (min-width: 1024px) {
-  #lend > .wrap { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-content: center; }
-  #lend .section-head { grid-column: 1 / span 4; margin: 0; padding: 32px; border: 1px solid var(--hair); border-radius: 16px; align-content: end;
-    background: radial-gradient(120% 90% at 0% 100%, rgb(var(--acc-rgb) / 0.12), transparent 60%), var(--z-900); }
-  #lend .section-head h2 { font-size: clamp(30px, 2.8vw, 40px); }
-  #lend .grid { display: contents; }
-  #lend .card { grid-column: span 4; }
-}
-
-/* ---- Questions: keep tall + 2x2; give the tall cell a quiet pattern of its own ---- */
-.faq > .faq__item:first-child::marker { content: none; }
-
 /* ---- Product loops (bento.js adds .is-live while a section is on screen) ---- */
 @keyframes bx-fill { 0% { transform: scaleX(0); } 45%, 100% { transform: scaleX(1); } }
 @keyframes bx-drain { 0% { transform: scaleX(1); } 100% { transform: scaleX(0.82); } }
@@ -447,9 +418,6 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 @keyframes bx-low { 0%, 100% { r: 7; opacity: 1; } 50% { r: 11; opacity: 0.55; } }
 .steps-ui .bar i { transform-origin: left center; }
 .is-live #renewal-x, .is-live .steps-ui .bar i { will-change: transform; }
-#renewal.is-live .card:nth-of-type(1) .steps-ui .bar i { animation: bx-fill 4s var(--e-out) infinite; }
-#renewal.is-live .card:nth-of-type(2) .steps-ui .bar i { animation: bx-drain 4s linear infinite; }
-#renewal.is-live .card:nth-of-type(3) .steps-ui .bar i { animation: bx-fall 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 .steps-ui .chip::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
 #renewal.is-live .steps-ui .chip::before { animation: bx-ping 1.6s ease-out infinite; }
 #lend.is-live .card:nth-of-type(1) .tranche__layer span.is-on { animation: bx-layer 3s ease-in-out infinite; }
@@ -459,13 +427,91 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 #lend.is-live .tranche__layer span.is-loss { animation: bx-sweep 2.8s linear infinite; }
 #dip .chart .bx-dot { fill: var(--acc); filter: drop-shadow(0 0 6px rgb(var(--acc-rgb) / 0.9)); }
 #dip .chart .bx-dot.is-low { fill: #f87171; filter: drop-shadow(0 0 8px rgb(248 113 113 / 0.9)); }
-#dip.is-live .chart .low { animation: bx-low 2s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .is-live * { animation: none !important; }
   .bx::before, .bx::after { display: none; }
   #dip .chart .bx-dot { display: none; }
 }
+</style>
+<style>
+/* ================= Dip as a narrated figure; renewal as a forked timeline ================= */
+/* ---- Dip: heading and the two outcomes on the left, the chart on the right ---- */
+.dip { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 24px; align-items: stretch; }
+.dip__side { display: flex; flex-direction: column; gap: 24px; justify-content: center; }
+.dip__side .section-head { margin: 0; }
+#dip .lanes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; }
+#dip .lane, #dip .lane:first-child, #dip .lane:last-child { border-radius: 14px; border: 1px solid var(--hair); background: var(--z-900); transition: border-color 300ms var(--e-out), background-color 300ms var(--e-out), box-shadow 300ms var(--e-out); }
+#dip .chart { border-radius: 16px; border: 1px solid var(--hair); padding: 28px 24px 20px; display: flex; flex-direction: column; justify-content: center; }
+#dip .chart svg { overflow: visible; }
+#dip .chart text { font-family: var(--font-mono); font-size: 20px; }
+#dip .chart .liq-t, #dip .chart .low-t { fill: #fca5a5; }
+#dip .chart .read { stroke: var(--acc); stroke-width: 2; stroke-dasharray: 2 8; stroke-linecap: round; opacity: 0.55; }
+#dip .chart .read-t { fill: var(--acc); font-weight: 500; }
+#dip .chart .read-s { fill: #a1a1aa; }
+#dip .chart .px { stroke-width: 3; }
+/* the story states, set by bento.js while the loop runs */
+#dip .dip.is-playing .chart .low, #dip .dip.is-playing .chart .low-t { opacity: 0; transition: opacity 200ms; }
+#dip .dip.hit-low .chart .low, #dip .dip.hit-low .chart .low-t { opacity: 1; }
+#dip .dip.hit-low .lane--liq { border-color: rgb(248 113 113 / 0.55); background: linear-gradient(90deg, rgb(248 113 113 / 0.12), transparent 80%), var(--z-900); box-shadow: 0 16px 40px -24px rgb(248 113 113 / 0.5); }
+#dip .dip.hit-end .lane--ank { border-color: rgb(var(--acc-rgb) / 0.55); background: linear-gradient(90deg, rgb(var(--acc-rgb) / 0.12), transparent 80%), var(--z-900); box-shadow: 0 16px 40px -24px rgb(var(--acc-rgb) / 0.5); }
+#dip .dip.hit-end .chart .read--b { opacity: 1; stroke-dasharray: none; }
+@media (max-width: 1023px) { .dip { display: flex; flex-direction: column; gap: 16px; } .dip__side { display: contents; } .dip__side .section-head { order: 0; margin-bottom: 8px; } #dip .chart { order: 1; padding: 20px 16px 16px; } #dip .lanes { order: 2; } }
+
+/* ---- Renewal: one price read, then a fork: renew, or notice -> grace -> auction ---- */
+.rn { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--gutter); margin: 0 0 20px; }
+.rn__a { grid-column: 1; } .rn__b { grid-column: 2 / span 2; }
+.rn__labs { position: relative; height: 22px; margin-bottom: 10px; font: 400 13px/22px var(--font-mono); color: #a1a1aa; }
+.rn__labs span { position: absolute; left: 0; top: 0; white-space: nowrap; }
+.rn__labs b { color: #fafafa; font-weight: 500; margin-right: 4px; }
+.rn__rail { position: relative; height: 4px; border-radius: 4px; background: var(--z-800); }
+.rn__rail i { position: absolute; inset: 0; border-radius: inherit; transform-origin: left center; transform: scaleX(var(--p, 1)); }
+.rn__a .rn__rail i { background: var(--ok); box-shadow: 0 0 12px rgb(74 222 128 / 0.5); }
+.rn__b .rn__rail i { background: linear-gradient(90deg, var(--warn) 0 50%, #fb923c 50% 83.33%, #f87171 83.33%); box-shadow: 0 0 12px rgb(253 186 116 / 0.35); }
+.rn__rail em { position: absolute; top: -4px; width: 2px; height: 12px; margin-left: -1px; border-radius: 2px; background: #3f3f46; }
+.rn__or { position: absolute; top: 24px; left: calc((100% - 2 * var(--gutter)) / 3 + var(--gutter) / 2); transform: translate(-50%, -50%); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--hair-2); background: var(--z-950); font: 500 12px/16px var(--font-mono); color: #a1a1aa; }
+#renewal .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--gutter); }
+#renewal .grid > .card { grid-column: auto; }
+#renewal .card > .panel { --p-h: 200px; }
+#renewal .card { transition: border-color 300ms var(--e-out), box-shadow 300ms var(--e-out), transform 300ms var(--e-out); }
+#renewal .card.is-on:nth-of-type(1) { border-color: rgb(74 222 128 / 0.5); box-shadow: 0 24px 48px -28px rgb(74 222 128 / 0.45); }
+#renewal .card.is-on:nth-of-type(2) { border-color: rgb(253 186 116 / 0.5); box-shadow: 0 24px 48px -28px rgb(253 186 116 / 0.4); }
+#renewal .card.is-on:nth-of-type(3) { border-color: rgb(248 113 113 / 0.5); box-shadow: 0 24px 48px -28px rgb(248 113 113 / 0.4); }
+#renewal .steps-ui .bar i { transform: scaleX(var(--b, 1)); }
+@media (max-width: 1023px) { .rn { display: none; } #renewal .grid { grid-template-columns: minmax(0, 1fr); row-gap: 16px; } }
+</style>
+<style>
+/* ================= Questions: a read-first accordion ================= */
+@media (min-width: 1024px) {
+  #questions > .wrap { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); column-gap: 64px; align-content: center; align-items: start; }
+  #questions .section-head { position: sticky; top: calc(var(--nav) + 32px); margin: 0; }
+}
+#questions .faq { display: block; border-top: 1px solid var(--hair-2); }
+#questions .faq > .faq__item { display: block; padding: 0; margin: 0; border: 0; border-bottom: 1px solid var(--hair-2); border-radius: 0; background: none; box-shadow: none; }
+#questions .faq__item > h3 { margin: 0; font: inherit; }
+.faq__q { -webkit-appearance: none; appearance: none; background: none; border: 0; border-radius: 0; box-shadow: none; min-height: 0; position: relative; display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 4px; text-align: left;
+  font: 500 19px/1.35 var(--font-text); letter-spacing: -0.015em; color: #e4e4e7; cursor: pointer; transition: color 200ms var(--e-out); }
+.faq__q:hover, .faq__item.is-open .faq__q { color: #fafafa; }
+.faq__q:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; border-radius: 8px; }
+.faq__icon { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hair-2); transition: border-color 200ms var(--e-out), background-color 200ms var(--e-out), transform 300ms var(--e-out); }
+.faq__icon::before, .faq__icon::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 1.5px; margin: -0.75px 0 0 -5px; border-radius: 2px; background: currentColor; transition: transform 300ms var(--e-out); }
+.faq__icon::after { transform: rotate(90deg); }
+.faq__q:hover .faq__icon { border-color: rgb(255 255 255 / 0.3); }
+.faq__item.is-open .faq__icon { border-color: rgb(var(--acc-rgb) / 0.5); background: rgb(var(--acc-rgb) / 0.1); color: var(--acc); transform: rotate(180deg); }
+.faq__item.is-open .faq__icon::after { transform: rotate(0deg); }
+.faq__a { display: grid; grid-template-rows: 1fr; }
+.faq.is-ready .faq__a { transition: grid-template-rows 320ms var(--e-out); }
+.faq__a > div { overflow: hidden; min-height: 0; }
+.faq__a p { margin: 0; padding: 0 64px 24px 4px; max-width: 60ch; color: #c4c4cc; font-size: 16px; line-height: 1.65; }
+.faq.is-ready .faq__a p { transition: opacity 240ms var(--e-out), transform 320ms var(--e-out); }
+.faq.is-js .faq__item:not(.is-open) .faq__a { grid-template-rows: 0fr; }
+.faq.is-js .faq__item:not(.is-open) .faq__a p { opacity: 0; transform: translateY(-6px); }
+/* the open row carries a thin teal marker at its left edge */
+.faq__item { position: relative; }
+.faq__item::before { content: ""; position: absolute; left: -16px; top: 22px; bottom: 22px; width: 2px; border-radius: 2px; background: var(--acc); opacity: 0; transform: scaleY(0.4); transition: opacity 240ms var(--e-out), transform 320ms var(--e-out); }
+.faq__item.is-open::before { opacity: 1; transform: scaleY(1); }
+@media (max-width: 639px) { .faq__q { font-size: 17px; padding: 18px 0; } .faq__a p { padding: 0 0 20px; } .faq__item::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .faq__a, .faq__a p, .faq__icon, .faq__icon::before, .faq__icon::after, .faq__item::before { transition: none; } }
 </style>
 </head>
 <body>
@@ -591,20 +637,32 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 
   <section class="section ground-inverse" id="dip" data-moment="iris-opens" data-moment-opts='{"from": "base"}' aria-labelledby="dip-h">
     <div class="wrap">
-      <div class="section-head"><h2 id="dip-h">A one-day dip during a loan term</h2></div>
-      <div class="chart" role="img" aria-label="A NEAR price path dips through a dashed liquidation line for one day and recovers above it">
-        <svg viewBox="0 0 1200 380" aria-hidden="true">
-          <line class="liq" x1="0" y1="210" x2="1200" y2="210"/>
-          <text x="8" y="200" fill="#ff8a8a">Liquidation line</text>
-          <path class="px" d="M0 120 C 80 96 140 104 210 112 S 330 140 400 118 S 520 70 600 96 S 690 126 720 132 L 742 262 L 764 150 C 820 112 900 96 980 84 S 1120 64 1200 52"/>
-          <circle class="low" cx="742" cy="262" r="7"/>
-          <text x="760" y="286" fill="#ff8a8a">One day below the line</text>
-        </svg>
-        <p class="chart__key" aria-hidden="true">Dashed: the liquidation line. Red dot: one day below it.</p>
-      </div>
-      <div class="lanes">
-        <div class="lane"><i style="background:#ff6b6b"></i><div><b>Liquidation-line lender</b><span>Sells your collateral at the low, at a discount.</span></div></div>
-        <div class="lane"><i style="background:var(--p-accent)"></i><div><b>Ankora</b><span>Reads no price until renewal. 60–68% of backtested liquidations came on a day like this.<sup>1</sup></span></div></div>
+      <div class="dip">
+        <div class="dip__side">
+          <div class="section-head"><h2 id="dip-h">A one-day dip during a loan term</h2></div>
+          <div class="lanes">
+            <div class="lane lane--liq"><i style="background:#ff6b6b"></i><div><b>Liquidation-line lender</b><span>Sells your collateral at the low, at a discount.</span></div></div>
+            <div class="lane lane--ank"><i style="background:var(--p-accent)"></i><div><b>Ankora</b><span>Reads no price until renewal. 60–68% of backtested liquidations came on a day like this.<sup>1</sup></span></div></div>
+          </div>
+        </div>
+        <div class="chart" role="img" aria-label="A NEAR price path dips through a dashed liquidation line for one day and recovers above it; Ankora reads the price only when the term starts and at renewal">
+          <svg viewBox="0 0 1200 470" aria-hidden="true">
+            <g class="reads">
+              <line class="read read--a" x1="2" y1="16" x2="2" y2="440"/>
+              <line class="read read--b" x1="1198" y1="16" x2="1198" y2="440"/>
+              <text class="read-t" x="18" y="30">Price read</text>
+              <text class="read-t" x="1182" y="30" text-anchor="end">Price read</text>
+              <text class="read-s" x="18" y="464">Term starts</text>
+              <text class="read-s" x="1182" y="464" text-anchor="end">Renewal</text>
+            </g>
+            <line class="liq" x1="0" y1="322" x2="1200" y2="322"/>
+            <text class="liq-t" x="18" y="310">Liquidation line</text>
+            <path class="px" d="M 0 164 C 80 122 140 136 210 150 S 330 199 400 160 S 520 76 600 122 S 690 174 720 185 L 742 412 L 764 216 C 820 150 900 122 980 101 S 1120 66 1200 45"/>
+            <circle class="low" cx="742" cy="412" r="7"/>
+            <text class="low-t" x="762" y="440">One day below the line</text>
+          </svg>
+          <p class="chart__key" aria-hidden="true">Dashed: the liquidation line. Red dot: one day below it.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -612,6 +670,11 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
   <section class="section" id="renewal" aria-labelledby="renewal-h">
     <div class="wrap">
       <div class="section-head"><h2 id="renewal-h">At renewal, one of 3 things happens</h2></div>
+      <div class="rn" aria-hidden="true">
+        <div class="rn__a"><div class="rn__labs"><span><b>≤ 50% LTV</b> renews</span></div><div class="rn__rail"><i></i></div></div>
+        <span class="rn__or">or</span>
+        <div class="rn__b"><div class="rn__labs"><span><b>72 h</b> notice</span><span style="left:50%"><b>48 h</b> grace</span><span style="left:83.33%"><b>24 h</b> auction</span></div><div class="rn__rail"><i></i><em style="left:50%"></em><em style="left:83.33%"></em></div></div>
+      </div>
       <div class="grid">
         <article class="card card--row card--open span-4">
           <span class="step-num">1</span>
@@ -639,11 +702,11 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
     <div class="wrap">
       <div class="section-head"><h2 id="questions-h">Questions before you borrow</h2></div>
       <div class="faq">
-        <div class="faq__item"><h3>What if NEAR falls during a loan term?</h3><p>Nothing happens until renewal. The price is read only when a term starts or renews.</p></div>
-        <div class="faq__item"><h3>Does the loan vault keep my validator?</h3><p>Yes. Your loan's vault stakes with any validator on the lockup whitelist, yours included.</p></div>
-        <div class="faq__item"><h3>Where does the NEAR price come from?</h3><p>Pyth Pro prices via Rhea's aggregate oracle. On testnet a relay run by the team copies it into the pool.</p></div>
-        <div class="faq__item"><h3>What can a lender lose in Ankora?</h3><p>First-loss can lose everything in a crash. Fixed loses once First-loss is gone.</p></div>
-        <div class="faq__item"><h3>Has the Ankora contract been audited?</h3><p>No. This is a NEAR testnet build, and the pool contract can still be upgraded by its deployer.</p></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q1" aria-controls="faq-a1" aria-expanded="true">What if NEAR falls during a loan term?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a1" role="region" aria-labelledby="faq-q1"><div><p>Nothing happens until renewal. The price is read only when a term starts or renews.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q2" aria-controls="faq-a2" aria-expanded="true">Does the loan vault keep my validator?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a2" role="region" aria-labelledby="faq-q2"><div><p>Yes. Your loan's vault stakes with any validator on the lockup whitelist, yours included.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q3" aria-controls="faq-a3" aria-expanded="true">Where does the NEAR price come from?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a3" role="region" aria-labelledby="faq-q3"><div><p>Pyth Pro prices via Rhea's aggregate oracle. On testnet a relay run by the team copies it into the pool.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q4" aria-controls="faq-a4" aria-expanded="true">What can a lender lose in Ankora?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a4" role="region" aria-labelledby="faq-q4"><div><p>First-loss can lose everything in a crash. Fixed loses once First-loss is gone.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q5" aria-controls="faq-a5" aria-expanded="true">Has the Ankora contract been audited?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a5" role="region" aria-labelledby="faq-q5"><div><p>No. This is a NEAR testnet build, and the pool contract can still be upgraded by its deployer.</p></div></div></div>
       </div>
     </div>
   </section>
@@ -745,8 +808,8 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
     }).catch(() => {});
 })();
 </script>
-<script src="kinetic-grid.js" defer></script>
-<script src="bento.js" defer></script>
+<script src="kinetic-grid.js?v=4" defer></script>
+<script src="bento.js?v=6" defer></script>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>
