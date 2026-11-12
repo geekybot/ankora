@@ -27,3 +27,4 @@ dist/
 # Site build artefacts
 site/shots/
 site/.taste-skill/
+!.env.production

@@ -98,7 +98,7 @@ async function main() {
   let loans: LoanView[] = await pool.loans(0, 10);
   if (loans.length === 0) {
     await pushPrice();
-    const src = parsePythPrice(await near.view(RELAY, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }));
+    const src = parsePythPrice(await near.view(RELAY, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }, { finality: "optimistic" }));
     if (!src) throw new Error("relay price is stale right after the push");
     const price = { price: src.price, expo: src.expo };
     const principal = maxPrincipal(SMOKE_STAKE, price, 3000) * 9n / 10n;

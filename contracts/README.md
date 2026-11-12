@@ -42,6 +42,14 @@ Pyth is gone on NEAR. Pyth Core dropped NEAR in its 26 Aug 2026 upgrade: `pyth-o
 | Validators | Any `*.pool.f863973.m0` on the whitelist, for example `kiln.pool.f863973.m0` |
 | NEAR/USD id | `c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750` (the same id on `aggregate-oracle.near`) |
 
+## Live on NEAR testnet (deployed 2026-11-12)
+
+| Role | Account |
+|---|---|
+| Pool | `geekybot-ankora.testnet` |
+| Test USDC, price relay, pool owner | `geekybot-mocks.testnet` |
+| First loan's vault | `v0.geekybot-ankora.testnet`, 3.735 NEAR staked with `kiln.pool.f863973.m0` |
+
 ## Deploy (the founder creates the accounts; Claude never does)
 
 1. Create two testnet accounts with keys in `~/.near-credentials` (uses `cargo-near`; no near CLI needed):
