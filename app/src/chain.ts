@@ -31,7 +31,29 @@ export const QUOTE_MAX_GAP_BPS = 300;
 /** Quote below the plan cap so a small price move between quote and inclusion doesn't cancel the borrow. */
 export const QUOTE_CAP_SHARE_BPS = 9700n;
 
-const reader = new Near({ network: "testnet", rpcUrl: CFG.rpc });
+// Reads try the configured RPC first and fall back to NEAR's own RPC: one rate-limited provider must not take the app down.
+const RPCS = DEV_LOCAL ? [CFG.rpc] : [CFG.rpc, "https://rpc.testnet.near.org"];
+const readers = RPCS.map((rpcUrl) => new Near({ network: "testnet", rpcUrl }));
+let live = 0;
+async function firstOk<T>(f: (n: Near) => Promise<T>): Promise<T> {
+  let err: unknown;
+  for (let k = 0; k < readers.length; k++) {
+    const i = (live + k) % readers.length;
+    try { const v = await f(readers[i]!); live = i; return v; } catch (e) { err = e; if (/panicked|MethodNotFound|CodeDoesNotExist|does not exist|ExecutionError|UNKNOWN_ACCOUNT/i.test(String((e as Error)?.message ?? e))) throw e; }
+  }
+  throw err;
+}
+const reader = {
+  view: <T,>(c: string, m: string, a: object = {}, o?: object) => firstOk((n) => n.view<T>(c, m, a, o as never)),
+  getBalance: (id: string) => firstOk((n) => n.getBalance(id)),
+};
+/** A raw JSON-RPC call with the same fallback. */
+export const rpc = (body: object) => firstOk(async () => {
+  for (const u of RPCS.slice(live).concat(RPCS.slice(0, live))) {
+    try { const r = await fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); if (r.ok) return r.json(); } catch { /* next */ }
+  }
+  throw new Error("Failed to fetch");
+});
 export const pool = views(reader as never, CFG.pool, { usdc: CFG.usdc, relay: CFG.relay });
 export const act = actions({ pool: CFG.pool, usdc: CFG.usdc });
 export const vault = vaultActions;
@@ -86,7 +108,7 @@ export async function outcomesFromUrl(): Promise<Outcome[]> {
   if (!hashes || !account) return [];
   history.replaceState(null, "", location.pathname + location.hash);
   return Promise.all(hashes.split(",").map(async (h) => {
-    const r = await fetch(CFG.rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tx", params: { tx_hash: h, sender_account_id: account, wait_until: "EXECUTED_OPTIMISTIC" } }) }).then((x) => x.json());
+    const r = await rpc({ jsonrpc: "2.0", id: 1, method: "tx", params: { tx_hash: h, sender_account_id: account, wait_until: "EXECUTED_OPTIMISTIC" } });
     return r.result ? { ...readOutcome(r.result), hash: h } : { hash: h, ok: false, logs: [], failures: [], failure: String(r.error?.data ?? "Not found") };
   }));
 }
@@ -108,13 +130,17 @@ export const nearBalance = async (id: string): Promise<bigint> => {
 };
 export const usdcBalance = async (id: string): Promise<bigint> => BigInt((await pool.usdcBalance(id)) ?? "0");
 export const allLoans = (): Promise<LoanView[]> => pagedLoans(pool.loans);
+const owners = new Map<string, string>();
 export type MyVault = VaultInfo & { vault: string; loanId: number; transferable: bigint; stakedNow: bigint; unstaked: bigint; canWithdraw: boolean };
 /** Vaults the borrower got back after repaying: NEAR still staked until they unstake and withdraw. */
 export async function myVaults(loans: LoanView[], id: string): Promise<MyVault[]> {
   // A closed loan's vault belongs to its borrower after repay, or to the winning bidder after an auction.
   const closed = loans.filter((l) => l.state === "Closed");
   const out = await Promise.all(closed.map(async (l) => {
+    // A released vault's owner does not change, so ask once per vault and remember who owns it.
+    if (owners.has(l.vault) && owners.get(l.vault) !== id) return null;
     const info = await pool.vaultInfo(l.vault).catch(() => null);
+    if (info?.released) owners.set(l.vault, info.owner);
     if (!info?.released || info.owner !== id) return null;
     const b = await pool.vaultBalances(l.vault, info.validator).catch(() => null);
     if (!b) return null;
@@ -167,3 +193,32 @@ export async function keeperStatus(): Promise<{ ok: boolean; relayPriceAgeSecs: 
 
 /** Test USDC faucet: the mock token's open `mint`, capped at 1,000 per call. */
 export const faucet = (id: string, usdc: bigint): Action => ({ ...act.mint(id, usdc), receiverId: CFG.faucet });
+
+// ---------- validators a vault can stake with ----------
+export interface ValidatorRow { id: string; sharePct: number; feePct: number | null }
+const WHITELIST = DEV_LOCAL ? null : "whitelist.f863973.m0";
+let validatorCache: ValidatorRow[] | null = null;
+const VKEY = `ankora.validators.${CFG.pool}`;
+/** Current validators that are on the lockup whitelist, with their share of total stake and their reward fee.
+ *  Sorted by stake; the caller does not pre-select the largest. */
+export async function validators(): Promise<ValidatorRow[]> {
+  if (validatorCache) return validatorCache;
+  try { const c = JSON.parse(localStorage.getItem(VKEY) ?? "null"); if (c && Date.now() - c.at < 6 * 3600_000 && c.rows?.length) return (validatorCache = c.rows); } catch { /* ignore */ }
+  const r = await rpc({ jsonrpc: "2.0", id: 1, method: "validators", params: [null] });
+  const cur: { account_id: string; stake: string }[] = r?.result?.current_validators ?? [];
+  const total = cur.reduce((s, v) => s + Number(BigInt(v.stake) / 10n ** 18n), 0) || 1;
+  // The free RPC rate-limits bursts: check the 15 largest only, 3 calls at a time, and cache the answer for 6 hours.
+  const top = [...cur].sort((a, b) => (BigInt(b.stake) > BigInt(a.stake) ? 1 : -1)).slice(0, 15);
+  const one = async (v: { account_id: string; stake: string }): Promise<ValidatorRow | null> => {
+    const listed = WHITELIST ? await reader.view<boolean>(WHITELIST, "is_whitelisted", { staking_pool_account_id: v.account_id }).catch(() => false) : true;
+    if (!listed) return null;
+    const fee = await reader.view<{ numerator: number; denominator: number }>(v.account_id, "get_reward_fee_fraction", {}).catch(() => null);
+    return { id: v.account_id, sharePct: Number(BigInt(v.stake) / 10n ** 18n) / total * 100, feePct: fee && fee.denominator ? fee.numerator / fee.denominator * 100 : null };
+  };
+  const rows: (ValidatorRow | null)[] = [];
+  for (let i = 0; i < top.length; i += 3) rows.push(...await Promise.all(top.slice(i, i + 3).map(one)));
+  validatorCache = rows.filter((x): x is ValidatorRow => !!x).sort((a, b) => b.sharePct - a.sharePct);
+  if (validatorCache.length) { try { localStorage.setItem(VKEY, JSON.stringify({ at: Date.now(), rows: validatorCache })); } catch { /* private mode */ } }
+  else validatorCache = null;
+  return validatorCache ?? [];
+}

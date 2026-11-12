@@ -23,6 +23,11 @@ const left = (secs: number) => { const d = secs - C.nowSecs(); if (d <= 0) retur
 const planLabel = (p: string) => `${p.slice(1)}% plan`;
 const VAULT_EXTRA = 24n * YOCTO / 100n; // 1.5 NEAR reserve minus ~1.26 NEAR of vault storage, measured on the local sandbox
 const GAS_SPARE = YOCTO / 10n;
+const RESERVE = 3n * YOCTO / 2n;              // held back for the loan's vault account (contract VAULT_RESERVE)
+const MIN_STAKE = 7n * YOCTO / 2n;            // the contract needs at least 5 NEAR attached: 3.5 staked + 1.5 reserve
+/** The most this wallet can stake: balance minus the vault reserve and some gas. */
+const maxStake = () => { const m = S.nearBal - RESERVE - GAS_SPARE * 2n; return m > 0n ? m : 0n; };
+const nearIn = (y: bigint) => (Number(y / 10n ** 20n) / 1e4).toFixed(2);
 const ASSET = `${import.meta.env.BASE_URL}assets/`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
@@ -30,7 +35,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  tab: "borrow" as "borrow" | "lend" | "auctions", details: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  tab: "borrow" as "borrow" | "lend" | "auctions", details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -179,6 +184,24 @@ const toasts = (() => {
 /** Small, passing confirmations (demo controls). */
 const toast = (m: string) => toasts.push({ kind: "info", title: m });
 
+// ---------- lending APRs: Fixed is set by the contract; First-loss earns what is left ----------
+const SENIOR_APR = 0.065, FEE = 0.05;
+/** First-loss APR estimate: (pool interest after Ankora's 5% − Fixed's 6.5% on the Fixed share) ÷ the First-loss share.
+ *  Uses live utilisation and the debt-weighted rate of open loans (the plans' average when none are open). No defaults assumed. */
+function aprModel() {
+  const L = S.ledger; if (!L) return null;
+  const sen = Number(BigInt(L.senior_value)), jun = Number(BigInt(L.junior_value)), tot = sen + jun;
+  if (!tot || !jun) return null;
+  const open = S.all.filter((l) => l.state === "Active" || l.state === "Notice" || l.state === "Grace");
+  const rate = (p: string) => (S.plans.find((x) => x.plan === p)?.rate_bps ?? 1000) / 1e4;
+  const debt = open.reduce((s, l) => s + Number(BigInt(l.debt)), 0);
+  const avg = debt ? open.reduce((s, l) => s + Number(BigInt(l.debt)) * rate(l.plan), 0) / debt : (S.plans.reduce((s, x) => s + x.rate_bps, 0) / Math.max(1, S.plans.length)) / 1e4;
+  const sShare = sen / tot, jShare = jun / tot;
+  const at = (u: number) => (u * avg * (1 - FEE) - sShare * SENIOR_APR) / jShare * 100;
+  return { now: at(L.utilisation_bps / 1e4), at80: at(0.8), breakeven: Math.min(100, sShare * SENIOR_APR / (avg * (1 - FEE)) * 100) };
+}
+const pct = (x: number) => `${x < 0 ? "−" : ""}${Math.abs(x).toFixed(1)}%`;
+
 // ---------- one page: pool stats, the action card (Borrow · Lend · Auctions), your account ----------
 type Tab = "borrow" | "lend" | "auctions";
 const TABS: [Tab, string][] = [["borrow", "Borrow"], ["lend", "Lend"], ["auctions", "Auctions"]];
@@ -219,6 +242,17 @@ function quoteNow() {
   return { plan, stake, principal, q: quoteBorrow({ stakeYocto: stake, principal, plan: S.plan, price: { price: p.priceRaw, expo: p.expo! }, menu }) };
 }
 
+function validatorPicker() {
+  const cur = S.vals.find((v) => v.id === S.validator);
+  const meta = (v?: C.ValidatorRow) => v ? `<span class="num">${v.sharePct.toFixed(1)}% of stake</span>${v.feePct !== null ? `<span class="num ${v.feePct > 20 ? "fee-hi" : ""}">${v.feePct.toFixed(0)}% fee</span>` : ""}` : `<span>Custom</span>`;
+  const list = S.valOpen ? `<div class="vp-pop" role="listbox" id="vp-list" aria-label="Validators">
+      ${S.vals.length ? S.vals.map((v, i) => `<button class="vp-opt ${i === S.valActive ? "is-active" : ""}" role="option" id="vp-${i}" aria-selected="${v.id === S.validator}" data-act="val-pick" data-v="${esc(v.id)}"><b>${esc(v.id.replace(/\.pool\..*$/, ""))}</b><small class="num">${esc(v.id)}</small>${meta(v)}</button>`).join("") : `<p class="vp-wait">Loading validators…</p>`}
+      <div class="vp-own"><input id="val" class="val num" value="${S.vals.some((v) => v.id === S.validator) ? "" : esc(S.validator)}" placeholder="Or type a whitelisted pool account" autocomplete="off" spellcheck="false" aria-label="Validator account"></div>
+    </div>` : "";
+  return `<div class="vp"><span class="vp-k">Stake with</span>
+    <button class="vp-btn" data-act="val-open" aria-haspopup="listbox" aria-expanded="${S.valOpen}" ${S.valOpen ? `aria-controls="vp-list"` : ""}><b>${esc(S.validator.replace(/\.pool\..*$/, ""))}</b>${meta(cur)}${ICON.chev}</button>${list}</div>`;
+}
+
 function borrowPanel() {
   const p = S.price, Q = quoteNow(), q = Q?.q, plan = Q?.plan;
   const days = plan ? Math.round(plan.term_secs / 86400) : 0;
@@ -227,14 +261,17 @@ function borrowPanel() {
   const button = !C.account ? connectBtn()
     : !p ? btn("Reading the price…", "noop", false)
     : !p.fresh ? btn("Refresh the price", "refresh", true)
+    : maxStake() < MIN_STAKE ? btn(`Needs 5.1 NEAR · you have ${near(S.nearBal)}`, "noop", false)
     : amt <= 0n ? btn("Enter an amount", "noop", false)
-    : !q?.ok ? btn(q?.reason ?? "Can't quote this", "noop", false)
-    : S.nearBal < q.attachedYocto + GAS_SPARE ? btn("Not enough NEAR", "noop", false)
+    : amt < MIN_STAKE ? btn("Stake at least 3.5 NEAR", "noop", false)
+    : amt > maxStake() ? btn(`Stake at most ${nearIn(maxStake())} NEAR`, "noop", false)
+    : !q?.ok ? btn(q?.reason === "LTV above plan cap" ? "Price moved: refresh" : q?.reason ?? "Can't quote this", "noop", false)
     : btn(`Borrow ${usdc(q.payout)} USDC`, "borrow", true);
   return `
     <div class="box">
       <div class="box-top"><label for="stake">You stake</label>${C.account ? `<button class="bal" data-act="stake-max">Balance <span class="num">${near(S.nearBal)}</span> · Max</button>` : ""}</div>
       <div class="box-in">${ICON.near()}<input id="stake" class="input num" inputmode="decimal" value="${esc(S.stake)}" autocomplete="off" placeholder="0"><span class="unit">NEAR</span></div>
+      ${validatorPicker()}
     </div>
     <div class="plans" role="radiogroup" aria-label="Plan">
       ${S.plans.map((x) => `<button class="plan" role="radio" aria-checked="${x.plan === S.plan}" data-act="plan" data-v="${x.plan}"><b class="num">${x.plan.slice(1)}%</b><span>${Math.round(x.term_secs / 86400)} days</span><small class="num">${(x.rate_bps / 100).toFixed(1)}% APR</small></button>`).join("")}
@@ -250,21 +287,23 @@ function borrowPanel() {
       <div><dt>To close the loan</dt><dd class="num">${usdc(q.payout + q.termInterest)} USDC</dd></div>
     </dl>` : ""}
     ${button}
-    <p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>
+    ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan sends at least 5 NEAR: 3.5 to stake, 1.5 for your vault account. Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>, or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
+      : `<p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>`}
     <details class="more" ${S.details ? "open" : ""} data-details><summary>Details ${ICON.chev}</summary>
       <dl class="terms sm">
         ${q?.ok ? `<div><dt>NEAR sent</dt><dd class="num">${near(q.attachedYocto)} NEAR</dd></div><div><dt>Staked as collateral</dt><dd class="num">≈ ${near(Q!.stake + VAULT_EXTRA, 1)} NEAR</dd></div><div><dt>Vault storage</dt><dd>Rest of the 1.5 NEAR reserve</dd></div>` : ""}
-        <div><dt>Validator</dt><dd><input id="val" class="val num" value="${esc(S.validator)}" autocomplete="off" spellcheck="false" aria-label="Validator account"></dd></div>
         <div><dt>Above 50% LTV at renewal</dt><dd>72 h notice, 48 h grace, then a 24 h auction</dd></div>
       </dl>
-      ${C.account && q?.ok && S.nearBal < q.attachedYocto + GAS_SPARE ? `<p class="fine">Need testnet NEAR? <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a></p>` : ""}
     </details>`;
 }
 
 function lendPanel() {
   const jr = S.tranche === "junior";
   const amt = safe(() => toUsdc(S.lendAmt || "0"), 0n);
-  const risk = jr ? "Takes losses first and earns what's left. Can lose everything. Locked 36 days." : "Paid first. Loses money only after every First-loss deposit is gone.";
+  const m = aprModel();
+  const risk = jr
+    ? `Earns the pool's interest above Fixed's 6.5%: more as more is lent${m ? `, below zero under ${m.breakeven.toFixed(0)}% lent` : ""}. Takes losses first and can lose everything. Locked 36 days.`
+    : "Fixed rate, paid before First-loss. Loses money only after every First-loss deposit is gone.";
   const ack = jr ? "I can lose my whole First-loss deposit" : "Fixed can lose money in a fast crash";
   const button = !C.account ? connectBtn()
     : amt === 0n ? btn("Enter an amount", "noop", false)
@@ -274,8 +313,8 @@ function lendPanel() {
     : btn(`Deposit ${usdc(amt)} USDC`, "deposit", true);
   return `
     <div class="layers" role="radiogroup" aria-label="Layer">
-      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><b>Fixed</b><span class="num">6.5% APR</span></button>
-      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><b>First-loss</b><span>Variable</span></button>
+      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b><span class="layer-s">APR, paid first</span></button>
+      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "neg" : "pos"}">${m ? pct(m.now) : "–"}</b><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
     </div>
     <p class="risk ${jr ? "is-warn" : ""}">${risk}</p>
     <div class="box">
@@ -346,8 +385,20 @@ function vaultItem(v: C.MyVault) {
     <div class="steps-bar" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i < step.n ? "done" : i === step.n ? "on" : ""}"></i>`).join("")}</div>
     <div class="acct-main"><b class="num">${step.t}</b><span>${step.s}</span></div>${step.b ? `<div class="acct-acts">${step.b}</div>` : ""}</li>`;
 }
+/** The pool at a glance: real numbers whether or not a wallet is connected. */
+function poolNow() {
+  const L = S.ledger; if (!L) return "";
+  const m = aprModel(), open = S.all.filter((l) => l.state === "Active" || l.state === "Notice" || l.state === "Grace").length, auc = auctions().length;
+  const row = (k: string, v: string, sub = "") => `<div><dt>${k}</dt><dd><span class="num">${v}</span>${sub ? `<small class="num">${sub}</small>` : ""}</dd></div>`;
+  return `<section class="acct-sec"><h3 class="h3">The pool right now</h3><dl class="pool-dl">
+    ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, "6.5% APR, paid first")}
+    ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `${pct(m.now)} est. APR now · ${pct(m.at80)} at 80% lent` : "")}
+    ${row("Open loans", String(open), `${usdc(L.outstanding, 0)} USDC lent`)}
+    ${row("At auction", String(auc), auc ? `<button class="inline-link" data-act="tab" data-v="auctions">See auctions</button>` : "")}
+  </dl></section>`;
+}
 function account() {
-  if (!C.account) return `<div class="acct-empty"><b>Your loans and deposits show here</b><span>Connect a NEAR testnet wallet to borrow or lend.</span>${connectBtn()}</div>`;
+  if (!C.account) return `${poolNow()}<div class="acct-empty"><b>Borrow or lend from your wallet</b><span>Connect a NEAR testnet wallet. Your loans, vaults and deposits appear here.</span>${connectBtn()}</div>`;
   const L = S.ledger, share = (v: string, sh: string) => (BigInt(sh) > 0n ? Number(BigInt(v)) / Number(BigInt(sh)) : 1);
   const sen = S.lender && L ? Number(BigInt(S.lender.senior_shares)) * share(L.senior_value, L.senior_shares) : 0;
   const jun = S.lender && L ? Number(BigInt(S.lender.junior_shares)) * share(L.junior_value, L.junior_shares) : 0;
@@ -362,7 +413,7 @@ function account() {
   const nothing = !loans && !vaults && !deps && !claim;
   return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div><button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button></div>
     ${sec("Claim", claim)}${sec("Loans", loans)}${sec("Vaults", vaults)}${sec("Deposits", deps)}
-    ${nothing ? `<div class="acct-empty sm"><span>No loans or deposits yet. Use the card to start one.</span></div>` : ""}${demoPanel()}`;
+    ${nothing ? `<div class="acct-empty sm"><span>No loans or deposits yet. Use the card to start one.</span></div>` : ""}${poolNow()}${demoPanel()}`;
 }
 
 let keeper: Awaited<ReturnType<typeof C.keeperStatus>> = null;
@@ -437,7 +488,9 @@ document.addEventListener("click", async (e) => {
     S.busy = false; await load(); return;
   }
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
-  if (a === "stake-max") { const m = S.nearBal - VAULT_EXTRA - GAS_SPARE * 3n; S.stake = m > 0n ? (Number(m / 10n ** 20n) / 1e4).toFixed(2) : "0"; return render(); }
+  if (a === "val-open") { S.valOpen = !S.valOpen; S.valActive = Math.max(0, S.vals.findIndex((v) => v.id === S.validator)); render(); if (S.valOpen) $<HTMLElement>(`#vp-${S.valActive}`)?.focus(); if (S.valOpen && !S.vals.length) loadValidators(); return; }
+  if (a === "val-pick") { S.validator = el.dataset.v!; S.valTouched = true; S.valOpen = false; render(); return $<HTMLElement>(".vp-btn")?.focus(); }
+  if (a === "stake-max") { S.stake = nearIn(maxStake()); return render(); }
   if (a === "refresh") { S.price = await C.readPrice().catch(() => S.price); return render(); }
   if (a === "tranche") { if (S.tranche !== el.dataset.v) S.ack = false; S.tranche = el.dataset.v as "senior" | "junior"; return render(); }
   if (a === "ack") { S.ack = !S.ack; return render(); }
@@ -483,14 +536,35 @@ document.addEventListener("input", (e) => {
   render();
   const n = $<HTMLInputElement>("#" + t.id); n?.focus(); if (pos !== null) n?.setSelectionRange(pos, pos);
 });
-document.addEventListener("change", (e) => { const t = e.target as HTMLInputElement; if (t.id === "val") { S.validator = t.value.trim(); render(); } });
+document.addEventListener("change", (e) => { const t = e.target as HTMLInputElement; if (t.id === "val" && t.value.trim()) { S.validator = t.value.trim(); S.valTouched = true; S.valOpen = false; render(); } });
+// validator list: arrow keys move, Enter picks, Escape closes; a click outside closes it
+document.addEventListener("keydown", (e) => {
+  if (!S.valOpen || (e.target as HTMLElement).id === "val") { if (S.valOpen && e.key === "Escape") { S.valOpen = false; render(); $<HTMLElement>(".vp-btn")?.focus(); } return; }
+  if (e.key === "Escape") { S.valOpen = false; render(); $<HTMLElement>(".vp-btn")?.focus(); e.preventDefault(); return; }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); S.valActive = Math.max(0, Math.min(S.vals.length - 1, S.valActive + (e.key === "ArrowDown" ? 1 : -1)));
+    render(); $<HTMLElement>(`#vp-${S.valActive}`)?.focus();
+  }
+});
+document.addEventListener("pointerdown", (e) => { if (S.valOpen && !(e.target as HTMLElement).closest(".vp")) { S.valOpen = false; render(); } });
+let valLoading = false;
+async function loadValidators() {
+  if (valLoading || S.vals.length) return; valLoading = true;
+  try {
+    S.vals = await C.validators();
+    // Default to the largest validator that charges 10% or less, unless the borrower already chose one.
+    const cur = S.vals.find((v) => v.id === S.validator);
+    if (!S.valTouched && (!cur || cur.feePct === null || cur.feePct > 10)) { const fair = S.vals.find((v) => v.feePct !== null && v.feePct <= 10); if (fair) S.validator = fair.id; }
+  } catch { /* the typed field still works */ }
+  valLoading = false; render();
+}
 addEventListener("hashchange", () => { S.tab = tabFromHash(); render(); });
 S.tab = tabFromHash();
 C.onWallet(load);
 if (C.KEEPER_URL) { const k = async () => { keeper = await C.keeperStatus(); softRender(); }; k(); setInterval(k, 30_000); }
 // Countdowns tick locally; chain state refreshes every 15 s (never mid-typing).
 setInterval(() => document.querySelectorAll<HTMLElement>("[data-deadline]").forEach((n) => (n.textContent = left(Number(n.dataset.deadline)))), 30_000);
-setInterval(() => { if (C.configured() && !S.busy) refresh(); }, C.DEV_LOCAL ? 8_000 : 15_000);
+setInterval(() => { if (C.configured() && !S.busy && !document.hidden) refresh(); }, C.DEV_LOCAL ? 8_000 : 20_000);
 let refreshing = false;
 async function refresh() {
   if (refreshing) return; refreshing = true;
