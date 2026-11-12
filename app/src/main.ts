@@ -317,7 +317,7 @@ function lendPanel() {
   return `
     <div class="layers" role="radiogroup" aria-label="Layer">
       <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-row"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b></span><span class="layer-s">APR · paid first</span></button>
-      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-row"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "neg" : "pos"}">${m ? pct(m.now) : "–"}</b></span><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
+      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-row"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "down" : "up"}">${m ? pct(m.now) : "–"}</b></span><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
     </div>
     <p class="risk ${jr ? "is-warn" : ""}">${risk}</p>
     <div class="box">
@@ -369,12 +369,12 @@ function loanItem(l: C.LoanView) {
   if (!paidDown && (l.state === "Notice" || l.state === "Grace") && pay > 0n) acts.push(repayBtn(l, pay, `Pay ${usdc(pay)}`, true));
   if (l.state !== "Defaulted") acts.push(repayBtn(l, debt, `Repay ${usdc(debt)}`, l.state === "Auction"));
   if (overdue && !paidDown) acts.push(`<button class="btn btn-2 sm" data-act="settle" data-id="${l.id}" ${S.busy ? "disabled" : ""}>Run price check</button>`);
-  return `<li class="acct-i tone-${st.tone}">
-    <div class="acct-top"><span class="num">Loan #${l.id} · ${l.plan.slice(1)}% plan</span><span class="badge st-${st.tone}">${st.label}</span></div>
-    ${l.state === "Defaulted" ? `<div class="acct-main"><b>No buyer</b><span>The auction ended without a bid. Ask the team about recovery.</span></div>`
-      : `<div class="acct-main"><b class="num">${usdc(debt)} <small>USDC owed</small></b><span>${line[l.state] ?? ""} ${l.deadline ? `<b class="num" data-deadline="${l.deadline}">${left(l.deadline)}</b>` : ""}</span></div>`}
-    <div class="acct-meta num">${near(coll)} NEAR staked · LTV ${ltv ? ltv.toFixed(1) + "%" : "–"} · <button class="inline-link" role="switch" aria-checked="${l.auto_renew}" data-act="autorenew" data-id="${l.id}" data-on="${!l.auto_renew}" ${S.busy ? "disabled" : ""}>Auto-renew ${l.auto_renew ? "on" : "off"}</button></div>
-    <div class="acct-acts">${acts.join("")}</div>
+  const next = l.state === "Defaulted" ? "Auction ended without a bid. Ask the team about recovery." : `${line[l.state] ?? ""} ${l.deadline ? `<b class="num" data-deadline="${l.deadline}">${left(l.deadline)}</b>` : ""}`;
+  return `<li class="row-i tone-${st.tone}">
+    <div class="row-a"><span class="row-n num">Loan #${l.id}</span><span class="badge st-${st.tone}">${st.label}</span></div>
+    <b class="row-v num">${l.state === "Defaulted" ? "No buyer" : `${usdc(debt)} <small>USDC owed</small>`}</b>
+    <div class="row-acts">${acts.join("")}</div>
+    <div class="row-sub">${next} · <span class="num">${near(coll)} NEAR · ${l.plan.slice(1)}% plan · LTV ${ltv ? ltv.toFixed(1) + "%" : "–"}</span> · <button class="inline-link" role="switch" aria-checked="${l.auto_renew}" data-act="autorenew" data-id="${l.id}" data-on="${!l.auto_renew}" ${S.busy ? "disabled" : ""}>Auto-renew ${l.auto_renew ? "on" : "off"}</button></div>
   </li>`;
 }
 function vaultItem(v: C.MyVault) {
@@ -384,9 +384,11 @@ function vaultItem(v: C.MyVault) {
     : v.unstaked > 0n && !v.canWithdraw ? { n: 2, t: `${near(v.unstaked)} NEAR unstaking`, s: "Ready in about 28 h from unstaking.", b: "" }
     : v.unstaked > 0n ? { n: 2, t: `${near(v.unstaked)} NEAR ready`, s: "Withdraw it into the vault.", b: b("v-withdraw", "Withdraw") }
     : { n: 3, t: `${near(v.transferable)} NEAR in the vault`, s: "Send it to your wallet.", b: b("v-transfer", "Send to wallet", String(v.transferable)) };
-  return `<li class="acct-i"><div class="acct-top"><span class="num">Vault · loan #${v.loanId}</span><span class="badge st-mute">Step ${step.n} of 3</span></div>
-    <div class="steps-bar" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i < step.n ? "done" : i === step.n ? "on" : ""}"></i>`).join("")}</div>
-    <div class="acct-main"><b class="num">${step.t}</b><span>${step.s}</span></div>${step.b ? `<div class="acct-acts">${step.b}</div>` : ""}</li>`;
+  return `<li class="row-i">
+    <div class="row-a"><span class="row-n num">Vault · loan #${v.loanId}</span><span class="mini-steps" aria-label="Step ${step.n} of 3">${[1, 2, 3].map((i) => `<i class="${i < step.n ? "done" : i === step.n ? "on" : ""}"></i>`).join("")}</span></div>
+    <b class="row-v num">${step.t}</b>
+    <div class="row-acts">${step.b}</div>
+    <div class="row-sub">Step ${step.n} of 3. ${step.s}</div></li>`;
 }
 /** The pool at a glance: real numbers whether or not a wallet is connected. */
 function poolNow() {
@@ -395,7 +397,7 @@ function poolNow() {
   const row = (k: string, v: string, end = "") => `<div><dt>${k}</dt><dd class="num">${v}</dd><dd class="end">${end}</dd></div>`;
   return `<section class="acct-sec"><h3 class="h3">Current pool</h3><dl class="pool-dl">
     ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, `<span class="num">6.5%</span> APR`)}
-    ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `<span class="num ${m.now < 0 ? "neg" : "pos"}">${pct(m.now)}</span> now` : "")}
+    ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `<span class="num ${m.now < 0 ? "down" : "up"}">${pct(m.now)}</span> now` : "")}
     ${row("Open loans", String(open), `<span class="num">${usdc(L.outstanding, 0)}</span> USDC lent`)}
     ${row("At auction", String(auc), auc ? `<button class="inline-link" data-act="tab" data-v="auctions">See auctions</button>` : "")}
   </dl></section>`;
@@ -409,13 +411,13 @@ function account() {
   const m = aprModel();
   const dep = (name: string, val: number, tr: string, sh: string, ok: boolean, lockedUntil = 0) => `<li class="dep">
     <span class="dep-n">${name}</span>
-    <span class="dep-apr num ${tr === "junior" && m && m.now < 0 ? "neg" : ""}">${tr === "junior" ? (m ? `${pct(m.now)} est.` : "Variable") : "6.5% APR"}</span>
+    <span class="dep-apr num ${tr === "junior" && m && m.now < 0 ? "down" : ""}">${tr === "junior" ? (m ? `${pct(m.now)} est.` : "Variable") : "6.5% APR"}</span>
     <b class="dep-v num">${usdc(BigInt(Math.floor(val)))} <small>USDC</small></b>
     ${ok ? `<button class="btn btn-2 sm" data-act="withdraw" data-t="${tr}" data-sh="${sh}" ${S.busy ? "disabled" : ""}>Withdraw</button>` : `<span class="dep-lock" title="First-loss is locked 36 days after your latest First-loss deposit">Locked to ${new Date(lockedUntil * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>`}
   </li>`;
   const loans = mine().map(loanItem).join(""), vaults = S.vaults.map(vaultItem).join("");
   const deps = (sen ? dep("Fixed", sen, "senior", S.lender!.senior_shares, true) : "") + (jun ? dep("First-loss", jun, "junior", S.lender!.junior_shares, !locked, S.lender!.junior_unlocks_at) : "");
-  const claim = S.claimable > 0n ? `<li class="acct-i tone-ok"><div class="acct-main"><b class="num">${usdc(S.claimable)} <small>USDC</small></b><span>Auction surplus, yours to claim</span></div><div class="acct-acts"><button class="btn btn-1 sm" data-act="claim" ${S.busy ? "disabled" : ""}>Claim</button></div></li>` : "";
+  const claim = S.claimable > 0n ? `<li class="row-i tone-ok"><div class="row-a"><span class="row-n">Auction surplus</span></div><b class="row-v num">${usdc(S.claimable)} <small>USDC</small></b><div class="row-acts"><button class="btn btn-1 sm" data-act="claim" ${S.busy ? "disabled" : ""}>Claim</button></div><div class="row-sub">Your vault sold above its debt; this part is yours.</div></li>` : "";
   const sec = (h: string, body: string) => body ? `<section class="acct-sec"><h3 class="h3">${h}</h3><ul>${body}</ul></section>` : "";
   const nothing = !loans && !vaults && !deps && !claim;
   return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div><button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button></div>
