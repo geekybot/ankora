@@ -26,8 +26,8 @@
 <link rel="stylesheet" href="assets/icons/icon.css">
 <style>
 :root {
-  /* Deep dark: zinc-950 ground, zinc-900 cards, one accent (Apricot; ?accent=teal swaps it for comparison) */
-  --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86;
+  /* Deep dark: zinc-950 ground, zinc-900 cards, one accent (teal; ?accent=apricot swaps it for comparison) */
+  --acc: #2dd4bf; --acc-ink: #042f2e; --acc-rgb: 45 212 191;
   --p-bg: #09090b; --p-surface: #18181b; --p-ink: #fafafa; --p-muted: #a1a1aa;
   --p-accent: var(--acc); --p-accent-ink: var(--acc-ink); --p-action: var(--acc); --p-action-ink: var(--acc-ink);
   --p-inv-bg: #09090b; --p-inv-surface: #18181b; --p-inv-ink: #fafafa; --p-inv-muted: #a1a1aa;
@@ -42,7 +42,7 @@
 </style>
 <link rel="stylesheet" href="assets/ui/base.css">
 <link rel="stylesheet" href="assets/diagrams/diagram.css">
-<script>if(/[?&]accent=teal\b/.test(location.search))document.documentElement.dataset.accent='teal';</script>
+<script>if(/[?&]accent=apricot\b/.test(location.search))document.documentElement.dataset.accent='apricot';</script>
 <script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
 <script src="assets/backgrounds/backgrounds.js"></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
@@ -157,7 +157,7 @@
 </style>
 <style>
 /* ================= Deep dark layer: ground, glow, bento, badges, motion ================= */
-html[data-accent="teal"] { --acc: #2dd4bf; --acc-ink: #042f2e; --acc-rgb: 45 212 191; }
+html[data-accent="apricot"] { --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86; }
 :root {
   color-scheme: dark;
   --z-950: #09090b; --z-900: #18181b; --z-850: #1f1f23; --z-800: #27272a;
@@ -242,7 +242,7 @@ h1, h2 { color: #fafafa; letter-spacing: -0.03em; }
 .calc__price { color: #a1a1aa; }
 .calc__price i { background: var(--ok); box-shadow: 0 0 0 3px rgb(74 222 128 / 0.18); }
 .calc__price.is-example i { background: #71717a; box-shadow: none; }
-@media (max-width: 639px) { .calc__out { border-top: 1px solid var(--hair); border-left: 0; } .calc__big b { font-size: clamp(28px, 8.5vw, 36px); } }
+@media (max-width: 639px) { .calc__out { border-top: 1px solid var(--hair); border-left: 0; } .calc__big { flex-wrap: wrap; row-gap: 4px; } .calc__big b { font-size: 28px; } }
 
 /* ---------- Cards: zinc-900, hairline, lift on hover ---------- */
 .bento-card, #renewal .card, #lend .card, .faq > .faq__item, #dip .lane, #dip .chart {
@@ -315,13 +315,87 @@ h1, h2 { color: #fafafa; letter-spacing: -0.03em; }
   .btn:hover, .btn:active, #renewal .card:hover, #lend .card:hover, .faq > .faq__item:hover, #dip .lane:hover { transform: none; }
 }
 </style>
+<style>
+/* ================= Layout and hierarchy pass ================= */
+/* Type tiers: 1 white headings, 2 zinc-300 reading text, 3 zinc-400 meta and fine print */
+:root { --tx-1: #fafafa; --tx-2: #d4d4d8; --tx-3: #a1a1aa; }
+h1 { font-size: clamp(44px, 5.2vw, 72px); line-height: 1.02; letter-spacing: -0.04em; }
+main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 1.06; letter-spacing: -0.035em; max-width: 20ch; }
+.hero .hero__lead { color: var(--tx-2); font-size: 18px; line-height: 1.6; max-width: 56ch; margin-inline: auto; }
+.t-lead, .section-head p { color: var(--tx-2); font-size: 18px; line-height: 1.6; }
+.card > h3, .faq__item > h3 { color: var(--tx-1); font-size: 19px; font-weight: 600; line-height: 1.3; letter-spacing: -0.015em; }
+.card > p, .faq__item p, #dip .lane span { color: var(--tx-3); font-size: 15px; line-height: 1.6; }
+.facts li { color: var(--tx-2); }
+.section-head { margin-bottom: 40px; display: grid; gap: 12px; }
+
+/* Every section's content sits in the middle of its screen, not clinging to the top */
+@media (min-width: 640px) {
+  main > section:not(.hero) > .wrap { display: flex; flex-direction: column; justify-content: center; }
+}
+
+/* Hero: headline, lead and buttons tighter so the whole calculator sits above the fold */
+.hero .hero__c { gap: 20px; }
+.hero .btn-row { margin-top: 8px; }
+.hero--centred .hero__window { margin-top: 40px; min-height: 0; flex: 0 0 auto; height: auto; }
+.hero--centred .hero__window > .ly-piece { position: relative; top: 0; left: auto; transform: none; margin-inline: auto; width: min(920px, 100%); }
+
+/* Statement: one sentence, centred, owns its screen */
+#statement > .wrap { align-items: center; text-align: center; }
+#statement .mo-wh__text { max-width: 22ch; margin-inline: auto; font-size: clamp(34px, 4.2vw, 60px); line-height: 1.12; }
+
+/* Cards lead with their picture: the state or rate first, then the words */
+#renewal .card, #lend .card { padding: 0; overflow: hidden; gap: 0; }
+#renewal .card > .panel, #lend .card > .panel { order: -1; margin: 0; border-radius: 0; border-bottom: 1px solid var(--hair);
+  background: radial-gradient(90% 120% at 50% 0%, rgb(var(--acc-rgb) / 0.06), transparent 70%), var(--z-950); }
+#renewal .card > :not(.panel), #lend .card > :not(.panel) { margin-inline: 24px; }
+#renewal .card > .step-num { margin-top: 20px; margin-bottom: 12px; }
+#renewal .card > h3, #lend .card > h3 { margin-top: 4px; }
+#lend .card > h3 { margin-top: 24px; }
+#renewal .card > p, #lend .card > p { margin-top: 8px; margin-bottom: 24px; }
+#renewal .panel { --p-h: 196px; }
+#lend .panel { --p-h: 248px; }
+@media (max-width: 639px) { #renewal .panel { --p-h: 230px; } #lend .panel { --p-h: 230px; } .steps-ui { left: 20px; right: 20px; } .tranche { inset: 20px; } #renewal .card > :not(.panel), #lend .card > :not(.panel) { margin-inline: 20px; } }
+.steps-ui { top: 50%; transform: translateY(-50%); left: 28px; right: 28px; }
+.tranche { inset: 24px 28px; padding: 18px 22px; gap: 14px; }
+.tranche__layer { gap: 5px; } .tranche__layer span { height: 10px; }
+.tranche__rate { font-size: clamp(30px, 2.8vw, 40px); }
+
+/* Questions bento: the core question is the tall card on the left, the other four in a 2 x 2 */
+@media (min-width: 1024px) {
+  .faq { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .faq > .faq__item:first-child { grid-column: 1; grid-row: 1 / span 2; align-content: end; padding: 32px;
+    background: radial-gradient(100% 80% at 0% 0%, rgb(var(--acc-rgb) / 0.10), transparent 60%), var(--z-900); border-color: rgb(var(--acc-rgb) / 0.22); }
+  .faq > .faq__item:first-child > h3 { font-size: 28px; line-height: 1.15; letter-spacing: -0.025em; max-width: 14ch; }
+  .faq > .faq__item:first-child p { font-size: 17px; color: var(--tx-2); max-width: 32ch; }
+}
+.faq > .faq__item { padding: 24px; gap: 10px; }
+
+/* Dip: chart and its legend read as one figure */
+#dip .chart { border-radius: 16px 16px 0 0; border-bottom: 0; padding: 32px 32px 24px; }
+#dip .lanes { margin-top: 0; gap: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#dip .lane { border-radius: 0; border-top: 1px solid var(--hair); }
+#dip .lane:first-child { border-radius: 0 0 0 16px; } #dip .lane:last-child { border-radius: 0 0 16px 0; border-left: 0; }
+#dip .lane:hover { transform: none; }
+#dip .lane:last-child { background: linear-gradient(90deg, rgb(var(--acc-rgb) / 0.07), transparent 70%), var(--z-900); }
+#dip .lane:last-child i { box-shadow: 0 0 0 4px rgb(var(--acc-rgb) / 0.18); }
+@media (max-width: 639px) { #dip .lanes { grid-template-columns: minmax(0, 1fr); } #dip .lane:first-child { border-radius: 0; } #dip .lane:last-child { border-radius: 0 0 16px 16px; border-left: 1px solid var(--hair); } }
+
+@media (max-width: 639px) { .hero--centred .hero__window { margin-top: 24px; } .hero .hero__lead { font-size: 16px; } .hero .hero__c { gap: 14px; } }
+.card > p, .faq__item p { color: #c4c4cc; }
+@media (min-width: 1024px) { .faq { grid-template-rows: repeat(2, minmax(220px, 1fr)); } #dip .chart { padding: 48px 40px 36px; } }
+/* Vault: text and diagram share one centre line */
+#vault .grid { align-items: start; }
+
+/* Close: the CTA is the focus; the big word recedes */
+.close__word { -webkit-text-stroke: 1px rgb(255 255 255 / 0.07); }
+</style>
 </head>
 <body>
 <canvas class="kg" data-kinetic-grid aria-hidden="true"></canvas>
 <!-- type: software (site-kind software): fixed-term USDC loans against staked NEAR; main action "Borrow USDC"
      deal: hero centred (dealt collage, a text|window split: the founder rejected split heroes, so the brief overrides the deal),
            nav nav-mega, close close-word, footer footer-dark, rhythm dark-band, buttons solid, mark dots,
-           palette: the client's own Sky #eff6ff 60 / Navy #162455 30 / Apricot #fda856 10 (start.mjs brand),
+           palette: the client's own founder brief 2026-11-12: zinc-950 #09090b ground, zinc-900 #18181b cards, teal #2dd4bf accent (Apricot via ?accent=apricot),
            type host (Host Grotesk + JetBrains Mono; plex dealt first, refused by impeccable as a training-data default),
            ground sky (dealt sand, clashes with the client's palette), effect grain-gradient (hero)
      moments: word-highlight (#statement, the USP in one sentence), iris-opens (#dip, the turn onto the navy band)

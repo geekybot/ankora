@@ -9,9 +9,9 @@
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const css = getComputedStyle(canvas);
-  const LINE = css.getPropertyValue('--kg-line').trim() || '#fda856';
+  const LINE = css.getPropertyValue('--kg-line').trim() || '#2dd4bf';
   const DOT = css.getPropertyValue('--kg-dot').trim() || '#fafafa';
-  const TRAIL = css.getPropertyValue('--kg-trail').trim() || '#fda856';
+  const TRAIL = css.getPropertyValue('--kg-trail').trim() || '#2dd4bf';
   const GAP = 36, R = 220, PULL = 1.4, BANDS = 6, TRAIL_MS = 260;
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches || !matchMedia('(hover: hover) and (pointer: fine)').matches;
 
