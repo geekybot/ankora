@@ -389,6 +389,84 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 /* Close: the CTA is the focus; the big word recedes */
 .close__word { -webkit-text-stroke: 1px rgb(255 255 255 / 0.07); }
 </style>
+<style>
+/* ================= Bento pass: narrower column, varied cells, spotlight, product loops ================= */
+:root { --container: 1160px; }
+
+/* ---- Cell types ---- */
+.bx { position: relative; isolation: isolate; }
+/* spotlight: a soft teal light and a lit border that follow the cursor (bento.js sets --mx/--my) */
+.bx::before, .bx::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 240ms var(--e-out); }
+.bx::before { z-index: 2; padding: 1px;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgb(var(--acc-rgb) / 0.75), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.bx::after { z-index: -1; background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgb(var(--acc-rgb) / 0.08), transparent 55%); }
+.bx:hover::before, .bx:hover::after { opacity: 1; }
+/* every cell carries a top highlight so it reads as a lit surface, not a flat box */
+.bx { background-image: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 40%); }
+
+/* ---- Vault: text cell + facts as a list cell + diagram cell ---- */
+#vault .facts { list-style: none; margin: 8px 0 0; padding: 4px 0; border: 1px solid var(--hair); border-radius: 14px; background: var(--z-900); }
+#vault .facts li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin: 0; border-top: 1px solid var(--hair); }
+#vault .facts li:first-child { border-top: 0; }
+#vault .facts li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 4px rgb(var(--acc-rgb) / 0.14); position: static; }
+#vault .frame { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05); }
+
+/* ---- Renewal bento: tall card left, two wide cards stacked right ---- */
+@media (min-width: 1024px) {
+  #renewal .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto; gap: 16px; }
+  #renewal .card:nth-of-type(1) { grid-column: 1 / span 5; grid-row: 1 / span 2; }
+  #renewal .card:nth-of-type(1) > .panel { --p-h: 300px; }
+  #renewal .card:nth-of-type(2), #renewal .card:nth-of-type(3) { grid-column: 6 / span 7; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-rows: auto auto 1fr; align-items: start; }
+  #renewal .card:nth-of-type(2) { grid-row: 1; } #renewal .card:nth-of-type(3) { grid-row: 2; }
+  #renewal .card:nth-of-type(n+2) > .panel { grid-column: 1; grid-row: 1 / span 3; height: 100%; min-height: 200px; border-bottom: 0; border-right: 1px solid var(--hair); }
+  #renewal .card:nth-of-type(n+2) > :not(.panel) { grid-column: 2; }
+  #renewal .card:nth-of-type(n+2) > .step-num { margin-top: 24px; }
+}
+
+/* ---- Lend bento: the heading is a text cell, then the two layers ---- */
+@media (min-width: 1024px) {
+  #lend > .wrap { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-content: center; }
+  #lend .section-head { grid-column: 1 / span 4; margin: 0; padding: 32px; border: 1px solid var(--hair); border-radius: 16px; align-content: end;
+    background: radial-gradient(120% 90% at 0% 100%, rgb(var(--acc-rgb) / 0.12), transparent 60%), var(--z-900); }
+  #lend .section-head h2 { font-size: clamp(30px, 2.8vw, 40px); }
+  #lend .grid { display: contents; }
+  #lend .card { grid-column: span 4; }
+}
+
+/* ---- Questions: keep tall + 2x2; give the tall cell a quiet pattern of its own ---- */
+.faq > .faq__item:first-child::marker { content: none; }
+
+/* ---- Product loops (bento.js adds .is-live while a section is on screen) ---- */
+@keyframes bx-fill { 0% { transform: scaleX(0); } 45%, 100% { transform: scaleX(1); } }
+@keyframes bx-drain { 0% { transform: scaleX(1); } 100% { transform: scaleX(0.82); } }
+@keyframes bx-fall { 0% { transform: scaleX(1); } 100% { transform: scaleX(0.9); } }
+@keyframes bx-ping { 0% { box-shadow: 0 0 0 0 currentColor; } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes bx-layer { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes bx-sweep { 0% { background-position: 200% 0; } 100% { background-position: -100% 0; } }
+@keyframes bx-low { 0%, 100% { r: 7; opacity: 1; } 50% { r: 11; opacity: 0.55; } }
+.steps-ui .bar i { transform-origin: left center; }
+.is-live #renewal-x, .is-live .steps-ui .bar i { will-change: transform; }
+#renewal.is-live .card:nth-of-type(1) .steps-ui .bar i { animation: bx-fill 4s var(--e-out) infinite; }
+#renewal.is-live .card:nth-of-type(2) .steps-ui .bar i { animation: bx-drain 4s linear infinite; }
+#renewal.is-live .card:nth-of-type(3) .steps-ui .bar i { animation: bx-fall 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.steps-ui .chip::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+#renewal.is-live .steps-ui .chip::before { animation: bx-ping 1.6s ease-out infinite; }
+#lend.is-live .card:nth-of-type(1) .tranche__layer span.is-on { animation: bx-layer 3s ease-in-out infinite; }
+#lend.is-live .card:nth-of-type(1) .tranche__layer span.is-on:nth-child(3) { animation-delay: 0.3s; }
+#lend.is-live .card:nth-of-type(1) .tranche__layer span.is-on:nth-child(4) { animation-delay: 0.6s; }
+.tranche__layer span.is-loss { background: linear-gradient(90deg, #f87171 0%, #fca5a5 45%, #f87171 60%) 0 0 / 200% 100%; }
+#lend.is-live .tranche__layer span.is-loss { animation: bx-sweep 2.8s linear infinite; }
+#dip .chart .bx-dot { fill: var(--acc); filter: drop-shadow(0 0 6px rgb(var(--acc-rgb) / 0.9)); }
+#dip .chart .bx-dot.is-low { fill: #f87171; filter: drop-shadow(0 0 8px rgb(248 113 113 / 0.9)); }
+#dip.is-live .chart .low { animation: bx-low 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-live * { animation: none !important; }
+  .bx::before, .bx::after { display: none; }
+  #dip .chart .bx-dot { display: none; }
+}
+</style>
 </head>
 <body>
 <canvas class="kg" data-kinetic-grid aria-hidden="true"></canvas>
@@ -668,6 +746,7 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 })();
 </script>
 <script src="kinetic-grid.js" defer></script>
+<script src="bento.js" defer></script>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>
