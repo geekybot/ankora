@@ -25,8 +25,8 @@ export const KEEPER_CONTROL = DEV_LOCAL ? env("VITE_KEEPER_URL") : undefined;
 /** False while the app still points at TESTNET_STUB (nothing deployed there). */
 export const configured = () => CFG.pool !== TESTNET_STUB.pool;
 
-/** App-side gate before asking the wallet: tighter than the pool's 60 s so the transaction lands in time. */
-export const QUOTE_MAX_AGE_SECS = 40;
+/** App-side gate before asking the wallet: tighter than the pool's 90 s so the transaction lands in time. */
+export const QUOTE_MAX_AGE_SECS = 75; // pool limit 90 s minus ~15 s for the wallet round trip and inclusion
 export const QUOTE_MAX_GAP_BPS = 300;
 /** Quote below the plan cap so a small price move between quote and inclusion doesn't cancel the borrow. */
 export const QUOTE_CAP_SHARE_BPS = 9700n;

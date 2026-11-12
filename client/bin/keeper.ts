@@ -14,7 +14,7 @@ import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { MAINNET, NEAR_USD_ID, TESTNET } from "../src/config.ts";
 import { allLoans, dueForSettle, keeperHealth, relayDecision, type KeeperState } from "../src/keeper.ts";
-import { Ema, parsePythPrice } from "../src/oracle.ts";
+import { Ema, MAX_PRICE_AGE_SECS, parsePythPrice } from "../src/oracle.ts";
 import { views, type Action } from "../src/pool.ts";
 
 const DRY = process.env.DRY_RUN === "1";
@@ -86,7 +86,7 @@ async function main() {
   const pool = POOL ? views(testnet as never, POOL) : null;
 
   const priceTick = async () => {
-    const src = parsePythPrice(await sourceView("get_price_no_older_than", { price_id: NEAR_USD_ID, age: 60 }));
+    const src = parsePythPrice(await sourceView("get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }));
     const d = relayDecision(src, lastPushed, now());
     if (!d.push || !src) return d.push ? undefined : log("relay skip:", d.why);
     ema.update(src.price, src.publishTime);

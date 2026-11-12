@@ -5,7 +5,7 @@
 // serves spot only and has no testnet deployment. On testnet the pool reads a relay we run (ankora-mocks, owner-only
 // `set_prices`) that copies the mainnet spot and adds an EMA, so the pool's min(spot, EMA) and 3% breaker still apply.
 
-export const MAX_PRICE_AGE_SECS = 60;
+export const MAX_PRICE_AGE_SECS = 90; // = ankora-core; 60 s refused 3.56% of seconds on the relay (measured 2026-11-12)
 export const MAX_CONF_BPS = 100n;
 export const BREAKER_BPS = 300n;
 

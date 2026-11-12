@@ -29,7 +29,7 @@ describe("price relay", () => {
     expect(relayDecision(src, 1_000, 1_010)).toEqual({ push: false, why: "not newer" });
   });
   it("never relays a stale source: the pool would refuse it anyway", () => {
-    expect(relayDecision(src, 0, 1_061)).toEqual({ push: false, why: "source stale" });
+    expect(relayDecision(src, 0, 1_091)).toEqual({ push: false, why: "source stale" });
   });
   it("skips when the source has no price", () => {
     expect(relayDecision(null, 0, 1_000)).toEqual({ push: false, why: "no source price" });
@@ -59,5 +59,11 @@ describe("all loans", () => {
     expect(got.length).toBe(250);
     expect(calls).toEqual([0, 100, 200]);
     expect(dueForSettle(got, 100)).toEqual([240, 241, 242, 243, 244, 245, 246, 247, 248, 249]);
+  });
+});
+
+describe("relay at 90 s", () => {
+  it("still relays a source price 75 s old", () => {
+    expect(relayDecision({ price: 1n, conf: 0n, expo: -8, publishTime: 1_000 }, 0, 1_075)).toEqual({ push: true });
   });
 });

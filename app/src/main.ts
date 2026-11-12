@@ -42,7 +42,7 @@ async function load(soft = false) {
   if (soft) softRender(); else render();
 }
 const REASONS: Record<string, string> = {
-  Stale: "the price was over 60 seconds old when the transaction landed", WideConfidence: "the price feed was too unsure of the price",
+  Stale: "the price was over 90 seconds old when the transaction landed", WideConfidence: "the price feed was too unsure of the price",
   Breaker: "spot was more than 3% from the one-hour average", Missing: "there was no price", ExpoMismatch: "the price feed was malformed", Invalid: "the price was invalid",
   "LTV above plan cap": "the price fell between the quote and the transaction, so the loan was over the plan's limit",
   "vault creation failed": "the vault couldn't be created", "validator rejected or stake failed": "the validator didn't accept the stake",

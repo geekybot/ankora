@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { MAINNET, NEAR_USD_ID, TESTNET } from "../src/config.ts";
-import { parsePythPrice, priceAge } from "../src/oracle.ts";
+import { MAX_PRICE_AGE_SECS, parsePythPrice, priceAge } from "../src/oracle.ts";
 import { actions, views, type Action, type LoanView } from "../src/pool.ts";
 import { NEAR, NORMAL, maxPrincipal, quoteBorrow } from "../src/quote.ts";
 
@@ -46,7 +46,7 @@ async function send(signer: string, a: Action): Promise<string[]> {
 }
 
 async function pushPrice(): Promise<void> {
-  const src = parsePythPrice(await mainnet.view(MAINNET.priceSource, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 60 }));
+  const src = parsePythPrice(await mainnet.view(MAINNET.priceSource, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }));
   if (!src) throw new Error(`${MAINNET.priceSource} has no NEAR/USD inside 60 s; retry in a minute`);
   const now = Math.floor(Date.now() / 1000);
   await send(RELAY, {
@@ -98,7 +98,7 @@ async function main() {
   let loans: LoanView[] = await pool.loans(0, 10);
   if (loans.length === 0) {
     await pushPrice();
-    const src = parsePythPrice(await near.view(RELAY, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 60 }));
+    const src = parsePythPrice(await near.view(RELAY, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }));
     if (!src) throw new Error("relay price is stale right after the push");
     const price = { price: src.price, expo: src.expo };
     const principal = maxPrincipal(SMOKE_STAKE, price, 3000) * 9n / 10n;

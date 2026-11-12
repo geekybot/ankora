@@ -30,8 +30,8 @@ describe("collateral price, mirrored from ankora-core", () => {
   it("uses the lower of spot and EMA", () => {
     expect(collateralPrice(at(362_000_000n, now), at(360_000_000n, now), now, true)).toEqual({ ok: true, price: 360_000_000n, expo: -8 });
   });
-  it("refuses a price older than 60 seconds", () => {
-    expect(collateralPrice(at(362_000_000n, now - 61), at(362_000_000n, now), now, true)).toEqual({ ok: false, error: "Stale" });
+  it("refuses a price older than 90 seconds", () => {
+    expect(collateralPrice(at(362_000_000n, now - 91), at(362_000_000n, now), now, true)).toEqual({ ok: false, error: "Stale" });
   });
   it("refuses a confidence band wider than 1%", () => {
     expect(collateralPrice(at(362_000_000n, now, 3_620_001n), at(362_000_000n, now), now, true)).toEqual({ ok: false, error: "WideConfidence" });
@@ -59,5 +59,11 @@ describe("EMA persistence", () => {
   it("starts empty from a missing or broken save", () => {
     expect(() => Ema.restore(3600, null).value).toThrow("EMA has no samples");
     expect(() => Ema.restore(3600, { v: "x", t: 1 }).value).toThrow("EMA has no samples");
+  });
+});
+
+describe("90 s limit", () => {
+  it("accepts a price 90 s old, the same boundary as the contract", () => {
+    expect(collateralPrice(at(362_000_000n, 910), at(362_000_000n, 910), 1_000, true)).toEqual({ ok: true, price: 362_000_000n, expo: -8 });
   });
 });

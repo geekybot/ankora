@@ -5,7 +5,7 @@ Testnet hackathon build: fixed-term USDC loans against NEAR staked with the borr
 ## Mechanism
 
 - **Plans:** borrow up to 30% LTV for 30 days at 9.7%, 40% for 14 days at 10.1%, or 50% for 7 days at 11.3% (annual, simple). A stressed menu only shortens terms (14, 7 and 3 days; 9.7%, 10.1%, 11.7%). The first term's interest is taken from the principal.
-- **Price:** read only when a term starts or renews. Collateral is valued at the lower of spot and a 1-hour average; a price older than 60 s or with a confidence band wider than 1% is refused, and no new loan starts while spot and average differ by more than 3%.
+- **Price:** read only when a term starts or renews. Collateral is valued at the lower of spot and a 1-hour average; a price older than 90 s or with a confidence band wider than 1% is refused, and no new loan starts while spot and average differ by more than 3%.
 - **Collateral:** plain NEAR goes into a vault account created for the loan, which stakes it with the borrower's chosen validator (any pool on the lockup whitelist). Native stakers unstake once first, about 28 hours.
 - **At expiry:** at 50% LTV or below the loan renews and the next term's interest is added to the debt. Above it: 72 hours' notice to pay down, 48 hours' grace, then a 24-hour Dutch auction from 100% to 50% of the oracle value. Any surplus goes to the borrower. No late fee.
 - **Lenders:** the senior tranche earns a fixed 6.5%. The junior tranche takes the first loss and keeps what's left, so it can lose everything. Junior must be at least 15% of loans, and junior deposits are locked for 36 days.
@@ -32,8 +32,8 @@ The toolchain is pinned to Rust 1.95.0 in `rust-toolchain.toml`. Build with `car
 Pyth is gone on NEAR. Pyth Core dropped NEAR in its 26 Aug 2026 upgrade: `pyth-oracle.near` last published NEAR/USD on 25 Aug, `pyth-oracle.testnet` holds no NEAR/USD price, and Hermes now needs an API key (401 without one).
 
 - **Mainnet:** Rhea's lending reads `aggregate-oracle.near` (Rhea's agg-oracle v0.4.1, source repo private). A relayer posts signed Pyth Pro payloads about every 40 s. It answers the Pyth-shaped `get_price_no_older_than` with the same NEAR/USD id, but has **no EMA method** and no testnet deployment. Before a mainnet launch, the pool needs its own average, or a decision to drop min(spot, EMA) and the 3% breaker.
-- **Testnet (this build):** the pool reads a price relay we run: `ankora-mocks` on your own account, where only the deploying account can call `set_prices`. The keeper in `../client` copies the mainnet spot from `aggregate-oracle.near`, keeps the source's publish time, and adds a 1-hour EMA, so the pool's 60 s age limit, min(spot, EMA) and breaker run unchanged. The relay is a trust point; say so in the demo.
-- **Effect on the app:** prices are pushed by the keeper, so a borrow is a single transaction with no price push. The app should check the price age before asking for approval: if the relay lags past 60 s, the borrow refunds (`Stale`).
+- **Testnet (this build):** the pool reads a price relay we run: `ankora-mocks` on your own account, where only the deploying account can call `set_prices`. The keeper in `../client` copies the mainnet spot from `aggregate-oracle.near`, keeps the source's publish time, and adds a 1-hour EMA, so the pool's 90 s age limit, min(spot, EMA) and breaker run unchanged. The relay is a trust point; say so in the demo.
+- **Effect on the app:** prices are pushed by the keeper, so a borrow is a single transaction with no price push. The app should check the price age before asking for approval: if the relay lags past 90 s, the borrow refunds (`Stale`).
 
 | Role | Testnet account |
 |---|---|
