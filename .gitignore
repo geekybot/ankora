@@ -28,3 +28,4 @@ dist/
 site/shots/
 site/.taste-skill/
 !.env.production
+dist-web/
