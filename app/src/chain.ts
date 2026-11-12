@@ -64,15 +64,21 @@ export const connect = () => connector.connect().catch(() => undefined);
 export const disconnect = () => connector.disconnect().catch(() => undefined);
 
 // ---------- outcomes ----------
-export interface Outcome { hash?: string; ok: boolean; value?: unknown; logs: string[]; failure?: string }
+export interface Outcome { hash?: string; ok: boolean; value?: unknown; logs: string[]; failure?: string; failures: string[] }
+/** The panic text inside a receipt or transaction failure, if any. */
+const panicOf = (f: unknown): string => {
+  const j = JSON.stringify(f ?? "");
+  return /"panic_msg":"((?:[^"\\]|\\.)*)"/.exec(j)?.[1] ?? /Smart contract panicked: ([^"]+)/.exec(j)?.[1] ?? j.slice(0, 240);
+};
 /** Read a FinalExecutionOutcome (from the wallet, or from RPC after a redirect). */
 export function readOutcome(o: any): Outcome {
   const logs: string[] = [...(o?.transaction_outcome?.outcome?.logs ?? []), ...(o?.receipts_outcome ?? []).flatMap((r: any) => r?.outcome?.logs ?? [])];
   const st = o?.status ?? {};
-  if (st.Failure) return { hash: o?.transaction?.hash, ok: false, logs, failure: JSON.stringify(st.Failure).slice(0, 240) };
+  const failures: string[] = (o?.receipts_outcome ?? []).map((r: any) => r?.outcome?.status?.Failure).filter(Boolean).map(panicOf);
+  if (st.Failure) return { hash: o?.transaction?.hash, ok: false, logs, failure: panicOf(st.Failure), failures };
   let value: unknown;
   if (typeof st.SuccessValue === "string" && st.SuccessValue) { try { value = JSON.parse(atob(st.SuccessValue)); } catch { value = atob(st.SuccessValue); } }
-  return { hash: o?.transaction?.hash, ok: true, value, logs };
+  return { hash: o?.transaction?.hash, ok: true, value, logs, failures };
 }
 /** After a wallet redirect (`?transactionHashes=`), fetch each outcome from RPC. */
 export async function outcomesFromUrl(): Promise<Outcome[]> {
@@ -81,7 +87,7 @@ export async function outcomesFromUrl(): Promise<Outcome[]> {
   history.replaceState(null, "", location.pathname + location.hash);
   return Promise.all(hashes.split(",").map(async (h) => {
     const r = await fetch(CFG.rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tx", params: { tx_hash: h, sender_account_id: account, wait_until: "EXECUTED_OPTIMISTIC" } }) }).then((x) => x.json());
-    return r.result ? { ...readOutcome(r.result), hash: h } : { hash: h, ok: false, logs: [], failure: String(r.error?.data ?? "Not found") };
+    return r.result ? { ...readOutcome(r.result), hash: h } : { hash: h, ok: false, logs: [], failures: [], failure: String(r.error?.data ?? "Not found") };
   }));
 }
 

@@ -1,18 +1,19 @@
 <!doctype html>
-<html lang="en" data-dir="b" data-pal="sky" data-tone="light">
+<html lang="en" data-dir="b" data-pal="zinc" data-tone="dark">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#09090b">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ankora app</title>
 <meta name="description" content="Borrow USDC against NEAR on fixed terms, or lend USDC. NEAR testnet.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap">
 </head>
 <body>
 <div id="app" class="app">
   <header class="top">
-    <a class="brand" href="#/" aria-label="Ankora home"><svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 12h18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="12" r="4.2" fill="var(--bg)" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="12" r="4.4" fill="#ffb667"/></svg><span>Ankora</span></a>
+    <a class="brand" href="#/" aria-label="Ankora home"><svg viewBox="0 0 30 24" aria-hidden="true"><path d="M6 12h18" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="12" r="4.2" fill="var(--bg)" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="12" r="4.4" fill="#2dd4bf"/></svg><span>Ankora</span></a>
     <nav class="top-nav" id="top-nav" aria-label="Main"></nav>
     <span id="keeper" class="keeper"></span>
     <button class="wallet-chip" type="button" id="wallet"></button>
@@ -21,7 +22,7 @@
   <aside class="context" id="context" aria-label="Details"></aside>
   <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
 </div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<section class="toasts" id="toasts" aria-label="Notifications" aria-live="polite"></section>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
