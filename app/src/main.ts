@@ -120,6 +120,7 @@ function borrowScreen() {
         <li><span>Renews <b>${when(due)}</b> if your LTV is 50% or lower then. No price is read before that.</span></li>
         <li><span>Send <b class="num">${near(q.attachedYocto, 2)} NEAR</b>. About <b class="num">${near(Q!.stake + VAULT_EXTRA, 1)} NEAR</b> ends up staked as collateral; the rest of the 1.5 NEAR held back pays your vault's storage.</span></li>
         <li><span>To repay in full you'll need <b class="num">${usdc(q.payout + q.termInterest)}</b> USDC, more than you receive, because the first term's interest was taken upfront.</span></li>` : ""}
+        ${q?.ok && !enough ? `<li><span>Short of testnet NEAR? Claim some at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a> or the <a href="https://docs.near.org/getting-started/faucet" target="_blank" rel="noopener">NEAR docs faucet</a>, or lend instead: that needs only gas.</span></li>` : ""}
         <li><span>Your vault stakes with <b>${esc(S.validator)}</b>, which must be on the lockup whitelist (<code>whitelist.f863973.m0</code> on testnet).</span></li>
       </ul>
       <div class="field"><label for="val">Validator</label><div class="field-row"><input id="val" class="input" value="${esc(S.validator)}" autocomplete="off" spellcheck="false"></div></div>

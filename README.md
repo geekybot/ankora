@@ -26,7 +26,10 @@ Borrow USDC against NEAR for a fixed term, with no liquidation during the term. 
 
 ## Try it
 
-- **Testnet app:** `ankora.utpal.dev` (launching this week). You need a testnet wallet with at least 5 NEAR; get test USDC from the app's faucet.
+- **Testnet app:** [ankora.utpal.dev/app](https://ankora.utpal.dev/app/).
+  - **No wallet:** open the app and choose *See live loans without a wallet*.
+  - **Lend:** any testnet wallet with a little NEAR for gas. Get test USDC from the app's faucet (1,000 per click).
+  - **Borrow:** a testnet wallet with at least 5.1 NEAR (5 attached plus gas). Testnet NEAR comes from [near-faucet.io](https://near-faucet.io/) or the [NEAR docs faucet](https://docs.near.org/getting-started/faucet); both can run dry, and near-faucet.io gives about 2 NEAR a claim. The app's wallet picker lists Meteor, Intear and others; switch the wallet to testnet.
 - **On your machine, no testnet needed:** a full stack on a local NEAR sandbox, with the live mainnet price and controls to crash the price and skip time.
   ```bash
   cd contracts && ./build.sh
