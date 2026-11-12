@@ -21,7 +21,9 @@ const DRY = process.env.DRY_RUN === "1";
 const RELAY = process.env.ANKORA_RELAY ?? "";
 const POOL = process.env.ANKORA_POOL ?? "";
 const SIGNER = process.env.KEEPER_ACCOUNT ?? RELAY;
-const PRICE_EVERY_MS = 5_000; // the source posts every ~25-57 s; the pool accepts prices up to 60 s old
+/** Optional second signer for settle (a key limited to the pool's settle method); else SIGNER settles too. */
+const SETTLER = process.env.KEEPER_SETTLE_ACCOUNT ?? SIGNER;
+const PRICE_EVERY_MS = 5_000; // the source posts every ~25-57 s; the pool accepts prices up to 90 s old
 const SETTLE_EVERY_MS = 60_000;
 if (!DRY && (!RELAY || !POOL)) throw new Error("set ANKORA_RELAY and ANKORA_POOL (or DRY_RUN=1)");
 
@@ -36,12 +38,13 @@ async function sourceView(method: string, args: object): Promise<unknown> {
   }
   throw last;
 }
+const keys: Record<string, string> = {};
+if (process.env.KEEPER_PRIVATE_KEY) keys[SIGNER] = process.env.KEEPER_PRIVATE_KEY;
+if (process.env.KEEPER_SETTLE_PRIVATE_KEY) keys[SETTLER] = process.env.KEEPER_SETTLE_PRIVATE_KEY;
 const testnet = new Near({
   network: "testnet", rpcUrl: TESTNET.rpc,
   ...(DRY ? {} : {
-    keyStore: process.env.KEEPER_PRIVATE_KEY
-      ? new InMemoryKeyStore({ [SIGNER]: process.env.KEEPER_PRIVATE_KEY })
-      : new FileKeyStore(`${homedir()}/.near-credentials`, "testnet"),
+    keyStore: Object.keys(keys).length ? new InMemoryKeyStore(keys) : new FileKeyStore(`${homedir()}/.near-credentials`, "testnet"),
     defaultSignerId: SIGNER,
   }),
 });
@@ -49,7 +52,8 @@ const now = () => Math.floor(Date.now() / 1000);
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const send = async (a: Action) => {
   if (DRY) return log("dry-run:", a.receiverId, a.methodName, JSON.stringify(a.args));
-  await testnet.call(a.receiverId, a.methodName, a.args, { gas: `${Number(a.gas / 1_000_000_000_000n)} Tgas`, attachedDeposit: `${a.deposit} yocto` });
+  const signer = a.methodName === "settle" ? SETTLER : SIGNER;
+  await testnet.transaction(signer).functionCall(a.receiverId, a.methodName, a.args, { gas: `${Number(a.gas / 1_000_000_000_000n)} Tgas`, attachedDeposit: `${a.deposit} yocto` as never }).send();
 };
 
 /** Seed the EMA from the last 3 hours of closed Binance 1-minute candles, so the breaker works from the first minute.
