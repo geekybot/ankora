@@ -1,0 +1,21 @@
+[Unit]
+Description=Ankora testnet keeper (price relay and settle)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/srv/ankora/keeper
+EnvironmentFile=/srv/ankora/keeper/keys.env
+Environment=ANKORA_RELAY=geekybot-mocks.testnet
+Environment=ANKORA_POOL=geekybot-ankora.testnet
+Environment=KEEPER_ACCOUNT=geekybot-mocks.testnet
+Environment=KEEPER_SETTLE_ACCOUNT=geekybot-faucet.testnet
+Environment=KEEPER_STATE_FILE=/srv/ankora/keeper/.keeper-state.json
+Environment=PORT=8080
+ExecStart=/usr/bin/node --import tsx bin/keeper.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+ankora.utpal.dev {
+	encode zstd gzip
+	# Keeper health for uptime checks and the app's live badge: read-only JSON, GET only.
+	@keeper {
+		path /keeper/health /keeper/status
+		method GET HEAD
+	}
+	handle @keeper {
+		uri strip_prefix /keeper
+		reverse_proxy localhost:8080
+	}
+	handle {
+		root * /srv/ankora/www
+		try_files {path} {path}/ /index.html
+		file_server
+		header /assets/* Cache-Control "public, max-age=86400"
+	}
+}
+
+:80 {
+	root * /srv/ankora/www
+	file_server
+}

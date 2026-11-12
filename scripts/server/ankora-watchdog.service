@@ -1,0 +1,6 @@
+[Unit]
+Description=Ankora keeper watchdog
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ankora-watchdog.sh
