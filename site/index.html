@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-type="software" data-radius="soft" data-ground="sky" data-buttons="solid" data-motion>
+<html lang="en" data-type="software" data-radius="soft" data-tone="dark" data-buttons="solid" data-motion>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,13 +11,13 @@
 <meta property="og:image" content="share.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#eff6ff">
+<meta name="theme-color" content="#09090b">
 <!-- <link rel="canonical" href="https://ankora.utpal.dev/"> -->
 <meta name="site-kind" content="software">
 <meta name="page-type" content="software">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/system.css">
 <link rel="stylesheet" href="assets/ui/cards.css">
 <link rel="stylesheet" href="assets/motion/motion.css">
@@ -26,13 +26,15 @@
 <link rel="stylesheet" href="assets/icons/icon.css">
 <style>
 :root {
-  --p-bg: #eff6ff; --p-surface: #dde9fb; --p-ink: #162455; --p-muted: #53638a;
-  --p-accent: #fda856; --p-accent-ink: #421105; --p-action: #162455; --p-action-ink: #eff6ff;
-  --p-inv-bg: #162455; --p-inv-surface: #223160; --p-inv-ink: #eff6ff; --p-inv-muted: #94a1bd;
-  --p-inv-accent: #fda856; --p-inv-accent-ink: #421105; --p-inv-action: #fda856; --p-inv-action-ink: #421105;
-  --font-display: "Host Grotesk", system-ui, sans-serif;
-  --font-text: "Host Grotesk", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* Deep dark: zinc-950 ground, zinc-900 cards, one accent (Apricot; ?accent=teal swaps it for comparison) */
+  --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86;
+  --p-bg: #09090b; --p-surface: #18181b; --p-ink: #fafafa; --p-muted: #a1a1aa;
+  --p-accent: var(--acc); --p-accent-ink: var(--acc-ink); --p-action: var(--acc); --p-action-ink: var(--acc-ink);
+  --p-inv-bg: #09090b; --p-inv-surface: #18181b; --p-inv-ink: #fafafa; --p-inv-muted: #a1a1aa;
+  --p-inv-accent: var(--acc); --p-inv-accent-ink: var(--acc-ink); --p-inv-action: var(--acc); --p-inv-action-ink: var(--acc-ink);
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-text: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --display-weight: 500;
   --display-tracking: -0.035em;
   --display-tracking-xl: -0.04em;
@@ -40,6 +42,7 @@
 </style>
 <link rel="stylesheet" href="assets/ui/base.css">
 <link rel="stylesheet" href="assets/diagrams/diagram.css">
+<script>if(/[?&]accent=teal\b/.test(location.search))document.documentElement.dataset.accent='teal';</script>
 <script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
 <script src="assets/backgrounds/backgrounds.js"></script>
 <script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
@@ -150,11 +153,171 @@
 
   /* ---------- the statement ---------- */
   #contact .close__word { overflow: visible; line-height: 1.1; }
-  #statement strong { color: #a8500a; }
   #statement .mo-wh__text { max-width: 18ch; font: var(--display-weight) clamp(36px, 4.6vw, 72px)/1.08 var(--font-display); letter-spacing: var(--display-tracking); }
+</style>
+<style>
+/* ================= Deep dark layer: ground, glow, bento, badges, motion ================= */
+html[data-accent="teal"] { --acc: #2dd4bf; --acc-ink: #042f2e; --acc-rgb: 45 212 191; }
+:root {
+  color-scheme: dark;
+  --z-950: #09090b; --z-900: #18181b; --z-850: #1f1f23; --z-800: #27272a;
+  --hair: rgb(255 255 255 / 0.08); --hair-2: rgb(255 255 255 / 0.14); --hair-lit: rgb(var(--acc-rgb) / 0.38);
+  --ok: #4ade80; --ok-bg: rgb(74 222 128 / 0.12); --warn: #fdba74; --warn-bg: rgb(253 186 116 / 0.12); --bad: #fca5a5; --bad-bg: rgb(248 113 113 / 0.14);
+  --e-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --t-move: transform 200ms var(--e-out), border-color 200ms var(--e-out), background-color 200ms var(--e-out), box-shadow 200ms var(--e-out), color 200ms var(--e-out);
+}
+html { background: var(--z-950); }
+body { background: transparent; }
+::selection { background: rgb(var(--acc-rgb) / 0.9); color: var(--acc-ink); }
+html { scrollbar-color: var(--z-800) var(--z-950); }
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+/* The kinetic grid sits fixed behind everything; sections go transparent over it */
+.kg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+  --kg-line: var(--acc); --kg-dot: #fafafa; --kg-trail: var(--acc);
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 100%); mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 100%); }
+main, footer.closing { position: relative; z-index: 1; }
+main > section, main > .section, footer.closing, .ground-inverse, .ground-surface, .ground-base { background: transparent; }
+
+/* Localised glows: behind the hero, and at the close */
+.hero { isolation: isolate; }
+.hero::before, footer.closing::before { content: ""; position: absolute; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(80px); }
+.hero::before { left: 50%; top: 18%; width: min(1100px, 100%); height: 620px; transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgb(var(--acc-rgb) / 0.2), rgb(var(--acc-rgb) / 0.06) 55%, transparent); }
+footer.closing::before { left: 50%; bottom: 0; width: min(900px, 100vw); height: 420px; transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgb(var(--acc-rgb) / 0.14), transparent); }
+
+/* Type: Geist for words, Geist Mono for every number */
+h1, h2, h3, .t-lead, p, li, dt, dd { text-wrap: pretty; }
+h1, h2 { color: #fafafa; letter-spacing: -0.03em; }
+.hero .hero__lead, .t-lead, .section-head p, .card > p, .faq__item p, .facts li, #dip .lane span, .footer__lede { color: #a1a1aa; }
+.hero .hero__lead { color: #a1a1aa; }
+.num, .calc input[type="text"], .calc__big b, .calc__rows dd, .plans button small, .steps-ui b, .steps-ui small, .chip,
+.tranche__rate, .term__lab, .calc__price, .step-num, .d-win__bar span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums slashed-zero; }
+
+/* Nav: floating, translucent, blurred */
+.nav { background: rgb(9 9 11 / 0.66); -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%); border-bottom: 1px solid var(--hair); }
+.nav__menu { background: rgb(18 18 21 / 0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hair); }
+.nav__link { color: #d4d4d8; transition: color 200ms var(--e-out); }
+.nav__link:hover { color: #fafafa; }
+
+/* Buttons */
+.btn { transition: var(--t-move); }
+.btn--primary { background: var(--acc); color: var(--acc-ink); border-color: transparent; font-weight: 600;
+  box-shadow: 0 8px 28px -6px rgb(var(--acc-rgb) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35); }
+.btn--primary:hover { background: color-mix(in oklab, var(--acc) 90%, #fff); transform: translateY(-1px);
+  box-shadow: 0 14px 36px -8px rgb(var(--acc-rgb) / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.4); }
+.btn--secondary, .btn-row > .btn--secondary { background: rgb(255 255 255 / 0.03); color: #fafafa; border: 1px solid var(--hair-2); text-decoration: none; }
+.btn--secondary:hover, .btn-row > .btn--secondary:hover { background: rgb(255 255 255 / 0.07); border-color: rgb(255 255 255 / 0.26); transform: translateY(-1px); }
+.btn:active { transform: scale(0.97); transition-duration: 100ms; }
+.link { color: var(--acc); text-underline-offset: 4px; }
+
+/* ---------- Hero calculator: a trading widget ---------- */
+.hero--centred .hero__window { background: transparent; -webkit-mask-image: none; mask-image: none; }
+.d-win { background: linear-gradient(180deg, rgb(31 31 35 / 0.82), rgb(20 20 23 / 0.86)); color: #fafafa; border-radius: 20px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 0 0 1px var(--hair-2), inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 0 0 1px rgb(0 0 0 / 0.4), 0 40px 100px -40px rgb(0 0 0 / 0.9); }
+.d-win__bar { border-bottom: 1px solid var(--hair); color: #a1a1aa; }
+.d-win__bar b { color: #fafafa; }
+.d-win__dots i { background: var(--z-800); }
+.calc { color: #fafafa; }
+.calc label, .calc .calc__k { color: #a1a1aa; }
+.calc__out { border-left: 1px solid var(--hair); }
+.calc__amount { background: var(--z-950); border: 1px solid var(--hair-2); box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.5); transition: border-color 200ms var(--e-out), box-shadow 200ms var(--e-out); }
+.calc__amount:hover { border-color: rgb(255 255 255 / 0.24); }
+.calc__amount:focus-within { border-color: var(--acc); background: var(--z-950); box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.5), 0 0 0 4px rgb(var(--acc-rgb) / 0.14); }
+.calc input[type="text"] { font-weight: 500; font-size: 30px; letter-spacing: -0.03em; color: #fafafa; }
+.calc__unit, .calc__big span { color: #a1a1aa; }
+.calc input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--acc) var(--fill), rgb(255 255 255 / 0.1) var(--fill)); }
+.calc input[type="range"]::-webkit-slider-thumb { border-color: var(--acc); background: #fafafa; box-shadow: 0 0 0 4px rgb(var(--acc-rgb) / 0.18), 0 2px 8px rgb(0 0 0 / 0.5); }
+.calc input[type="range"]::-moz-range-thumb { border-color: var(--acc); }
+.plans { background: var(--z-950); box-shadow: inset 0 0 0 1px var(--hair), inset 0 2px 6px rgb(0 0 0 / 0.45); }
+.plans__pill { background: var(--acc); box-shadow: 0 6px 20px -4px rgb(var(--acc-rgb) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35); }
+.plans button { color: #d4d4d8; }
+.plans button[aria-pressed="true"] { color: var(--acc-ink); }
+.calc__big b { font-family: var(--font-mono); font-weight: 500; font-size: clamp(36px, 3.6vw, 54px); letter-spacing: -0.04em; color: var(--acc);
+  text-shadow: 0 0 28px rgb(var(--acc-rgb) / 0.45), 0 0 2px rgb(var(--acc-rgb) / 0.4); }
+.calc__rows > div { border-top: 1px solid var(--hair); }
+.calc__rows dt { color: #a1a1aa; } .calc__rows dd { color: #fafafa; }
+.calc__price { color: #a1a1aa; }
+.calc__price i { background: var(--ok); box-shadow: 0 0 0 3px rgb(74 222 128 / 0.18); }
+.calc__price.is-example i { background: #71717a; box-shadow: none; }
+@media (max-width: 639px) { .calc__out { border-top: 1px solid var(--hair); border-left: 0; } .calc__big b { font-size: clamp(28px, 8.5vw, 36px); } }
+
+/* ---------- Cards: zinc-900, hairline, lift on hover ---------- */
+.bento-card, #renewal .card, #lend .card, .faq > .faq__item, #dip .lane, #dip .chart {
+  background: var(--z-900); border: 1px solid var(--hair); border-radius: 16px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04); transition: var(--t-move); }
+#renewal .card, #lend .card { padding: 24px; display: flex; flex-direction: column; }
+#renewal .card:hover, #lend .card:hover, .faq > .faq__item:hover, #dip .lane:hover {
+  transform: translateY(-2px); border-color: var(--hair-lit); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 18px 40px -24px rgb(0 0 0 / 0.9); }
+#renewal .card > h3, #lend .card > h3, .faq__item > h3 { color: #fafafa; }
+.card.card--open > .panel { margin-top: auto; padding-top: 0; }
+#renewal .card > p, #lend .card > p { margin-bottom: 20px; }
+#renewal .panel, #lend .panel { background: radial-gradient(80% 90% at 50% 100%, rgb(255 255 255 / 0.035), transparent 70%); border: 0; border-radius: 12px; box-shadow: none; }
+.step-num { border-color: var(--hair-2); color: #a1a1aa; margin-bottom: 16px; }
+
+.steps-ui { background: var(--z-850); color: #fafafa; border: 1px solid var(--hair); box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.8); }
+.steps-ui header span:first-child { color: #a1a1aa; }
+.steps-ui small { color: #a1a1aa; }
+.steps-ui .bar { background: var(--z-800); }
+.steps-ui .bar i { background: #fafafa; }
+
+/* Data badges: pills tinted by risk, not by marketing */
+.chip, .steps-ui b, .tranche__rate { display: inline-flex; align-items: center; justify-self: start; width: fit-content; border-radius: 999px; }
+.steps-ui .chip { font-size: 12px; padding: 4px 10px; }
+.chip--ok { background: var(--ok-bg); color: var(--ok); } .chip--note { background: var(--warn-bg); color: var(--warn); } .chip--auc { background: var(--bad-bg); color: var(--bad); }
+.steps-ui b { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; padding: 6px 14px; }
+#renewal .card:nth-of-type(1) .steps-ui b { background: var(--ok-bg); color: var(--ok); box-shadow: inset 0 0 0 1px rgb(74 222 128 / 0.25); }
+#renewal .card:nth-of-type(1) .steps-ui .bar i { background: var(--ok); }
+#renewal .card:nth-of-type(2) .steps-ui b { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 1px rgb(253 186 116 / 0.25); }
+#renewal .card:nth-of-type(2) .steps-ui .bar i { background: var(--warn); }
+#renewal .card:nth-of-type(3) .steps-ui b { background: var(--bad-bg); color: var(--bad); box-shadow: inset 0 0 0 1px rgb(248 113 113 / 0.28); }
+#renewal .card:nth-of-type(3) .steps-ui .bar i { background: #f87171; }
+
+/* ---------- Lend: two equal cards, neither layer promoted ---------- */
+.tranche { background: var(--z-850); border: 1px solid var(--hair); box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.8); }
+.tranche__rate { font-size: clamp(28px, 2.6vw, 40px); font-weight: 500; letter-spacing: -0.03em; padding: 8px 18px; }
+#lend .card:nth-of-type(1) .tranche__rate { background: var(--ok-bg); color: var(--ok); box-shadow: inset 0 0 0 1px rgb(74 222 128 / 0.25); }
+#lend .card:nth-of-type(2) .tranche__rate { background: var(--warn-bg); color: var(--warn); box-shadow: inset 0 0 0 1px rgb(253 186 116 / 0.25); }
+.tranche__layer span { background: var(--z-800); }
+.tranche__layer span.is-on { background: rgb(255 255 255 / 0.32); }
+.tranche__layer span.is-loss { background: #f87171; }
+.tranche small { color: #a1a1aa; }
+
+/* ---------- Questions: a bento of five ---------- */
+.faq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.faq > .faq__item { padding: 24px; border-bottom: 1px solid var(--hair); align-content: start; gap: 10px; }
+.faq > .faq__item:first-child { padding-top: 24px; grid-column: span 2; }
+.faq__item > h3 { font-size: 18px; line-height: 1.35; }
+.faq > .faq__item:first-child > h3 { font-size: 22px; }
+@media (max-width: 1023px) { .faq { grid-template-columns: repeat(2, minmax(0, 1fr)); } .faq > .faq__item:first-child { grid-column: 1 / -1; } }
+@media (max-width: 639px) { .faq { grid-template-columns: minmax(0, 1fr); gap: 12px; } .faq > .faq__item, .faq > .faq__item:first-child { grid-column: auto; padding: 20px; } }
+
+/* ---------- Vault, statement, dip ---------- */
+#vault .frame { background: var(--z-900); border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; --ink: #fafafa; --muted: #a1a1aa; --bg: var(--z-900); --surface: var(--z-850); --card: var(--z-900); --accent: var(--acc); --accent-ink: var(--acc-ink); --line: var(--hair); --line-strong: var(--hair-2); color: #fafafa; }
+#statement strong, .mo-wh strong .mo-w.is-on { color: var(--acc); }
+#dip { --bg: #111114; background: #111114; }
+#dip .chart, #dip .lane { background: var(--z-900); }
+#dip .chart { padding: 28px; background: var(--z-900); }
+#dip .chart .px { stroke: #fafafa; }
+#dip .chart .liq { stroke: #f87171; }
+#dip .chart .low { fill: #f87171; filter: drop-shadow(0 0 8px rgb(248 113 113 / 0.7)); }
+#dip .chart text { fill: #fca5a5; font-family: var(--font-mono); font-size: 13px; }
+#dip .lane { padding: 20px 24px; background: var(--z-900); }
+#dip .lane b { color: #fafafa; } #dip .lane span { color: #d4d4d8; }
+
+/* ---------- Close and footer ---------- */
+.close__word { color: transparent; -webkit-text-stroke: 1px rgb(255 255 255 / 0.12); }
+.footer__col h3 { color: #fafafa; } .footer__col a, .footer__legal { color: #a1a1aa; } .footer__col a:hover { color: #fafafa; }
+
+@media (max-width: 639px) { #renewal .panel, #lend .panel { --p-h: 230px; } .steps-ui { top: 20px; left: 16px; right: 16px; } .tranche { inset: 16px; } #renewal .card, #lend .card { padding: 20px; } }
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover, .btn:active, #renewal .card:hover, #lend .card:hover, .faq > .faq__item:hover, #dip .lane:hover { transform: none; }
+}
 </style>
 </head>
 <body>
+<canvas class="kg" data-kinetic-grid aria-hidden="true"></canvas>
 <!-- type: software (site-kind software): fixed-term USDC loans against staked NEAR; main action "Borrow USDC"
      deal: hero centred (dealt collage, a text|window split: the founder rejected split heroes, so the brief overrides the deal),
            nav nav-mega, close close-word, footer footer-dark, rhythm dark-band, buttons solid, mark dots,
@@ -214,7 +377,7 @@
         <p class="hero__lead">Borrow dollars for 7 to 30 days. Your NEAR stays staked with your own validator, and the price is checked only when a term starts or renews.</p>
         <div class="btn-row"><a class="btn btn--primary" href="app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="#lend">Lend USDC</a></div>
       </div>
-      <div class="hero__window" data-fx="grain-gradient" data-fx-seed="7" role="group" aria-label="Borrow calculator">
+      <div class="hero__window" role="group" aria-label="Borrow calculator">
         <div class="ly-piece d-win d-win--dark">
           <div class="d-win__bar"><span class="d-win__dots"><i></i><i></i><i></i></span><span><b>Ankora</b> · Borrow</span><span class="sp"></span><span>NEAR testnet</span></div>
           <div class="calc" data-calc>
@@ -430,6 +593,7 @@
     }).catch(() => {});
 })();
 </script>
+<script src="kinetic-grid.js" defer></script>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>
