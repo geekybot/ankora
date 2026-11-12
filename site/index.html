@@ -486,6 +486,9 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
 .logo-mark { width: 22px; height: 22px; flex: none; fill: var(--acc); }
 .nav__link { border-radius: 8px; transition: color 180ms var(--e-out), background-color 180ms var(--e-out); }
 .nav__link:hover { background: rgb(255 255 255 / 0.06); }
+.btn { white-space: nowrap; }
+/* narrow phones: the hero's own buttons are on screen, so the nav keeps only the logo and the menu */
+@media (max-width: 479px) { .nav:not(.is-open) .nav__actions { display: none; } .nav:not(.is-open) .nav__actions + .nav__toggle { margin-left: auto; } }
 </style>
 <style>
 /* ================= Questions: a read-first accordion ================= */
@@ -580,7 +583,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
       <div class="hero__c">
         <h1 id="hero-h">USDC loans against your staked NEAR</h1>
         <p class="hero__lead">Borrow dollars for 7 to 30 days. Your NEAR stays staked with your own validator, and the price is checked only when a term starts or renews.</p>
-        <div class="btn-row"><a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="/app/#/lend">Lend USDC</a></div>
+        <div class="btn-row"><a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="/app/#/lend">Lend USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></div>
       </div>
       <div class="hero__window" role="group" aria-label="Borrow calculator">
         <div class="ly-piece d-win d-win--dark">

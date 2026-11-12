@@ -284,3 +284,7 @@
   [data-dir="b"][data-pal="zinc"] .top { height: 56px; padding: 0 var(--gutter); background: rgb(9 9 11 / 0.66); box-shadow: 0 1px 0 rgb(255 255 255 / 0.08); }
   [data-dir="b"][data-pal="zinc"] .main { padding-top: 24px; }
 }
+[data-dir="b"][data-pal="zinc"] .wallet-chip { white-space: nowrap; flex: none; }
+[data-dir="b"][data-pal="zinc"] .cta, [data-dir="b"][data-pal="zinc"] .btn { white-space: nowrap; }
+[data-dir="b"][data-pal="zinc"] .btn-need .btn, [data-dir="b"][data-pal="zinc"] .actions .btn { white-space: normal; }
+@media (max-width: 379px) { [data-dir="b"][data-pal="zinc"] .wallet-chip.is-out { padding: 0 14px; font-size: 14px; } }
