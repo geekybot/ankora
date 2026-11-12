@@ -20,8 +20,15 @@
   .hero { position: relative; overflow: hidden; padding: 120px 0 88px; }
   .hero::before { content: ""; position: absolute; inset: auto -10% -45% 30%; height: 90%; background: radial-gradient(closest-side, oklch(45% 0.13 262 / 0.55), transparent); pointer-events: none; }
   .hero .wrap { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; align-items: center; }
-  @media (min-width: 1000px) { .hero { padding: 152px 0 120px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) 460px; gap: 72px; } }
-  .hero h1 { max-width: 9.5em; }
+  @media (min-width: 1000px) { .hero { padding: 136px 0 112px; } .hero .wrap { gap: 56px; } }
+  /* Stacked, not split: the founder rejected text-beside-visual heroes. Copy centred, calculator underneath. */
+  .hero .wrap { justify-items: center; text-align: center; }
+  .hero .wrap > * { width: 100%; max-width: 560px; }
+  .hero .wrap > :first-child { max-width: 860px; }
+  .hero .row { justify-content: center; }
+  .hero h1 { max-width: none; margin-inline: auto; }
+  .hero .sub { margin-inline: auto; }
+  .hero .wrap > :last-child { text-align: left; }
   .hero .sub { margin-top: 22px; font-size: 1.25rem; line-height: 1.45; color: var(--text-2); max-width: 26em; }
   .hero .row { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 24px; margin-top: 36px; }
 
@@ -200,7 +207,7 @@
 
   <section class="s" id="dip">
     <div class="wrap">
-      <h2>A wick isn't a reason to sell.</h2>
+      <h2>A dip isn't a reason to sell.</h2>
       <div class="chart rv" id="chart">
         <svg viewBox="0 0 900 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="NEAR's price dips through a liquidation line for a few hours, then recovers">
           <line class="liq" x1="20" x2="880" y1="210" y2="210"/>
@@ -210,7 +217,7 @@
         </svg>
       </div>
       <div class="lanes rv">
-        <div class="lane"><span class="dot red"></span><span>Liquidation-line lender<small>Sold at the wick</small></span></div>
+        <div class="lane"><span class="dot red"></span><span>Liquidation-line lender<small>Sold at the dip</small></span></div>
         <div class="lane"><span class="dot ok"></span><span>Ankora<small>Nothing happens until renewal</small></span></div>
       </div>
     </div>
@@ -368,7 +375,7 @@
     document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === name)));
     $('rp-a').textContent = a.notices.length ? `Asked to pay down ${times(a.notices.length).toLowerCase()}` : 'Never asked to pay down';
     $('rp-r').textContent = r === null ? 'Not liquidated' : `Liquidated on ${fmtD(dateOf(i + r))}`;
-    $('rp-note').textContent = `40% plan, from ${fmtD(dateOf(i))}.${a.paid ? ` Paid down ${usd(a.paid)} USDC.` : ''}`;
+    $('rp-note').textContent = `40% plan, from ${fmtD(dateOf(i))}.${a.paid ? ` Paid down ${usd(a.paid)} USDC. Paying down keeps your NEAR; liquidation sells it.` : ''}`;
     const bars = [[$('bar-a'), 100, a.notices.map(t => ['n', t / 365 * 100])], [$('bar-r'), r === null ? 100 : r / 365 * 100, r === null ? [] : [['x', r / 365 * 100]]]];
     bars.forEach(([bar, w, ms]) => {
       bar.querySelectorAll('.m').forEach(m => m.remove());
