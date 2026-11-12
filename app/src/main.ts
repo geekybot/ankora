@@ -8,6 +8,7 @@ import "./styles/palettes.css";
 import "./styles/zinc.css";
 import "./styles/one.css";
 import "./app.css";
+import "../../site/kinetic-grid.js"; // the landing's background, one source for both pages
 import * as C from "./chain.ts";
 import { quoteBorrow, maxPrincipal, paydownToRenew, NEAR as YOCTO, type PlanName } from "../../client/src/quote.ts";
 
@@ -224,12 +225,13 @@ function stats() {
   const L = S.ledger, p = S.price;
   const age = p && Number.isFinite(p.ageSecs) ? `${p.ageSecs} s ago` : "–";
   const stale = !!p && (!p.ok || !p.fresh);
-  const cell = (k: string, v: string, sub = "", cls = "") => `<div class="stat ${cls}"><span class="stat-k">${k}</span><span class="stat-v num">${v}</span>${sub ? `<span class="stat-s">${sub}</span>` : ""}</div>`;
+  const cell = (k: string, v: string, side = "") => `<div class="stat"><span class="stat-k">${k}${side ? `<span class="stat-side">${side}</span>` : ""}</span><span class="stat-v num">${v}</span></div>`;
+  const unit = (x: string) => `${x} <small>USDC</small>`;
   return `<div class="stats-row">
-    ${cell("Available to borrow", L ? `${usdc(L.cash, 0)}` : "–", "USDC")}
-    ${cell("Lent out", L ? `${usdc(L.outstanding, 0)}` : "–", "USDC")}
+    ${cell("Available to borrow", L ? unit(usdc(L.cash, 0)) : "–")}
+    ${cell("Lent out", L ? unit(usdc(L.outstanding, 0)) : "–")}
     ${cell("Utilisation", L ? `${(L.utilisation_bps / 100).toFixed(1)}%` : "–", L ? `<span class="util"><i style="width:${Math.min(100, L.utilisation_bps / 100)}%"></i></span>` : "")}
-    ${cell("NEAR price", p ? `$${p.price.toFixed(3)}` : "–", `<span class="live ${stale ? "is-stale" : ""}"><i></i>${stale ? "stale · " : ""}${age}</span>`)}
+    ${cell("NEAR price", p ? `$${p.price.toFixed(3)}` : "–", p ? `<span class="live ${stale ? "is-stale" : ""}"><i></i>${stale ? "stale " : ""}${age}</span>` : "")}
   </div>`;
 }
 
@@ -244,9 +246,10 @@ function quoteNow() {
 
 function validatorPicker() {
   const cur = S.vals.find((v) => v.id === S.validator);
-  const meta = (v?: C.ValidatorRow) => v ? `<span class="num">${v.sharePct.toFixed(1)}% of stake</span>${v.feePct !== null ? `<span class="num ${v.feePct > 20 ? "fee-hi" : ""}">${v.feePct.toFixed(0)}% fee</span>` : ""}` : `<span>Custom</span>`;
+  const fee = (v: C.ValidatorRow) => v.eligible === false ? `<span class="fee-no">Not eligible</span>` : v.feePct === undefined ? `<span class="fee-wait">fee …</span>` : v.feePct === null ? "" : `<span class="num ${v.feePct > 20 ? "fee-hi" : ""}">${v.feePct.toFixed(0)}% fee</span>`;
+  const meta = (v?: C.ValidatorRow) => v ? `<span class="num">${v.sharePct.toFixed(1)}%</span>${fee(v)}` : `<span>Custom</span>`;
   const list = S.valOpen ? `<div class="vp-pop" role="listbox" id="vp-list" aria-label="Validators">
-      ${S.vals.length ? S.vals.map((v, i) => `<button class="vp-opt ${i === S.valActive ? "is-active" : ""}" role="option" id="vp-${i}" aria-selected="${v.id === S.validator}" data-act="val-pick" data-v="${esc(v.id)}"><b>${esc(v.id.replace(/\.pool\..*$/, ""))}</b><small class="num">${esc(v.id)}</small>${meta(v)}</button>`).join("") : `<p class="vp-wait">Loading validators…</p>`}
+      ${S.vals.length ? `<p class="vp-head"><span>Validator</span><span>Stake · fee</span></p>` + S.vals.map((v, i) => `<button class="vp-opt ${i === S.valActive ? "is-active" : ""}" role="option" id="vp-${i}" aria-selected="${v.id === S.validator}" aria-disabled="${v.eligible === false}" ${v.eligible === false ? "disabled" : ""} data-act="val-pick" data-v="${esc(v.id)}"><b>${esc(v.id.replace(/\.pool\..*$/, ""))}</b><small class="num">${esc(v.id)}</small>${meta(v)}</button>`).join("") : `<p class="vp-wait">Loading validators…</p>`}
       <div class="vp-own"><input id="val" class="val num" value="${S.vals.some((v) => v.id === S.validator) ? "" : esc(S.validator)}" placeholder="Or type a whitelisted pool account" autocomplete="off" spellcheck="false" aria-label="Validator account"></div>
     </div>` : "";
   return `<div class="vp"><span class="vp-k">Stake with</span>
@@ -274,7 +277,7 @@ function borrowPanel() {
       ${validatorPicker()}
     </div>
     <div class="plans" role="radiogroup" aria-label="Plan">
-      ${S.plans.map((x) => `<button class="plan" role="radio" aria-checked="${x.plan === S.plan}" data-act="plan" data-v="${x.plan}"><b class="num">${x.plan.slice(1)}%</b><span>${Math.round(x.term_secs / 86400)} days</span><small class="num">${(x.rate_bps / 100).toFixed(1)}% APR</small></button>`).join("")}
+      ${S.plans.map((x) => `<button class="plan" role="radio" aria-checked="${x.plan === S.plan}" data-act="plan" data-v="${x.plan}" aria-label="Up to ${x.plan.slice(1)}% LTV for ${Math.round(x.term_secs / 86400)} days at ${(x.rate_bps / 100).toFixed(1)}% APR"><b class="num">${x.plan.slice(1)}%</b><span class="num">${Math.round(x.term_secs / 86400)} d</span><small class="num">${(x.rate_bps / 100).toFixed(1)}%</small></button>`).join("")}
     </div>
     <div class="flow" aria-hidden="true">${ICON.down}</div>
     <div class="box out">
@@ -313,8 +316,8 @@ function lendPanel() {
     : btn(`Deposit ${usdc(amt)} USDC`, "deposit", true);
   return `
     <div class="layers" role="radiogroup" aria-label="Layer">
-      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b><span class="layer-s">APR, paid first</span></button>
-      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "neg" : "pos"}">${m ? pct(m.now) : "–"}</b><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
+      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-row"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b></span><span class="layer-s">APR · paid first</span></button>
+      <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-row"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "neg" : "pos"}">${m ? pct(m.now) : "–"}</b></span><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
     </div>
     <p class="risk ${jr ? "is-warn" : ""}">${risk}</p>
     <div class="box">
@@ -389,11 +392,11 @@ function vaultItem(v: C.MyVault) {
 function poolNow() {
   const L = S.ledger; if (!L) return "";
   const m = aprModel(), open = S.all.filter((l) => l.state === "Active" || l.state === "Notice" || l.state === "Grace").length, auc = auctions().length;
-  const row = (k: string, v: string, sub = "") => `<div><dt>${k}</dt><dd><span class="num">${v}</span>${sub ? `<small class="num">${sub}</small>` : ""}</dd></div>`;
+  const row = (k: string, v: string, end = "") => `<div><dt>${k}</dt><dd class="num">${v}</dd><dd class="end">${end}</dd></div>`;
   return `<section class="acct-sec"><h3 class="h3">The pool right now</h3><dl class="pool-dl">
-    ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, "6.5% APR, paid first")}
-    ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `${pct(m.now)} est. APR now · ${pct(m.at80)} at 80% lent` : "")}
-    ${row("Open loans", String(open), `${usdc(L.outstanding, 0)} USDC lent`)}
+    ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, `<span class="num">6.5%</span> APR`)}
+    ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `<span class="num ${m.now < 0 ? "neg" : "pos"}">${pct(m.now)}</span> now` : "")}
+    ${row("Open loans", String(open), `<span class="num">${usdc(L.outstanding, 0)}</span> USDC lent`)}
     ${row("At auction", String(auc), auc ? `<button class="inline-link" data-act="tab" data-v="auctions">See auctions</button>` : "")}
   </dl></section>`;
 }
@@ -488,7 +491,11 @@ document.addEventListener("click", async (e) => {
     S.busy = false; await load(); return;
   }
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
-  if (a === "val-open") { S.valOpen = !S.valOpen; S.valActive = Math.max(0, S.vals.findIndex((v) => v.id === S.validator)); render(); if (S.valOpen) $<HTMLElement>(`#vp-${S.valActive}`)?.focus(); if (S.valOpen && !S.vals.length) loadValidators(); return; }
+  if (a === "val-open") {
+    S.valOpen = !S.valOpen; S.valActive = Math.max(0, S.vals.findIndex((v) => v.id === S.validator)); render();
+    if (S.valOpen) { $<HTMLElement>(`#vp-${S.valActive}`)?.focus(); if (!S.vals.length) await loadValidators(); C.validatorDetails(() => { pickFair(); render(); }); }
+    return;
+  }
   if (a === "val-pick") { S.validator = el.dataset.v!; S.valTouched = true; S.valOpen = false; render(); return $<HTMLElement>(".vp-btn")?.focus(); }
   if (a === "stake-max") { S.stake = nearIn(maxStake()); return render(); }
   if (a === "refresh") { S.price = await C.readPrice().catch(() => S.price); return render(); }
@@ -547,15 +554,17 @@ document.addEventListener("keydown", (e) => {
   }
 });
 document.addEventListener("pointerdown", (e) => { if (S.valOpen && !(e.target as HTMLElement).closest(".vp")) { S.valOpen = false; render(); } });
+/** Once fees are known: default to the largest eligible validator at 10% fee or less, unless the borrower chose one. */
+function pickFair() {
+  if (S.valTouched) return;
+  const cur = S.vals.find((v) => v.id === S.validator);
+  if (cur && (cur.feePct === undefined || (cur.feePct !== null && cur.feePct <= 10 && cur.eligible !== false))) return;
+  const fair = S.vals.find((v) => v.eligible && v.feePct != null && v.feePct <= 10); if (fair) S.validator = fair.id;
+}
 let valLoading = false;
 async function loadValidators() {
   if (valLoading || S.vals.length) return; valLoading = true;
-  try {
-    S.vals = await C.validators();
-    // Default to the largest validator that charges 10% or less, unless the borrower already chose one.
-    const cur = S.vals.find((v) => v.id === S.validator);
-    if (!S.valTouched && (!cur || cur.feePct === null || cur.feePct > 10)) { const fair = S.vals.find((v) => v.feePct !== null && v.feePct <= 10); if (fair) S.validator = fair.id; }
-  } catch { /* the typed field still works */ }
+  try { S.vals = await C.validators(); pickFair(); } catch { /* the typed field still works */ }
   valLoading = false; render();
 }
 addEventListener("hashchange", () => { S.tab = tabFromHash(); render(); });
@@ -574,5 +583,6 @@ C.restore().then(async () => {
   const outs = await C.outcomesFromUrl().catch(() => []);
   if (outs.length) toasts.push(outs.map((o) => judge(o, { receiverId: "", methodName: "", args: {}, gas: 0n, deposit: 0n }, { doing: "", done: "Done. The chain confirmed it." })).find((s) => s.kind === "error") ?? { kind: "ok", title: "Done. The chain confirmed it.", hash: outs[0]?.hash });
   await load();
+  loadValidators(); // one RPC call; details wait until the list is opened
 });
 render();

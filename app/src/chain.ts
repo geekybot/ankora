@@ -33,13 +33,14 @@ export const QUOTE_CAP_SHARE_BPS = 9700n;
 
 // Reads try the configured RPC first and fall back to NEAR's own RPC: one rate-limited provider must not take the app down.
 const RPCS = DEV_LOCAL ? [CFG.rpc] : [CFG.rpc, "https://rpc.testnet.near.org"];
-const readers = RPCS.map((rpcUrl) => new Near({ network: "testnet", rpcUrl }));
+// No retry on the primary: a refused call should fail over at once, not back off for seconds.
+const readers = RPCS.map((rpcUrl, i) => new Near({ network: "testnet", rpcUrl, retryConfig: { maxRetries: i === 0 ? 0 : 1, initialDelayMs: 300 } }));
 let live = 0;
 async function firstOk<T>(f: (n: Near) => Promise<T>): Promise<T> {
   let err: unknown;
   for (let k = 0; k < readers.length; k++) {
     const i = (live + k) % readers.length;
-    try { const v = await f(readers[i]!); live = i; return v; } catch (e) { err = e; if (/panicked|MethodNotFound|CodeDoesNotExist|does not exist|ExecutionError|UNKNOWN_ACCOUNT/i.test(String((e as Error)?.message ?? e))) throw e; }
+    try { const v = await f(readers[i]!); live = i; return v; } catch (e) { err = e; if (live === i) live = (i + 1) % readers.length; if (/panicked|MethodNotFound|CodeDoesNotExist|does not exist|ExecutionError|UNKNOWN_ACCOUNT/i.test(String((e as Error)?.message ?? e))) throw e; }
   }
   throw err;
 }
@@ -195,30 +196,35 @@ export async function keeperStatus(): Promise<{ ok: boolean; relayPriceAgeSecs: 
 export const faucet = (id: string, usdc: bigint): Action => ({ ...act.mint(id, usdc), receiverId: CFG.faucet });
 
 // ---------- validators a vault can stake with ----------
-export interface ValidatorRow { id: string; sharePct: number; feePct: number | null }
+/** eligible: on the lockup whitelist (undefined until checked). feePct: reward fee (undefined until checked, null if unknown). */
+export interface ValidatorRow { id: string; sharePct: number; feePct?: number | null; eligible?: boolean }
 const WHITELIST = DEV_LOCAL ? null : "whitelist.f863973.m0";
+const VKEY = `ankora.validators.v2.${CFG.pool}`;
 let validatorCache: ValidatorRow[] | null = null;
-const VKEY = `ankora.validators.${CFG.pool}`;
-/** Current validators that are on the lockup whitelist, with their share of total stake and their reward fee.
- *  Sorted by stake; the caller does not pre-select the largest. */
+const save = () => { try { localStorage.setItem(VKEY, JSON.stringify({ at: Date.now(), rows: validatorCache })); } catch { /* private mode */ } };
+/** The 10 largest current validators by stake, from one RPC call; stored for 6 hours. Details come later. */
 export async function validators(): Promise<ValidatorRow[]> {
   if (validatorCache) return validatorCache;
   try { const c = JSON.parse(localStorage.getItem(VKEY) ?? "null"); if (c && Date.now() - c.at < 6 * 3600_000 && c.rows?.length) return (validatorCache = c.rows); } catch { /* ignore */ }
   const r = await rpc({ jsonrpc: "2.0", id: 1, method: "validators", params: [null] });
   const cur: { account_id: string; stake: string }[] = r?.result?.current_validators ?? [];
   const total = cur.reduce((s, v) => s + Number(BigInt(v.stake) / 10n ** 18n), 0) || 1;
-  // The free RPC rate-limits bursts: check the 15 largest only, 3 calls at a time, and cache the answer for 6 hours.
-  const top = [...cur].sort((a, b) => (BigInt(b.stake) > BigInt(a.stake) ? 1 : -1)).slice(0, 15);
-  const one = async (v: { account_id: string; stake: string }): Promise<ValidatorRow | null> => {
-    const listed = WHITELIST ? await reader.view<boolean>(WHITELIST, "is_whitelisted", { staking_pool_account_id: v.account_id }).catch(() => false) : true;
-    if (!listed) return null;
-    const fee = await reader.view<{ numerator: number; denominator: number }>(v.account_id, "get_reward_fee_fraction", {}).catch(() => null);
-    return { id: v.account_id, sharePct: Number(BigInt(v.stake) / 10n ** 18n) / total * 100, feePct: fee && fee.denominator ? fee.numerator / fee.denominator * 100 : null };
-  };
-  const rows: (ValidatorRow | null)[] = [];
-  for (let i = 0; i < top.length; i += 3) rows.push(...await Promise.all(top.slice(i, i + 3).map(one)));
-  validatorCache = rows.filter((x): x is ValidatorRow => !!x).sort((a, b) => b.sharePct - a.sharePct);
-  if (validatorCache.length) { try { localStorage.setItem(VKEY, JSON.stringify({ at: Date.now(), rows: validatorCache })); } catch { /* private mode */ } }
-  else validatorCache = null;
-  return validatorCache ?? [];
+  validatorCache = cur.map((v) => ({ id: v.account_id, sharePct: Number(BigInt(v.stake) / 10n ** 18n) / total * 100 }))
+    .sort((a, b) => b.sharePct - a.sharePct).slice(0, 10);
+  save();
+  return validatorCache;
+}
+let detailing = false;
+/** Whitelist status and fee for each stored row, two calls at a time; onUpdate re-renders as rows fill in. */
+export async function validatorDetails(onUpdate: () => void): Promise<void> {
+  if (detailing || !validatorCache) return; detailing = true;
+  const todo = validatorCache.filter((v) => v.eligible === undefined);
+  for (let i = 0; i < todo.length; i += 2) {
+    await Promise.all(todo.slice(i, i + 2).map(async (v) => {
+      v.eligible = WHITELIST ? await reader.view<boolean>(WHITELIST, "is_whitelisted", { staking_pool_account_id: v.id }).catch(() => false) === true : true;
+      if (v.eligible) { const f = await reader.view<{ numerator: number; denominator: number }>(v.id, "get_reward_fee_fraction", {}).catch(() => null); v.feePct = f && f.denominator ? f.numerator / f.denominator * 100 : null; }
+    }));
+    onUpdate();
+  }
+  save(); detailing = false;
 }
