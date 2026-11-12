@@ -172,6 +172,8 @@ function loanCard(l: C.LoanView) {
 }
 
 function vaultCard(v: C.MyVault) {
+  // Done: nothing staked, unstaking or left above dust (0.01 NEAR) in the vault. Hide the card instead of offering "Send 0 NEAR".
+  if (v.stakedNow === 0n && v.unstaked === 0n && v.transferable < 10n ** 22n) return "";
   const btn = (act: string, label: string, amt = "") => `<button class="btn btn-2" data-act="${act}" data-v="${v.vault}" ${amt ? `data-amt="${amt}"` : ""} ${S.busy ? "disabled" : ""}>${label}</button>`;
   const step = v.stakedNow > 0n
     ? { h: `Loan #${v.loanId} is closed. ${near(v.stakedNow)} NEAR is still staked in your vault.`, t: "The vault is yours now. Step 1 of 3: unstake. Then withdraw after 4 epochs (about 28 hours), then send the NEAR to your wallet.", b: btn("v-unstake", "Unstake all") }
