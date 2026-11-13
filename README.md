@@ -100,14 +100,6 @@ cd contracts && ./build.sh && cargo test --workspace --lib && cargo test -p anko
 cd client && npm test
 ```
 
-## Provenance and dependencies
-
-- **History:** all code in this repository was written from 11 Nov 2026 (first commit) onward, for NEAR HACKATHON. The research behind the parameters (models of NEAR's 2020–26 history with pass criteria set in advance) began on 9 Nov; it is in [research/](research/THESIS.md) and the [docs](https://ankora.utpal.dev/docs/#research). No earlier code is reused.
-- **Libraries:** near-sdk 5.30 and cargo-near (contracts), near-kit and @hot-labs/near-connect (chain access and wallets), Vite and TypeScript (app), vitest (tests), near-sandbox (end-to-end tests).
-- **Services:** NEAR Intents 1Click API (cross-chain deposits and transfers), Rhea's `aggregate-oracle.near` (NEAR/USD), NEAR Foundation's `lockup-whitelist.near` (eligible validators).
-- **Design assets:** Geist fonts; a front-end kit for the landing page's layout and motion (`site/assets`); a kinetic-grid background adapted from a Framer component.
-- **AI assistance:** written with Claude Code as a coding assistant, directed and reviewed by the team.
-
 ## License
 
 [MIT](LICENSE).
