@@ -22,14 +22,17 @@ Borrow USDC against NEAR for a fixed term, with no liquidation during the term. 
 2. **It stays staked.** A vault account created for your loan stakes the NEAR with your validator (any pool on the lockup whitelist). Native stakers unstake once (about 28 hours) to move in.
 3. **At renewal.** At 50% LTV or below, the loan renews and the next term's interest is added to the debt. Above it: 72 hours' notice to pay down, 48 hours' grace, then a 24-hour Dutch auction from 100% to 50% of the price. No late fee.
 4. **Repay any time.** The vault is handed back to you; unstake and withdraw from it like any staking account.
-5. **Lend.** *Fixed 6.5%* is paid first and loses money only after every First-loss deposit is gone. *First-loss* takes losses first and keeps what the pool earns beyond that; it can lose everything and is locked for 36 days. Ankora keeps 5% of interest.
+5. **Lend.** *Fixed* earns 6.5% a year on the share of the pool that is lent out (at 60% utilisation, 3.9% on the whole deposit), is paid first, and loses money only after every First-loss deposit is gone. *First-loss* takes losses first and keeps what the pool earns beyond that; it can lose everything and is locked for 36 days. Ankora keeps 5% of interest.
+   - Why Fixed accrues on lent cash only: if it earned 6.5% on idle cash, First-loss would pay that from its own deposit and lose money until the pool was about 60% lent. The pool keeps an accrual clock that runs at utilisation, so First-loss is never charged for idle cash.
+6. **From other chains.** A deposit message `{"depositfor":{"tranche":"senior","account":"alice.near"}}` credits the named account, so USDC bridged by NEAR Intents can land as a deposit for the user who sent it. The app shows live NEAR Intents quotes for funding from Base, Ethereum, Arbitrum or Solana, and for receiving a loan there. NEAR Intents has no testnet, so the testnet app shows the mainnet route and does not execute it.
+7. **Auctions are on record.** Every auction is stored with its outcome (sold, repaid, no buyer), price and buyer; `get_auction_history` lists them newest first.
 
 ## Try it
 
 - **Testnet app:** [ankora.utpal.dev/app](https://ankora.utpal.dev/app/).
-  - **No wallet:** open the app and choose *See live loans without a wallet*.
+  - **No wallet:** the pool, rates, open auctions and auction history load without one.
   - **Lend:** any testnet wallet with a little NEAR for gas. Get test USDC from the app's faucet (1,000 per click).
-  - **Borrow:** a testnet wallet with at least 5.1 NEAR (5 attached plus gas). Testnet NEAR comes from [near-faucet.io](https://near-faucet.io/) or the [NEAR docs faucet](https://docs.near.org/getting-started/faucet); both can run dry, and near-faucet.io gives about 2 NEAR a claim. The app's wallet picker lists Meteor, Intear and others; switch the wallet to testnet.
+  - **Borrow:** a testnet wallet with at least 5.1 NEAR (5 attached plus gas). Testnet NEAR comes from [near-faucet.io](https://near-faucet.io/) or the [NEAR docs faucet](https://docs.near.org/getting-started/faucet); both can run dry, and near-faucet.io gives about 2 NEAR a claim. If both are dry, ask the team for testnet NEAR. The app's wallet picker lists Meteor, Intear and others; switch the wallet to testnet.
 - **On your machine, no testnet needed:** a full stack on a local NEAR sandbox, with the live mainnet price and controls to crash the price and skip time.
   ```bash
   cd contracts && ./build.sh
