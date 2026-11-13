@@ -10,6 +10,7 @@ import "./styles/one.css";
 import "./app.css";
 import "../../site/kinetic-grid.js"; // the landing's background, one source for both pages
 import * as C from "./chain.ts";
+import * as X from "./intents.ts";
 import { quoteBorrow, maxPrincipal, paydownToRenew, NEAR as YOCTO, type PlanName } from "../../client/src/quote.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -36,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  tab: "borrow" as "borrow" | "lend" | "auctions", details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -186,9 +187,37 @@ const toasts = (() => {
 /** Small, passing confirmations (demo controls). */
 const toast = (m: string) => toasts.push({ kind: "info", title: m });
 
+// ---------- NEAR Intents: live quotes to fund or receive on another chain ----------
+function crossChain(toNear: boolean, amount: bigint) {
+  const ch = X.CHAINS.find((c) => c.id === S.xChain) ?? X.CHAINS[0]!;
+  const amt = amount > 0n ? amount : 100n * U;
+  const key = `${ch.id}:${toNear}:${amt}`;
+  const q = S.xq.key === key ? S.xq : { state: "loading", out: 0, secs: 0 };
+  const line = q.state === "ok"
+    ? (toNear ? `<b class="num">${usdc(amt)}</b> USDC on ${ch.label} → <b class="num">${q.out.toFixed(2)}</b> USDC on NEAR` : `<b class="num">${usdc(amt)}</b> USDC on NEAR → <b class="num">${q.out.toFixed(2)}</b> USDC on ${ch.label}`) + `<span class="num"> · ~${q.secs} s</span>`
+    : q.state === "err" ? "Quote unavailable right now." : "Getting a live quote…";
+  return `<details class="xc" data-xc ${S.xOpen[toNear ? "lend" : "borrow"] ? "open" : ""}><summary><span>${toNear ? "Fund from another chain" : "Receive on another chain"}</span><span class="xc-tag">NEAR Intents</span>${ICON.chev}</summary>
+    <div class="xc-chains" role="radiogroup" aria-label="Chain">${X.CHAINS.map((c) => `<button class="xc-c" role="radio" aria-checked="${c.id === ch.id}" data-act="xchain" data-v="${c.id}">${c.label}</button>`).join("")}</div>
+    <p class="xc-q ${q.state}" aria-live="polite">${line}</p>
+    <p class="fine">Live mainnet quote via NEAR Intents 1Click. This testnet build uses test USDC, so the route is shown, not executed.</p></details>`;
+}
+/** Fetch the open row's quote when its chain, direction or amount changes. */
+function ensureQuote() {
+  if (!S.xOpen[S.tab]) return;
+  const toNear = S.tab === "lend";
+  const ch = X.CHAINS.find((c) => c.id === S.xChain) ?? X.CHAINS[0]!;
+  const raw = toNear ? safe(() => toUsdc(S.lendAmt || "0"), 0n) : (quoteNow()?.q.ok ? quoteNow()!.q.payout : 0n);
+  const amt = raw > 0n ? raw : 100n * U;
+  const key = `${ch.id}:${toNear}:${amt}`;
+  if (S.xq.key === key) return;
+  S.xq = { key, state: "loading", out: 0, secs: 0 };
+  X.quote(ch, amt, toNear).then((r) => { if (S.xq.key === key) { S.xq = { key, state: "ok", out: r.out, secs: r.secs }; render(); } })
+    .catch(() => { if (S.xq.key === key) { S.xq = { key, state: "err", out: 0, secs: 0 }; render(); } });
+}
+
 // ---------- lending APRs: Fixed is set by the contract; First-loss earns what is left ----------
 const SENIOR_APR = 0.065, FEE = 0.05;
-/** First-loss APR estimate: (pool interest after Ankora's 5% − Fixed's 6.5% on the Fixed share) ÷ the First-loss share.
+/** First-loss APR estimate: (pool interest after Ankora's 5% − Fixed's 6.5% on its lent share) ÷ the First-loss share.
  *  Uses live utilisation and the debt-weighted rate of open loans (the plans' average when none are open). No defaults assumed. */
 function aprModel() {
   const L = S.ledger; if (!L) return null;
@@ -199,8 +228,9 @@ function aprModel() {
   const debt = open.reduce((s, l) => s + Number(BigInt(l.debt)), 0);
   const avg = debt ? open.reduce((s, l) => s + Number(BigInt(l.debt)) * rate(l.plan), 0) / debt : (S.plans.reduce((s, x) => s + x.rate_bps, 0) / Math.max(1, S.plans.length)) / 1e4;
   const sShare = sen / tot, jShare = jun / tot;
-  const at = (u: number) => (u * avg * (1 - FEE) - sShare * SENIOR_APR) / jShare * 100;
-  return { now: at(L.utilisation_bps / 1e4), at80: at(0.8), breakeven: Math.min(100, sShare * SENIOR_APR / (avg * (1 - FEE)) * 100) };
+  // Fixed earns 6.5% only on lent cash (the pool's accrual clock runs at its utilisation), so idle cash costs First-loss nothing.
+  const at = (u: number) => (u * avg * (1 - FEE) - sShare * SENIOR_APR * u) / jShare * 100;
+  return { now: at(L.utilisation_bps / 1e4), at80: at(0.8) };
 }
 const pct = (x: number) => `${x < 0 ? "−" : ""}${Math.abs(x).toFixed(1)}%`;
 
@@ -293,6 +323,7 @@ function borrowPanel() {
     ${button}
     ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan sends at least 5 NEAR: 3.5 to stake, 1.5 for your vault account. Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>, or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
       : `<p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>`}
+    ${crossChain(false, q?.ok ? q.payout : 0n)}
     <details class="more" ${S.details ? "open" : ""} data-details><summary>Details ${ICON.chev}</summary>
       <dl class="terms sm">
         ${q?.ok ? `<div><dt>NEAR sent</dt><dd class="num">${near(q.attachedYocto)} NEAR</dd></div><div><dt>Staked as collateral</dt><dd class="num">≈ ${near(Q!.stake + VAULT_EXTRA, 1)} NEAR</dd></div><div><dt>Vault storage</dt><dd>Rest of the 1.5 NEAR reserve</dd></div>` : ""}
@@ -306,8 +337,8 @@ function lendPanel() {
   const amt = safe(() => toUsdc(S.lendAmt || "0"), 0n);
   const m = aprModel();
   const risk = jr
-    ? `Earns the pool's interest above Fixed's 6.5%: more as more is lent${m ? `, below zero under ${m.breakeven.toFixed(0)}% lent` : ""}. Takes losses first and can lose everything. Locked 36 days.`
-    : "Fixed rate, paid before First-loss. Loses money only after every First-loss deposit is gone.";
+    ? "Earns the pool's interest above Fixed's 6.5% on lent cash: more as more is lent. Takes losses first and can lose everything. Locked 36 days."
+    : "6.5% a year on the share of the pool that is lent out, paid before First-loss. Loses money only after every First-loss deposit is gone.";
   const ack = jr ? "I can lose my whole First-loss deposit" : "Fixed can lose money in a fast crash";
   const button = !C.account ? connectBtn()
     : amt === 0n ? btn("Enter an amount", "noop", false)
@@ -317,7 +348,7 @@ function lendPanel() {
     : btn(`Deposit ${usdc(amt)} USDC`, "deposit", true);
   return `
     <div class="layers" role="radiogroup" aria-label="Layer">
-      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-row"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b></span><span class="layer-s">APR · paid first</span></button>
+      <button class="layer" role="radio" aria-checked="${!jr}" data-act="tranche" data-v="senior"><span class="layer-row"><span class="layer-k">Fixed</span><b class="layer-apr num">6.5%</b></span><span class="layer-s">on lent cash${S.ledger ? ` · <span class="num">${pct(6.5 * S.ledger.utilisation_bps / 1e4)}</span> now` : ""}</span></button>
       <button class="layer" role="radio" aria-checked="${jr}" data-act="tranche" data-v="junior"><span class="layer-row"><span class="layer-k">First-loss</span><b class="layer-apr num ${m && m.now < 0 ? "down" : "up"}">${m ? pct(m.now) : "–"}</b></span><span class="layer-s">est. APR now${m ? ` · <span class="num">${pct(m.at80)}</span> at 80% lent` : ""}</span></button>
     </div>
     <p class="risk ${jr ? "is-warn" : ""}">${risk}</p>
@@ -325,6 +356,7 @@ function lendPanel() {
       <div class="box-top"><label for="lamt">You deposit</label>${C.account ? `<button class="bal" data-act="max">Balance <span class="num">${usdc(S.usdcBal)}</span> · Max</button>` : ""}</div>
       <div class="box-in">${ICON.usdc()}<input id="lamt" class="input num" inputmode="decimal" placeholder="0" value="${esc(S.lendAmt)}" autocomplete="off"><span class="unit">USDC</span></div>
     </div>
+    ${crossChain(true, amt)}
     <button class="ack" role="checkbox" aria-checked="${S.ack}" data-act="ack"><span class="ack-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>${ack}</button>
     ${button}
     <p class="fine">${C.account ? `Test USDC only. <button class="inline-link" data-act="faucet" ${S.busy ? "disabled" : ""}>Get 1,000</button>` : "Test USDC only."}</p>`;
@@ -413,7 +445,7 @@ function poolNow() {
   const m = aprModel(), open = S.all.filter((l) => l.state === "Active" || l.state === "Notice" || l.state === "Grace").length, auc = auctions().length;
   const row = (k: string, v: string, end = "") => `<div><dt>${k}</dt><dd class="num">${v}</dd><dd class="end">${end}</dd></div>`;
   return `<section class="acct-sec"><h3 class="h3">Current pool</h3><dl class="pool-dl">
-    ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, `<span class="num">6.5%</span> APR`)}
+    ${row("Fixed", `${usdc(L.senior_value, 0)} USDC`, `<span class="num">${pct(6.5 * L.utilisation_bps / 1e4)}</span> now`)}
     ${row("First-loss", `${usdc(L.junior_value, 0)} USDC`, m ? `<span class="num ${m.now < 0 ? "down" : "up"}">${pct(m.now)}</span> now` : "")}
     ${row("Open loans", String(open), `<span class="num">${usdc(L.outstanding, 0)}</span> USDC lent`)}
     ${row("At auction", String(auc), auc ? `<button class="inline-link" data-act="tab" data-v="auctions">See auctions</button>` : "")}
@@ -472,6 +504,7 @@ function render() {
   const pnl = $("#panel"); pnl.setAttribute("aria-labelledby", `tab-${S.tab}`);
   if (pnl.dataset.tab !== S.tab) { pnl.dataset.tab = S.tab; pnl.classList.remove("is-swap"); void pnl.offsetWidth; pnl.classList.add("is-swap"); }
   put(pnl, panel);
+  ensureQuote();
   put($("#context"), `<h2 class="acct-h">Your account</h2>${account()}`);
 }
 
@@ -514,6 +547,7 @@ document.addEventListener("click", async (e) => {
     S.busy = false; await load(); return;
   }
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
+  if (a === "xchain") { S.xChain = el.dataset.v!; return render(); }
   if (a === "val-open") {
     S.valOpen = !S.valOpen; S.valActive = Math.max(0, S.vals.findIndex((v) => v.id === S.validator)); render();
     if (S.valOpen) { $<HTMLElement>(`#vp-${S.valActive}`)?.focus(); if (!S.vals.length) await loadValidators(); C.validatorDetails(() => { pickFair(); render(); }); }
@@ -556,7 +590,11 @@ document.addEventListener("click", async (e) => {
     return run(C.act.borrow({ validator: S.validator, principal: Q.principal, plan: S.plan, stakeYocto: Q.stake }), { doing: `Borrowing ${usdc(Q.q.payout)} USDC against ${near(Q.stake)} NEAR.`, done: `${usdc(Q.q.payout)} USDC is in your wallet.`, doneBody: "Your NEAR is staked in your loan's vault." });
   }
 });
-document.addEventListener("toggle", (e) => { const d = e.target as HTMLElement; if (d.matches?.("[data-details]")) S.details = (d as HTMLDetailsElement).open; }, true);
+document.addEventListener("toggle", (e) => {
+  const d = e.target as HTMLElement;
+  if (d.matches?.("[data-details]")) S.details = (d as HTMLDetailsElement).open;
+  if (d.matches?.("[data-xc]")) { const o = (d as HTMLDetailsElement).open; if (S.xOpen[S.tab] === o) return; S.xOpen[S.tab] = o; if (o) { ensureQuote(); render(); } }
+}, true);
 $("#wallet").addEventListener("click", () => (C.account ? C.disconnect() : C.connect()));
 document.addEventListener("input", (e) => {
   const t = e.target as HTMLInputElement;

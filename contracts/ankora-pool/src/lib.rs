@@ -69,7 +69,11 @@ impl From<TrancheArg> for Tranche {
 /// `msg` of `ft_transfer_call` into the pool.
 #[near(serializers = [json])]
 #[serde(rename_all = "lowercase")]
-pub enum FtMsg { Deposit(TrancheArg), Repay(u64), Bid(u64), Recovery(u64) }
+pub enum FtMsg { Deposit(TrancheArg), DepositFor(DepositFor), Repay(u64), Bid(u64), Recovery(u64) }
+/// `{"depositfor":{"tranche":"senior","account":"alice.near"}}`: the shares go to `account`, not to the sender.
+/// For deposits relayed by NEAR Intents from another chain, where the sender is the intents contract.
+#[near(serializers = [json])]
+pub struct DepositFor { pub tranche: TrancheArg, pub account: AccountId }
 
 #[near(serializers = [borsh])]
 #[derive(Clone)]
@@ -168,6 +172,13 @@ fn now() -> u64 {
     if let Some(v) = env::storage_read(CLOCK_KEY) { return base + u64::from_le_bytes(v.try_into().unwrap_or([0; 8])); }
     base
 }
+/// The accrual clock: (clock, wall time) at the last checkpoint, under its own storage key (no state migration).
+/// It advances at the pool's utilisation, so Fixed's 6.5% accrues only on lent cash. Absent = starts now.
+const ACC_KEY: &[u8] = b"acc:clock";
+fn acc_read() -> Option<(u64, u64)> {
+    env::storage_read(ACC_KEY).map(|b| (u64::from_le_bytes(b[..8].try_into().unwrap()), u64::from_le_bytes(b[8..16].try_into().unwrap())))
+}
+fn acc_write(clock: u64, wall: u64) { env::storage_write(ACC_KEY, &[clock.to_le_bytes(), wall.to_le_bytes()].concat()); }
 fn state_name(s: LoanState) -> &'static str {
     match s { LoanState::Active => "Active", LoanState::Notice { .. } => "Notice", LoanState::Grace { .. } => "Grace",
         LoanState::Auction { .. } => "Auction", LoanState::Closed => "Closed", LoanState::Defaulted => "Defaulted" }
@@ -222,6 +233,17 @@ impl Pool {
 
 #[near]
 impl Pool {
+    /// The accrual clock now: the last checkpoint plus elapsed wall time scaled by utilisation since then.
+    /// Utilisation only changes inside a call, and every call that changes it checkpoints first.
+    fn clock(&self, wall: u64) -> u64 {
+        let (c0, w0) = acc_read().unwrap_or((wall, wall));
+        let g = &self.ledger;
+        let base = g.cash + g.outstanding;
+        let u_ppm = if base == 0 { 0 } else { g.outstanding.min(base) * 1_000_000 / base };
+        c0 + (wall.saturating_sub(w0) as u128 * u_ppm / 1_000_000) as u64
+    }
+    fn checkpoint(&self, wall: u64) { acc_write(self.clock(wall), wall); }
+
     #[init]
     pub fn new(owner: AccountId, usdc: AccountId, pyth: AccountId, price_id: String, whitelist: AccountId) -> Self {
         require!(price_id.len() == 64, "price_id is 64 hex characters, no 0x");
@@ -229,8 +251,9 @@ impl Pool {
             owner, usdc, pyth, price_id, whitelist, ledger: Ledger::new(now()),
             loans: IterableMap::new(Key::Loans), lenders: LookupMap::new(Key::Lenders), pending: LookupMap::new(Key::Pending), claimable: LookupMap::new(Key::Claimable),
             next_id: 0, vol: VolState::Normal,
-        }
+        }.started()
     }
+    fn started(self) -> Self { acc_write(self.ledger.t0, self.ledger.t0); self }
 
     /// Attach the NEAR to stake (plus 1.5 NEAR vault storage) and at least 250 Tgas.
     #[payable]
@@ -239,7 +262,7 @@ impl Pool {
         require!(attached >= MIN_ATTACHED, "attach at least 5 NEAR");
         require!(env::prepaid_gas() >= MIN_GAS, "attach at least 250 Tgas");
         require!(principal.0 > 0, "principal must be positive");
-        require!(self.ledger.can_lend(principal.0, now()), "junior cover or free cash too low for this loan");
+        require!(self.ledger.can_lend(principal.0, self.clock(now())), "junior cover or free cash too low for this loan");
         self.ledger.reserve(principal.0);
         let id = self.next_id;
         self.next_id += 1;
@@ -291,6 +314,7 @@ impl Pool {
         }
         let t = now();
         let loan = Loan::open(id, p.borrower.to_string(), vault.to_string(), p.validator.to_string(), staked, p.principal, pl, t);
+        self.checkpoint(now());
         self.ledger.open_loan(p.principal, loan.term_interest);
         let payout = p.principal - loan.term_interest;
         self.loans.insert(id, loan);
@@ -321,6 +345,7 @@ impl Pool {
         if ok.is_ok() { return true; }
         env::log_str(&format!("borrow {id} cancelled: payout failed"));
         if let Some(l) = self.loans.remove(&id) {
+            self.checkpoint(now());
             self.ledger.cancel_loan(l.debt, l.term_interest);
             Self::release_vault(&l.vault.parse().unwrap(), l.borrower.parse().unwrap());
         }
@@ -332,15 +357,18 @@ impl Pool {
         require!(env::predecessor_account_id() == self.usdc, "only USDC");
         let m: FtMsg = near_sdk::serde_json::from_str(&msg).unwrap_or_else(|_| env::panic_str("bad msg"));
         let t = now();
+        self.checkpoint(t);
+        let (m, sender_id) = match m { FtMsg::DepositFor(d) => (FtMsg::Deposit(d.tranche), d.account), m => (m, sender_id) };
         match m {
             FtMsg::Deposit(tr) => {
                 require!(amount.0 >= MIN_DEPOSIT, "minimum deposit is 10 USDC");
-                let shares = self.ledger.deposit(tr.into(), amount.0, t).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
+                let shares = self.ledger.deposit(tr.into(), amount.0, self.clock(t)).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
                 let mut pos = self.lenders.get(&sender_id).cloned().unwrap_or_default();
                 match tr { TrancheArg::Senior => pos.senior_shares += shares, TrancheArg::Junior => { pos.junior_shares += shares; pos.junior_deposited_at = t; } }
                 self.lenders.insert(sender_id, pos);
                 PromiseOrValue::Value(U128(0))
             }
+            FtMsg::DepositFor(_) => env::panic_str("unreachable: rewritten to Deposit above"),
             FtMsg::Repay(id) => {
                 let mut l = self.loan(id);
                 let was_auction = matches!(l.state, LoanState::Auction { .. });
@@ -391,6 +419,7 @@ impl Pool {
     pub fn on_settle_priced(&mut self, id: u64, #[callback_result] spot: Result<Option<PythPriceJson>, PromiseError>, #[callback_result] ema: Result<Option<PythPriceJson>, PromiseError>) -> String {
         let mut l = self.loan(id);
         let t = now();
+        self.checkpoint(t);
         let px = match collateral_price(to_price(spot), to_price(ema), t as i64, false) {
             Ok(px) => px,
             Err(_) if matches!(l.state, LoanState::Auction { .. }) => (1, -8),
@@ -432,7 +461,9 @@ impl Pool {
         let mut pos = self.lenders.get(&who).cloned().unwrap_or_else(|| env::panic_str("no position"));
         let have = match tranche { TrancheArg::Senior => pos.senior_shares, TrancheArg::Junior => pos.junior_shares };
         require!(shares.0 <= have, "more shares than you hold");
-        let amount = self.ledger.withdraw(tranche.into(), shares.0, now(), pos.junior_deposited_at).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
+        let t = now();
+        self.checkpoint(t);
+        let amount = self.ledger.withdraw(tranche.into(), shares.0, self.clock(t), t, pos.junior_deposited_at).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
         match tranche { TrancheArg::Senior => pos.senior_shares -= shares.0, TrancheArg::Junior => pos.junior_shares -= shares.0 }
         self.lenders.insert(who.clone(), pos);
         ext_ft::ext(self.usdc.clone()).with_attached_deposit(NearToken::from_yoctonear(1)).with_static_gas(GAS_FT)
@@ -443,6 +474,7 @@ impl Pool {
     #[private]
     pub fn on_withdrawn(&mut self, who: AccountId, tranche: TrancheArg, shares: U128, amount: U128, #[callback_result] ok: Result<(), PromiseError>) -> bool {
         if ok.is_ok() { return true; }
+        self.checkpoint(now());
         self.ledger.undo_withdraw(tranche.into(), shares.0, amount.0);
         let mut pos = self.lenders.get(&who).cloned().unwrap_or_default();
         match tranche { TrancheArg::Senior => pos.senior_shares += shares.0, TrancheArg::Junior => pos.junior_shares += shares.0 }
@@ -484,7 +516,7 @@ impl Pool {
     }
 
     pub fn get_ledger(&self) -> LedgerView {
-        let (g, t) = (&self.ledger, now());
+        let (g, t) = (&self.ledger, self.clock(now()));
         let lent = g.outstanding;
         let util = if g.nav(t) == 0 { 0 } else { (lent * 10_000 / (g.cash + lent).max(1)) as u32 };
         LedgerView {
@@ -571,6 +603,54 @@ mod tests {
         id
     }
     fn state(p: &Pool, id: u64) -> String { p.get_loan(id).unwrap().state }
+
+    const YEAR: u64 = 31_536_000;
+    #[test]
+    fn fixed_earns_nothing_on_idle_cash() {
+        let p = funded();
+        set("anyone.testnet", 0, T0 + YEAR);
+        let g = p.get_ledger();
+        assert_eq!(g.senior_value.0, 17_000 * U, "no loans, no coupon");
+        assert_eq!(g.junior_value.0, 3_000 * U, "and First-loss is not drained by idle cash");
+    }
+
+    #[test]
+    fn fixed_accrues_at_the_pools_utilisation() {
+        let mut p = funded();
+        let _ = booked(&mut p);
+        let g0 = p.get_ledger();
+        let (lent, cash) = (g0.outstanding.0 as f64, g0.cash.0 as f64);
+        let u = lent / (lent + cash);
+        set("anyone.testnet", 0, T0 + YEAR);
+        let got = p.get_ledger().senior_value.0 as f64 / U as f64;
+        let want = 17_000.0 * (1.0 + 0.065 * u);
+        assert!((got - want).abs() < 0.01, "senior {got} vs 17,000 x (1 + 6.5% x {u:.3}) = {want}");
+        assert!(got < 17_000.0 * 1.065, "below the full 6.5% while part of the pool is idle");
+    }
+
+    #[test]
+    fn upgrade_keeps_what_fixed_already_earned_then_accrues_on_lent_cash() {
+        let p = funded();
+        near_sdk::env::storage_remove(super::ACC_KEY); // a pool deployed before the accrual clock existed
+        set("anyone.testnet", 0, T0 + YEAR);
+        assert_eq!(p.get_ledger().senior_value.0, 17_000 * U * 1_065 / 1_000, "the old full-rate year is kept, nothing is clawed back");
+        let mut p = p;
+        set("usdc.testnet", 0, T0 + YEAR);
+        let _ = p.ft_on_transfer(acc("senior2.testnet"), U128(10 * U), r#"{"deposit":"senior"}"#.into()); // first call after the upgrade: checkpoint
+        let at_upgrade = p.get_ledger().senior_value.0;
+        set("anyone.testnet", 0, T0 + 2 * YEAR);
+        assert_eq!(p.get_ledger().senior_value.0, at_upgrade, "after the upgrade an idle pool pays Fixed nothing");
+    }
+
+    #[test]
+    fn deposit_for_credits_the_named_account() {
+        let mut p = funded();
+        set("usdc.testnet", 0, T0);
+        let r = p.ft_on_transfer(acc("intents.near"), U128(100 * U), r#"{"depositfor":{"tranche":"senior","account":"alice.testnet"}}"#.into());
+        assert!(matches!(r, PromiseOrValue::Value(U128(0))));
+        assert!(p.get_lender(acc("alice.testnet")).unwrap().senior_shares.0 > 0);
+        assert!(p.get_lender(acc("intents.near")).is_none(), "the relayer gets nothing");
+    }
 
     #[test]
     fn deposits_mint_shares_and_add_cash() {

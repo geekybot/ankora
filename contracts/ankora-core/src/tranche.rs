@@ -1,5 +1,7 @@
 //! Lender ledger: senior earns a fixed 6.5%, junior owns the rest and takes losses first (ankora-mechanism.md).
 //! nav = cash + outstanding - unearned - treasury. Interest vests linearly; 5% of what vests goes to the treasury.
+//! Every `at` below is the pool's accrual clock, not wall time: it runs at the pool's utilisation, so the senior's
+//! 6.5% accrues only on the share of the pool that is lent out (the pool keeps that clock; wall time here = full rate).
 use crate::math::{BPS, FEE_BPS, YEAR_SECS};
 
 pub const SENIOR_BPS: u128 = 650;
@@ -58,17 +60,18 @@ impl Ledger {
         Ok(shares)
     }
 
-    pub fn withdraw(&mut self, t: Tranche, shares: u128, now: u64, deposited_at: u64) -> Result<u128, LedgerError> {
+    /// `at`: the accrual clock (values). `wall`: real time (the 36-day junior lock).
+    pub fn withdraw(&mut self, t: Tranche, shares: u128, at: u64, wall: u64, deposited_at: u64) -> Result<u128, LedgerError> {
         let amount = match t {
             Tranche::Senior => {
                 if shares == 0 || shares > self.senior_shares { return Err(LedgerError::NoShares); }
-                self.senior_value(now) * shares / self.senior_shares
+                self.senior_value(at) * shares / self.senior_shares
             }
             Tranche::Junior => {
                 if shares == 0 || shares > self.junior_shares { return Err(LedgerError::NoShares); }
-                if now < deposited_at + JUNIOR_LOCK_SECS { return Err(LedgerError::Locked); }
-                let a = self.junior_value(now) * shares / self.junior_shares;
-                if (self.junior_value(now) - a) * BPS < JUNIOR_COVER_BPS * (self.outstanding + self.reserved) { return Err(LedgerError::CoverBreach); }
+                if wall < deposited_at + JUNIOR_LOCK_SECS { return Err(LedgerError::Locked); }
+                let a = self.junior_value(at) * shares / self.junior_shares;
+                if (self.junior_value(at) - a) * BPS < JUNIOR_COVER_BPS * (self.outstanding + self.reserved) { return Err(LedgerError::CoverBreach); }
                 a
             }
         };
@@ -156,7 +159,7 @@ mod tests {
         l.close_default(500 * U, 0, 0);
         assert_eq!(l.junior_value(T0), 0);
         let shares = l.senior_shares;
-        assert_eq!(l.withdraw(Tranche::Senior, shares, T0, T0).unwrap(), 600 * U);
+        assert_eq!(l.withdraw(Tranche::Senior, shares, T0, T0, T0).unwrap(), 600 * U);
     }
 
     #[test]
@@ -179,8 +182,8 @@ mod tests {
     fn junior_is_locked_for_36_days() {
         let mut l = pool(150, 850);
         let s = l.junior_shares;
-        assert_eq!(l.withdraw(Tranche::Junior, s, T0 + 3_110_399, T0), Err(LedgerError::Locked));
-        assert!(l.withdraw(Tranche::Junior, s, T0 + 3_110_400, T0).is_ok());
+        assert_eq!(l.withdraw(Tranche::Junior, s, T0 + 3_110_399, T0 + 3_110_399, T0), Err(LedgerError::Locked));
+        assert!(l.withdraw(Tranche::Junior, s, T0 + 3_110_400, T0 + 3_110_400, T0).is_ok());
     }
 
     #[test]
@@ -188,7 +191,7 @@ mod tests {
         let mut l = pool(200, 800);
         l.open_loan(1_000 * U, 0);
         let s = l.junior_shares;
-        assert_eq!(l.withdraw(Tranche::Junior, s / 2, T0 + 3_110_400, T0), Err(LedgerError::CoverBreach));
+        assert_eq!(l.withdraw(Tranche::Junior, s / 2, T0 + 3_110_400, T0 + 3_110_400, T0), Err(LedgerError::CoverBreach));
     }
 
     #[test]
@@ -196,7 +199,7 @@ mod tests {
         let mut l = pool(500, 500);
         l.open_loan(900 * U, 0);
         let s = l.senior_shares;
-        assert_eq!(l.withdraw(Tranche::Senior, s, T0, T0), Err(LedgerError::InsufficientCash));
+        assert_eq!(l.withdraw(Tranche::Senior, s, T0, T0, T0), Err(LedgerError::InsufficientCash));
     }
 
     #[test]
@@ -233,7 +236,7 @@ mod tests {
         let mut l = pool(1_000, 1_000);
         let before = l.clone();
         let s = l.senior_shares / 2;
-        let a = l.withdraw(Tranche::Senior, s, T0, T0).unwrap();
+        let a = l.withdraw(Tranche::Senior, s, T0, T0, T0).unwrap();
         l.undo_withdraw(Tranche::Senior, s, a);
         assert_eq!(l, before);
     }
