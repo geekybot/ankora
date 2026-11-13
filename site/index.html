@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ankora: USDC loans against staked NEAR, for NEAR holders</title>
-<meta name="description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Testnet build.">
+<meta name="description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Lend USDC from any chain through NEAR Intents. Live on NEAR mainnet, capped while unaudited.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Ankora: USDC loans against staked NEAR">
-<meta property="og:description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator.">
+<meta property="og:description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Lend from any chain through NEAR Intents.">
 <meta property="og:image" content="share.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -325,6 +325,11 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 /* Hero: headline, lead and buttons tighter so the whole calculator sits above the fold */
 .hero .hero__c { gap: 20px; }
 .hero .btn-row { margin-top: 8px; }
+.hero__proof { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 22px 0 0; padding: 0; list-style: none; font-size: 14px; color: rgb(250 250 250 / 0.62); }
+.hero__proof li { position: relative; padding-left: 14px; white-space: nowrap; }
+.hero__proof li::before { content: ""; position: absolute; left: 0; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 3px rgb(var(--acc-rgb) / 0.16); }
+.hero__proof a { color: #fafafa; text-decoration: underline; text-decoration-color: rgb(255 255 255 / 0.28); text-underline-offset: 3px; transition: text-decoration-color 180ms cubic-bezier(.23,1,.32,1); }
+.hero__proof a:hover { text-decoration-color: var(--acc); }
 .hero--centred .hero__window { margin-top: 40px; min-height: 0; flex: 0 0 auto; height: auto; }
 .hero--centred .hero__window > .ly-piece { position: relative; top: 0; left: auto; transform: none; margin-inline: auto; width: min(920px, 100%); }
 
@@ -559,10 +564,15 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
         <h1 id="hero-h">USDC loans against your staked NEAR</h1>
         <p class="hero__lead">Borrow dollars for 7 to 30 days. Your NEAR stays staked with your own validator, and the price is checked only when a term starts or renews.</p>
         <div class="btn-row"><a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="/app/#/lend">Lend USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></div>
+        <ul class="hero__proof" aria-label="Proof">
+          <li><a href="https://nearblocks.io/address/ankora.geekybot-1.near">Live on NEAR mainnet</a>, capped</li>
+          <li>Lend from 5 chains via <a href="/docs/#intents">NEAR Intents</a></li>
+          <li><a href="/docs/#verify">Verify every claim</a></li>
+        </ul>
       </div>
       <div class="hero__window" role="group" aria-label="Borrow calculator">
         <div class="ly-piece d-win d-win--dark">
-          <div class="d-win__bar"><span class="d-win__dots"><i></i><i></i><i></i></span><span><b>Ankora</b> · Borrow</span><span class="sp"></span><span>NEAR testnet</span></div>
+          <div class="d-win__bar"><span class="d-win__dots"><i></i><i></i><i></i></span><span><b>Ankora</b> · Borrow</span><span class="sp"></span><span>Example</span></div>
           <div class="calc" data-calc>
             <div class="calc__in">
               <div>
@@ -689,20 +699,21 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
       <div class="faq">
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q1" aria-controls="faq-a1" aria-expanded="true">What if NEAR falls during a loan term?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a1" role="region" aria-labelledby="faq-q1"><div><p>Nothing happens until renewal. The price is read only when a term starts or renews.</p></div></div></div>
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q2" aria-controls="faq-a2" aria-expanded="true">Does the loan vault keep my validator?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a2" role="region" aria-labelledby="faq-q2"><div><p>Yes. Your loan's vault stakes with any validator on the lockup whitelist, yours included.</p></div></div></div>
-        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q3" aria-controls="faq-a3" aria-expanded="true">Where does the NEAR price come from?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a3" role="region" aria-labelledby="faq-q3"><div><p>Pyth Pro prices via Rhea's aggregate oracle. On testnet a relay run by the team copies it into the pool.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q3" aria-controls="faq-a3" aria-expanded="true">Where does the NEAR price come from?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a3" role="region" aria-labelledby="faq-q3"><div><p>Pyth Pro prices from Rhea's aggregate oracle. On mainnet the pool reads it directly. On testnet a relay run by the team copies the same price.</p></div></div></div>
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q4" aria-controls="faq-a4" aria-expanded="true">What can a lender lose in Ankora?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a4" role="region" aria-labelledby="faq-q4"><div><p>First-loss can lose everything in a crash. Fixed loses once First-loss is gone.</p></div></div></div>
-        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q5" aria-controls="faq-a5" aria-expanded="true">Has the Ankora contract been audited?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a5" role="region" aria-labelledby="faq-q5"><div><p>No. This is a NEAR testnet build, and the pool contract can still be upgraded by its deployer.</p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q5" aria-controls="faq-a5" aria-expanded="true">Has the Ankora contract been audited?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a5" role="region" aria-labelledby="faq-q5"><div><p>No. That's why mainnet is capped at 200 USDC of deposits and 100 USDC of loans, written into the contract, and why its deployer can still upgrade it. Testnet is uncapped and free. <a href="/docs/#trust">What the team controls</a></p></div></div></div>
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q6" aria-controls="faq-a6" aria-expanded="true">Can I lend from another chain?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a6" role="region" aria-labelledby="faq-q6"><div><p>Yes. Send USDC from Base, Ethereum, Arbitrum, Polygon or Solana through NEAR Intents: it lands in the pool as a deposit in your NEAR account. Withdrawals and loans can go back out the same way.</p></div></div></div>
       </div>
     </div>
   </section>
 
   <section class="section ground-surface" id="lend" aria-labelledby="lend-h">
     <div class="wrap">
-      <div class="section-head"><h2 id="lend-h">Lend USDC in one of 2 layers</h2><p>Borrowers' interest pays both. Ankora keeps 5% of it.</p></div>
+      <div class="section-head"><h2 id="lend-h">Lend USDC in one of 2 layers</h2><p>From NEAR, or from Base, Ethereum, Arbitrum, Polygon or Solana through NEAR Intents. Borrowers' interest pays both layers; Ankora keeps 5% of it.</p></div>
       <div class="grid">
         <article class="card card--row card--open span-6">
-          <h3>Earn a fixed 6.5% in the Fixed tranche</h3>
-          <p>Earns a fixed 6.5% a year. Loses money only once every First-loss deposit is gone.</p>
+          <h3>Earn 6.5% on lent cash in Fixed</h3>
+          <p>6.5% a year on the share of the pool that is lent out, paid first. Loses money only once every First-loss deposit is gone.</p>
           <div class="panel"><div class="tranche" aria-hidden="true"><span class="tranche__rate">6.5%</span><div class="tranche__layer"><span></span><span class="is-on"></span><span class="is-on"></span><span class="is-on"></span></div><small>Paid before First-loss</small></div></div>
         </article>
         <article class="card card--row card--open span-6">
@@ -720,7 +731,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
   <div class="wrap">
     <div class="closing__cta close--word">
       <div class="section-head--split">
-        <div><h2 id="close-h">Borrow USDC against your NEAR</h2><p class="t-lead">On NEAR testnet now. Plans from 9.7% a year.</p></div>
+        <div><h2 id="close-h">Borrow USDC against your NEAR</h2><p class="t-lead">Live on NEAR mainnet, capped while unaudited, and free on testnet. Plans from 9.7% a year.</p></div>
         <a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
       </div>
       <p class="close__word" aria-hidden="true">Ankora</p>
@@ -736,7 +747,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
         <div class="span-2 footer__col"><h3>Learn</h3><ul><li><a href="#dip">A dip during a term</a></li><li><a href="#questions">Questions</a></li></ul></div>
       </div>
       <div class="footer__legal">
-        <span>&copy; 2026 Ankora &nbsp; NEAR testnet build, not audited</span>
+        <span>&copy; 2026 Ankora &nbsp; Testnet and capped mainnet, not audited &nbsp; <a href="https://github.com/geekybot/ankora">Source</a></span>
         <span class="t-small"><sup>1</sup> Backtest of NEAR daily prices, Oct 2020 to Nov 2026, against a 66.5% LTV liquidation line.</span>
       </div>
     </div>

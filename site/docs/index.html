@@ -108,7 +108,7 @@
 <main>
 <span class="kicker">Ankora docs</span>
 <h1 id="overview">Fixed-term USDC loans on staked NEAR</h1>
-<p class="lede">Borrow dollars against NEAR that stays staked with your own validator. The price is checked when a term starts or renews, not during it. Lenders pick a layer: Fixed is paid first, First-loss earns the rest and can lose everything.</p>
+<p class="lede">Borrow dollars against NEAR that stays staked with your own validator. The price is checked when a term starts or renews, not during it. Lenders deposit from NEAR or from five other chains through NEAR Intents and pick a layer: Fixed is paid first, First-loss earns the rest and can lose everything. Live on NEAR mainnet, capped while unaudited; free on testnet.</p>
 
 <div class="grid2">
   <div class="card"><b>For borrowers</b><span>Pick a plan: 30%, 40% or 50% of your NEAR's value, for 30, 14 or 7 days. Interest is paid upfront. Your NEAR is staked in a vault made for your loan.</span></div>
@@ -122,7 +122,7 @@
   <tr><td>Money</td><td>Test USDC from a faucet, free testnet NEAR</td><td>Real USDC and NEAR</td></tr>
   <tr><td>Size</td><td>Uncapped</td><td>Deposits at most 200 USDC, loans at most 100 USDC, written into the contract</td></tr>
   <tr><td>Price</td><td>A relay the team runs, copying the mainnet price</td><td>Rhea's <code>aggregate-oracle.near</code>, read by the contract itself</td></tr>
-  <tr><td>NEAR Intents</td><td>Live quotes only (NEAR Intents has no testnet)</td><td>Real deposits from other chains</td></tr>
+  <tr><td>NEAR Intents</td><td>Live quotes only (NEAR Intents has no testnet)</td><td>Real deposits in from five chains, and USDC out to them</td></tr>
   <tr><td>Pool</td><td><code>geekybot-ankora.testnet</code></td><td id="mainnet-pool"><a href="https://nearblocks.io/address/ankora.geekybot-1.near"><code>ankora.geekybot-1.near</code></a></td></tr>
 </table></div>
 <p>Everything a judge or new user needs runs on testnet at no cost. Mainnet exists to prove the cross-chain path with real funds, under caps, because the contract is unaudited.</p>
@@ -175,7 +175,11 @@
   <li>1Click swaps into native USDC on NEAR and calls <code>ft_transfer_call</code> on the pool. The pool credits the shares to <code>you.near</code>, not to the relayer.</li>
   <li>If anything fails, 1Click refunds to the address you gave on your chain.</li>
 </ol>
-<p>For borrowers, the app quotes what a loan would arrive as on another chain; that leg isn't executed in the app yet. NEAR Intents has no testnet, so on testnet the app shows live mainnet quotes and executes nothing.</p>
+<h3>Out to another chain</h3>
+<p>A withdrawal or a loan payout lands as USDC in your NEAR wallet. <strong>Send to another chain</strong> (under Your account, on mainnet) moves it to Base, Ethereum, Arbitrum, Polygon or Solana in one wallet approval: it registers a one-time NEAR Intents address with USDC (0.00125 NEAR) and transfers to it, then shows the transfer until it arrives. Refunds come back to your NEAR wallet.</p>
+<p>NEAR Intents has no testnet, so on testnet the app shows live mainnet quotes and executes nothing.</p>
+<h3>What isn't cross-chain</h3>
+<p>You sign in with a NEAR wallet; Ankora has no EVM or Solana wallet sign-in. Borrowing needs NEAR, because the collateral is NEAR staked with a validator.</p>
 
 <h2 id="prices">Prices</h2>
 <ul>
