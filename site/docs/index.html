@@ -80,6 +80,7 @@
 <header class="top">
   <a class="brand" href="/" aria-label="Ankora home"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5"/><circle cx="17.5" cy="6.5" r="4.5"/><circle cx="6.5" cy="17.5" r="4.5"/><rect x="13" y="13" width="9" height="9" rx="1.5"/></svg>Ankora <small>Docs</small></a>
   <span class="sp"></span>
+  <a class="lnk" href="https://github.com/geekybot/ankora/blob/main/research/THESIS.md">Thesis</a>
   <a class="lnk" href="https://github.com/geekybot/ankora">GitHub</a>
   <a class="cta" href="/app/">Open app</a>
 </header>
@@ -211,6 +212,7 @@
 
 <h2 id="research">Research and results</h2>
 <p>The numbers come from models run on NEAR's daily history, October 2020 to November 2026. Pass criteria were written into each script before it ran, and failures are reported. Rounds tested earlier parameter sets; each row says which.</p>
+<div class="note"><strong><a href="https://github.com/geekybot/ankora/blob/main/research/THESIS.md">Read the full thesis</a></strong>: why the protocol makes sense, with charts and one script that reruns every number (<code>python research/sim.py</code>). Its headline test runs the live contract on every weekly start since October 2020 with no borrower ever paying down: Fixed paid in full in 100% of 257 pool-years and First-loss 19.5% a year when auctions sell 10% under market; at 25% under market, First-loss falls to 1.8% in the 2021–22 crash.</div>
 <div class="tw"><table>
   <tr><th>Test</th><th>Criterion</th><th>Result</th></tr>
   <tr><td>G1 lender returns</td><td>Lenders earn enough at 1x and 1.3x volatility and in history</td><td><span class="pass">Pass</span> at 9% or more, 40% LTV, 30 days</td></tr>
@@ -256,7 +258,7 @@ cargo test -p ankora-pool --test flow          # 4 flows on a local NEAR sandbox
 cd app && npm install && npm run dev</code></pre>
 <p>Testnet pool state, read-only: <code>near view geekybot-ankora.testnet get_ledger</code>, <code>get_loans</code>, <code>get_auction_history</code>.</p>
 
-<footer>Built at NEAR HACKATHON, November 2026. <a href="/app/">Open the app</a> · <a href="https://github.com/geekybot/ankora">Source</a></footer>
+<footer>Built at NEAR HACKATHON, November 2026. <a href="/app/">Open the app</a> · <a href="https://github.com/geekybot/ankora/blob/main/research/THESIS.md">Thesis</a> · <a href="https://github.com/geekybot/ankora">Source</a></footer>
 </main>
 </div>
 <script>
