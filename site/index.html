@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ankora: USDC loans against staked NEAR, for NEAR holders</title>
-<meta name="description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Lend USDC from any chain through NEAR Intents. Live on NEAR mainnet, capped while unaudited.">
+<title>Ankora: fixed-term dollar loans on staked NEAR</title>
+<meta name="description" content="Borrow dollars against your NEAR. The price is read only when a term starts or renews, so a dip in between can't sell it, and your NEAR stays staked with your own validator. Lend USDC from any chain through NEAR Intents. Live on NEAR mainnet, capped while unaudited.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Ankora: USDC loans against staked NEAR">
+<meta property="og:title" content="Ankora: borrow dollars against your NEAR. A 3am dip can't sell it.">
 <meta property="og:description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Lend from any chain through NEAR Intents.">
 <meta property="og:image" content="share.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -325,6 +325,7 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 /* Hero: headline, lead and buttons tighter so the whole calculator sits above the fold */
 .hero .hero__c { gap: 20px; }
 .hero .btn-row { margin-top: 8px; }
+.hero h1 .h1-2 { display: block; color: var(--acc); }
 .hero__proof { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 22px 0 0; padding: 0; list-style: none; font-size: 14px; color: rgb(250 250 250 / 0.62); }
 .hero__proof li { position: relative; padding-left: 14px; white-space: nowrap; }
 .hero__proof li::before { content: ""; position: absolute; left: 0; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 3px rgb(var(--acc-rgb) / 0.16); }
@@ -561,13 +562,13 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
   <section class="hero hero--centred ground-inverse" data-enter aria-labelledby="hero-h">
     <div class="wrap"><div class="hero-text">
       <div class="hero__c">
-        <h1 id="hero-h">USDC loans against your staked NEAR</h1>
-        <p class="hero__lead">Borrow dollars for 7 to 30 days. Your NEAR stays staked with your own validator, and the price is checked only when a term starts or renews.</p>
+        <h1 id="hero-h">Borrow dollars against your NEAR. <span class="h1-2">A 3am dip can't sell&nbsp;it.</span></h1>
+        <p class="hero__lead">Fixed 7 to 30-day terms, priced once per term. Your NEAR stays staked with your own validator. Short at renewal? You get 72 hours' notice, then 48 hours' grace, before any auction.</p>
         <div class="btn-row"><a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="/app/#/lend">Lend USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></div>
         <ul class="hero__proof" aria-label="Proof">
           <li><a href="https://nearblocks.io/address/ankora.geekybot-1.near">Live on NEAR mainnet</a>, capped</li>
           <li>Lend from 5 chains via <a href="/docs/#intents">NEAR Intents</a></li>
-          <li><a href="/docs/#verify">Verify every claim</a></li>
+          <li><a href="/docs/#verify">Check it on chain</a></li>
         </ul>
       </div>
       <div class="hero__window" role="group" aria-label="Borrow calculator">
@@ -634,10 +635,10 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
     <div class="wrap">
       <div class="dip">
         <div class="dip__side">
-          <div class="section-head"><h2 id="dip-h">A one-day dip during a loan term</h2></div>
+          <div class="section-head"><h2 id="dip-h">A one-day dip during a loan term</h2><p>In a backtest of NEAR's prices from 2020 to 2026, 60–68% of liquidations on a typical liquidation line came on a day NEAR closed back above it.<sup>1</sup> On Ankora that day changes nothing.</p></div>
           <div class="lanes">
             <div class="lane lane--liq"><i style="background:#ff6b6b"></i><div><b>Liquidation-line lender</b><span>Sells your collateral at the low, at a discount.</span></div></div>
-            <div class="lane lane--ank"><i style="background:var(--p-accent)"></i><div><b>Ankora</b><span>Reads no price until renewal. 60–68% of backtested liquidations came on a day like this.<sup>1</sup></span></div></div>
+            <div class="lane lane--ank"><i style="background:var(--p-accent)"></i><div><b>Ankora</b><span>Reads no price until renewal. Your NEAR stays put and keeps earning.</span></div></div>
           </div>
         </div>
         <div class="chart" role="img" aria-label="A NEAR price path dips through a dashed liquidation line for one day and recovers above it; Ankora reads the price only when the term starts and at renewal">
@@ -697,6 +698,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
     <div class="wrap">
       <div class="section-head"><h2 id="questions-h">Questions before you borrow</h2></div>
       <div class="faq">
+        <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q0" aria-controls="faq-a0" aria-expanded="true">How is this different from other NEAR lending?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a0" role="region" aria-labelledby="faq-q0"><div><p>A liquidation-line lender can sell your collateral the moment the price touches its line, at any hour, at a discount. Ankora reads the price once per term, so a dip in between can't sell your NEAR, and the NEAR keeps earning with your own validator. Short at renewal? You get 72 hours' notice and 48 hours' grace, and any auction surplus comes back to you.</p></div></div></div>
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q1" aria-controls="faq-a1" aria-expanded="true">What if NEAR falls during a loan term?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a1" role="region" aria-labelledby="faq-q1"><div><p>Nothing happens until renewal. The price is read only when a term starts or renews.</p></div></div></div>
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q2" aria-controls="faq-a2" aria-expanded="true">Does the loan vault keep my validator?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a2" role="region" aria-labelledby="faq-q2"><div><p>Yes. Your loan's vault stakes with any validator on the lockup whitelist, yours included.</p></div></div></div>
         <div class="faq__item"><h3><button type="button" class="faq__q" id="faq-q3" aria-controls="faq-a3" aria-expanded="true">Where does the NEAR price come from?<span class="faq__icon" aria-hidden="true"></span></button></h3><div class="faq__a" id="faq-a3" role="region" aria-labelledby="faq-q3"><div><p>Pyth Pro prices from Rhea's aggregate oracle. On mainnet the pool reads it directly. On testnet a relay run by the team copies the same price.</p></div></div></div>
