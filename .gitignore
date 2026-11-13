@@ -2,9 +2,9 @@
 /*
 !/.gitignore
 !/README.md
+!/LICENSE
 !/contracts/
 !/client/
-!/design/
 !/.github/
 !/scripts/
 !/app/

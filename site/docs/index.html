@@ -220,7 +220,7 @@
   <tr><td>S6 rate formula, out of sample</td><td>First-loss at least 15% in an unseen crash</td><td><span class="fail">Fail</span>: 11.3% when fitted on calm 2023+ prices</td></tr>
 </table></div>
 <h3>How the plans were priced</h3>
-<p>A loan is a risk-free loan minus a put on the collateral (Merton, 1974). NEAR moves in jumps, about 8 a year with a 22.5% standard deviation, so the put is priced with Merton's jump-diffusion, the only model tested that never priced below NEAR's actual losses from 2020 to 2026. It rejected anything above 50% LTV: those loans priced at 15–54% a year. The live menu (30% for 30 days, 40% for 14, 50% for 7) is what survived.</p>
+<p>A loan is a default-free bond minus a put on the collateral (Merton, 1974). NEAR moves in jumps, about 8 a year with a 22.5% standard deviation, so the put is priced with Merton's jump-diffusion: of the models tested, it alone never priced below NEAR's actual losses from 2020 to 2026. It rejected anything above 50% LTV: those loans priced at 15–54% a year. The live menu (30% for 30 days, 40% for 14, 50% for 7) is what survived.</p>
 
 <h2 id="weak">Known weak spots</h2>
 <div class="note warn"><strong>Read these before lending.</strong>
@@ -238,8 +238,11 @@
 </ul>
 
 <h2 id="verify">Verify it yourself</h2>
+<p>One command checks every claim on this page against the chain, NEAR Intents and this site. It is read-only and needs only Node 22:</p>
 <pre><code>git clone https://github.com/geekybot/ankora && cd ankora
-cd contracts && ./build.sh
+node scripts/verify.mjs</code></pre>
+<p>It reads the mainnet pool's code hash, its reproducible-build record, the caps from <code>get_limits</code>, its keys, its USDC registration and the oracle's age; the testnet pool's state; a live 1Click route into the pool; and the hosted pages. To rebuild the contracts and run the tests:</p>
+<pre><code>cd contracts && ./build.sh
 cargo test -p ankora-core                      # 43 tests
 cargo test -p ankora-pool --lib                # 31 tests
 cargo test -p ankora-pool --lib --features mainnet   # 5 tests: the caps

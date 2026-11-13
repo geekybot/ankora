@@ -10,7 +10,8 @@ use ankora_core::oracle::{collateral_price, PythPrice, MAX_PRICE_AGE_SECS};
 use ankora_core::plans::{plan, PlanId, VolState};
 use ankora_core::tranche::{Ledger, Tranche};
 
-const VAULT_WASM: &[u8] = include_bytes!("../../target/near/ankora_vault/ankora_vault.wasm");
+/// The vault, from a reproducible build committed with the source (`res/ankora_vault.wasm`), so the pool builds reproducibly too.
+const VAULT_WASM: &[u8] = include_bytes!("../res/ankora_vault.wasm");
 /// NEAR each vault keeps for its own storage (121 KB of code plus state).
 const VAULT_RESERVE: NearToken = NearToken::from_millinear(1_500);
 const MIN_ATTACHED: NearToken = NearToken::from_near(5);
@@ -154,6 +155,12 @@ pub struct LoanView {
 pub struct LenderView { pub senior_shares: U128, pub junior_shares: U128, pub junior_unlocks_at: u64 }
 #[near(serializers = [json])]
 pub struct PlanView { pub plan: String, pub ltv_cap_bps: u32, pub term_secs: u64, pub rate_bps: u32 }
+/// What this deployment enforces, readable by anyone: build, caps, minimum deposit, accounts it trusts.
+#[near(serializers = [json])]
+pub struct LimitsView {
+    pub build: String, pub cap_deposits: Option<U128>, pub cap_loans: Option<U128>, pub min_deposit: U128, pub max_price_age_secs: u64,
+    pub price_source: AccountId, pub price_ema: bool, pub usdc: AccountId, pub whitelist: AccountId, pub owner: AccountId,
+}
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -560,6 +567,14 @@ impl Pool {
     pub fn get_lender(&self, account_id: AccountId) -> Option<LenderView> {
         self.lenders.get(&account_id).map(|p| LenderView { senior_shares: U128(p.senior_shares), junior_shares: U128(p.junior_shares), junior_unlocks_at: p.junior_deposited_at + ankora_core::tranche::JUNIOR_LOCK_SECS })
     }
+    pub fn get_limits(&self) -> LimitsView {
+        #[cfg(feature = "mainnet")]
+        let (build, cap_deposits, cap_loans, ema) = ("mainnet".to_string(), Some(U128(CAP_DEPOSITS)), Some(U128(CAP_LOANS)), false);
+        #[cfg(not(feature = "mainnet"))]
+        let (build, cap_deposits, cap_loans, ema) = ("standard".to_string(), None, None, true);
+        LimitsView { build, cap_deposits, cap_loans, min_deposit: U128(MIN_DEPOSIT), max_price_age_secs: MAX_PRICE_AGE_SECS as u64,
+            price_source: self.pyth.clone(), price_ema: ema, usdc: self.usdc.clone(), whitelist: self.whitelist.clone(), owner: self.owner.clone() }
+    }
     pub fn get_plans(&self) -> Vec<PlanView> {
         [PlanId::P30, PlanId::P40, PlanId::P50].into_iter().map(|id| { let p = plan(id, self.vol); PlanView { plan: format!("{id:?}"), ltv_cap_bps: p.ltv_cap_bps, term_secs: p.term_secs, rate_bps: p.rate_bps } }).collect()
     }
@@ -602,6 +617,11 @@ mod mainnet_tests {
         p
     }
 
+    #[test]
+    fn limits_view_reports_the_mainnet_caps() {
+        let l = pool(0, 0).get_limits();
+        assert_eq!((l.build.as_str(), l.cap_deposits.unwrap().0, l.cap_loans.unwrap().0, l.min_deposit.0, l.price_ema), ("mainnet", 200 * U, 100 * U, U / 2, false));
+    }
     #[test]
     fn one_usdc_from_intents_is_a_deposit() {
         let mut p = pool(0, 0);

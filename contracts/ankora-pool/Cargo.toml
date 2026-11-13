@@ -35,6 +35,10 @@ container_build_command = [
     "--locked",
 ]
 
+# The capped mainnet build: `cargo near build reproducible-wasm --variant mainnet`
+[package.metadata.near.reproducible_build.variant.mainnet]
+container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked", "--features", "mainnet"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 near-sdk = "5.30.1"
