@@ -51,7 +51,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, qrOpen: false, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xAmtCopied: 0, qrOpen: false, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -659,6 +659,7 @@ document.addEventListener("click", async (e) => {
   if (a === "xcopy" && S.xDep) { await navigator.clipboard.writeText(S.xDep.address).catch(() => undefined); S.xCopied = Date.now(); render(); setTimeout(render, 1600); return; }
   if (a === "xreset") { S.xDep = null; S.qrOpen = false; saveX(); return render(); }
   if (a === "xqr") { S.qrOpen = true; return render(); }
+  if (a === "xcopy-amt" && S.xDep) { await navigator.clipboard.writeText(Number(S.xDep.amountIn).toFixed(2)).catch(() => undefined); S.xAmtCopied = Date.now(); render(); setTimeout(render, 1600); return; }
   if (a === "qr-close") { S.qrOpen = false; return render(); }
   if (a === "xdeposit") {
     const ch = X.CHAINS.find((c) => c.id === S.xChain)!;
@@ -943,7 +944,7 @@ function qrModal() {
       <button class="qrm-x" data-act="qr-close" aria-label="Close">${ICON_X}</button></div>
     ${xSteps(late ? "FAILED" : d.status, ["Send", "Bridging", "In the pool"])}
     ${sending ? `<div class="qrm-code" role="img" aria-label="QR code: a ${ch.label} payment of ${amount} USDC to the deposit address">${qrSvg(X.payLink(d.chain, d.address, rawIn(d)))}</div>
-    <p class="qrm-k">Scan with your phone wallet. It fills in <b>${amount} USDC</b> on <b><i class="xdot xdot-${ch.id}" aria-hidden="true"></i> ${ch.label}</b>; check both before you send.</p>
+    <p class="qrm-k">Scan with your phone wallet and check it shows <b>USDC</b> on <b><i class="xdot xdot-${ch.id}" aria-hidden="true"></i> ${ch.label}</b>. Some wallets, like Rainbow, don't fill in the amount: type exactly <button class="qrm-amt ${Date.now() - S.xAmtCopied < 1500 ? "is-done" : ""}" data-act="xcopy-amt" aria-label="Copy the amount">${Date.now() - S.xAmtCopied < 1500 ? "Copied" : amount}</button>. Less is refunded, not deposited.</p>
     <div class="xd-addr"><code>${esc(d.address)}</code><button class="xd-copy ${copied ? "is-done" : ""}" data-act="xcopy">${copied ? "Copied" : "Copy"}</button></div>`
     : done ? `<p class="qrm-k">About <b class="num">${d.amountOut.toFixed(2)}</b> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} is in ${esc(C.account ?? "")}.</p>`
     : late ? `<p class="qrm-k">Don't send to it. Close this and get a new address: quotes last an hour.</p>`
