@@ -589,7 +589,7 @@ function account() {
   const m = aprModel();
   const dep = (name: string, val: number, tr: string, sh: string, ok: boolean, lockedUntil = 0) => `<li class="dep">
     <span class="dep-n">${name}</span>
-    <span class="dep-apr num ${tr === "junior" && m && m.now < 0 ? "down" : ""}">${tr === "junior" ? (m ? `${pct(m.now)} est.` : "Variable") : "6.5% APR"}</span>
+    <span class="dep-apr num ${tr === "junior" && m && m.now < 0 ? "down" : ""}">${tr === "junior" ? (m ? `${pct(m.now)} est.` : "Variable") : S.ledger ? `${pct(6.5 * S.ledger.utilisation_bps / 1e4)} now` : "6.5% on lent cash"}</span>
     <b class="dep-v num">${usdc(BigInt(Math.floor(val)))} <small>USDC</small></b>
     ${ok ? `<button class="btn btn-2 sm" data-act="withdraw" data-t="${tr}" data-sh="${sh}" ${S.busy ? "disabled" : ""}>Withdraw</button>` : `<span class="dep-lock" title="First-loss is locked 36 days after your latest First-loss deposit">Locked to ${new Date(lockedUntil * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>`}
   </li>`;

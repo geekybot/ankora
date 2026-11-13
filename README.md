@@ -11,7 +11,7 @@ Ankora lends USDC against NEAR for fixed 7 to 30-day terms and reads the price o
 | App | [ankora.utpal.dev/app](https://ankora.utpal.dev/app/) | Same app, **Mainnet** switch in the header |
 | Pool | `geekybot-ankora.testnet` | [`ankora.geekybot-1.near`](https://nearblocks.io/address/ankora.geekybot-1.near) |
 | USDC | Test token with a faucet | Native USDC |
-| Price | Team relay copying mainnet `aggregate-oracle.near` | `aggregate-oracle.near`, read by the contract |
+| Price | Team relay copying mainnet `aggregate-oracle.near` | `aggregate-oracle.near`, read by the contract. Rhea's signers push it irregularly; a borrow or renewal waits until it is under 90 s old |
 | NEAR Intents | Live quotes only (no Intents testnet) | Real deposits in, real transfers out |
 | Docs | [ankora.utpal.dev/docs](https://ankora.utpal.dev/docs/): mechanism, trust model, research with failures | |
 

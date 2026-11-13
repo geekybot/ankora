@@ -185,7 +185,7 @@
 <ul>
   <li><strong>Mainnet:</strong> Rhea's <code>aggregate-oracle.near</code>, which posts signed Pyth Pro prices about every 40 seconds. Pyth's own NEAR feed on NEAR stopped updating on 25 August 2026. The aggregate has no EMA, so the mainnet pool reads spot only.</li>
   <li><strong>Testnet:</strong> a relay the team runs copies the mainnet spot and a 1-hour EMA. The pool uses the lower of the two and refuses new loans when they differ by more than 3%.</li>
-  <li><strong>Age:</strong> a price older than 90 seconds is refused.</li>
+  <li><strong>Age:</strong> a price older than 90 seconds is refused. Rhea's oracle is updated by signed reports that Rhea's signers push irregularly (we have seen gaps over 13 minutes), so a mainnet borrow or renewal can wait for the next update. Deposits and withdrawals never need a price.</li>
   <li><strong>What the price can and can't do:</strong> it can refuse a new loan or a renewal. It can never take collateral during a term. Only an auction does that, and only after notice and grace.</li>
 </ul>
 
