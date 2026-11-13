@@ -5,7 +5,7 @@
 Three questions, each with the bar it must clear (bars from the research rounds, set before the original runs):
 
 1. DIPS. On a lending market with a ~66.5% liquidation line (Rhea's NEAR line), how many liquidations of a passive one-year borrower
-   happened on a day when only the intraday low crossed the line and NEAR closed back under it? (No bar: a measurement. It is the borrower-side reason to exist.)
+   happened on a day when only the intraday low crossed the line and NEAR closed back above the liquidation price? (No bar: a measurement. It is the borrower-side reason to exist.)
 2. LENDERS. Run the exact live parameters: plans 30% / 30 days / 9.7%, 40% / 14 days / 10.1%, 50% / 7 days / 11.3%; renewal only at
    50% LTV or below; above it 72 h notice + 48 h grace + a 24 h auction, so the sale lands 6 days after the renewal check. Worst case:
    NO borrower ever pays down, every vault above 50% is auctioned. Bars: Fixed (senior, 6.5%) paid in full in >= 99% of pool-years;
@@ -98,7 +98,7 @@ for cost, tag, n, sf, jm, jl, jw, a in rows:
     out.append(f"| {cost:.0%} | {tag} | {n} | {sf*100:.1f}% | {jm*100:.1f}% | {jl*100:.1f}% | {jw*100:.0f}% | {a*100:.0f}% |")
 out += ["", "Bars: Fixed paid in full >= 99%, First-loss mean >= 15%, First-loss losing <= 15% of pool-years.", "",
         "## Borrowers on a 66.5% liquidation line, priced daily on the low (every start day)", "",
-        "| Start LTV | Liquidated within a year | Of those, on a day NEAR closed back under the line |", "|---|---|---|"]
+        "| Start LTV | Liquidated within a year | Of those, on a day NEAR closed back above the liquidation price |", "|---|---|---|"]
 for L0, (p, w) in dip.items():
     out.append(f"| {L0:.0%} | {p*100:.0f}% | {w*100:.0f}% |")
 out += ["", "## How often a passive borrower is asked to act within a year (weekly starts)", "",
@@ -120,7 +120,7 @@ CH = HERE / "charts"; CH.mkdir(exist_ok=True)
 fig, ax = plt.subplots(figsize=(8, 4.2))
 xs = np.arange(3); liq = [dip[k][0] * 100 for k in dip]; wk = [dip[k][0] * dip[k][1] * 100 for k in dip]
 ax.bar(xs, liq, .55, color=GRID, label="Liquidated within a year")
-ax.bar(xs, wk, .55, color=ACC, label="...on a day NEAR closed back under the line")
+ax.bar(xs, wk, .55, color=ACC, label="...on a day NEAR closed back above the liquidation price")
 for x_, a, b in zip(xs, liq, wk):
     ax.text(x_, a + 1.5, f"{a:.0f}%", ha="center", color=INK, fontsize=11)
     ax.text(x_, b / 2, f"{b / a * 100:.0f}% of them", ha="center", color="white", fontsize=10, fontweight="bold")

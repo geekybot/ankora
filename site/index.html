@@ -8,7 +8,9 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Ankora: borrow dollars against your NEAR. A 3am dip can't sell it.">
 <meta property="og:description" content="Borrow USDC for 7 to 30 days while your NEAR stays staked with your own validator. Lend from any chain through NEAR Intents.">
-<meta property="og:image" content="share.jpg">
+<meta property="og:image" content="https://ankora.utpal.dev/share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#09090b">
@@ -331,6 +333,9 @@ main > section h2, #close-h { font-size: clamp(32px, 3.4vw, 48px); line-height: 
 .hero__proof li::before { content: ""; position: absolute; left: 0; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 3px rgb(var(--acc-rgb) / 0.16); }
 .hero__proof a { color: #fafafa; text-decoration: underline; text-decoration-color: rgb(255 255 255 / 0.28); text-underline-offset: 3px; transition: text-decoration-color 180ms cubic-bezier(.23,1,.32,1); }
 .hero__proof a:hover { text-decoration-color: var(--acc); }
+.hero__demo { margin: 14px 0 0; font-size: 14px; }
+.hero__demo a { color: #fafafa; text-decoration: underline; text-decoration-color: rgb(255 255 255 / 0.28); text-underline-offset: 3px; transition: text-decoration-color 180ms cubic-bezier(.23,1,.32,1); }
+.hero__demo a:hover { text-decoration-color: var(--acc); }
 .hero--centred .hero__window { margin-top: 40px; min-height: 0; flex: 0 0 auto; height: auto; }
 .hero--centred .hero__window > .ly-piece { position: relative; top: 0; left: auto; transform: none; margin-inline: auto; width: min(920px, 100%); }
 
@@ -566,6 +571,7 @@ footer.closing::before { bottom: auto; top: 6%; height: 520px; background: radia
         <h1 id="hero-h">Borrow dollars against your NEAR. <span class="h1-2">A 3am dip can't sell&nbsp;it.</span></h1>
         <p class="hero__lead">Fixed 7 to 30-day terms, priced once per term. Your NEAR stays staked with your own validator. Short at renewal? You get 72 hours' notice, then 48 hours' grace, before any auction.</p>
         <div class="btn-row"><a class="btn btn--primary" href="/app/">Borrow USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a><a class="btn btn--secondary" href="/app/#/lend">Lend USDC<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></div>
+        <p class="hero__demo"><a href="/demo/ankora-demo.mp4">Watch the 1:50 demo</a></p>
         <ul class="hero__proof" aria-label="Proof">
           <li><a href="https://nearblocks.io/address/ankora.geekybot-1.near">Live on NEAR mainnet</a>, capped</li>
           <li>Lend from 5 chains via <a href="/docs/#intents">NEAR Intents</a></li>

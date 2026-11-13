@@ -18,7 +18,7 @@ We tested a passive borrower who opens a one-year loan on every day from Oct 202
 
 ![Liquidations on a 66.5% line](charts/dips.png)
 
-| Start LTV | Liquidated within a year | Of those, NEAR closed that same day back under the line |
+| Start LTV | Liquidated within a year | Of those, NEAR closed that same day back above the liquidation price |
 |---|---|---|
 | 30% | 64% | **60%** |
 | 40% | 75% | **68%** |

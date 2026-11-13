@@ -15,6 +15,9 @@ let fails = 0;
 const ok = (m) => console.log(`PASS  ${m}`);
 const bad = (m) => { fails++; console.log(`FAIL  ${m}`); };
 const info = (m) => console.log(`INFO  ${m}`);
+// A warning is a condition outside Ankora's control (Rhea's price feed), not a failed claim. Counted and named in the summary.
+const warns = [];
+const warn = (label, m) => { warns.push(label); console.log(`WARN  ${m}`); };
 const check = (cond, pass, fail = pass) => (cond ? ok(pass) : bad(fail));
 
 async function rpc(net, params) {
@@ -60,9 +63,23 @@ try {
   info(`pool: ${usd(L.cash)} USDC cash, ${usd(L.outstanding)} USDC lent, Fixed ${usd(L.senior_value)}, First-loss ${usd(L.junior_value)}`);
   const loans = await view("mainnet", MAINNET_POOL, "get_loans", { from_index: 0, limit: 50 });
   info(`${loans.length} loan(s)${loans.length ? `: ${loans.map((l) => `#${l.id} ${l.state} ${usd(l.debt)} USDC on ${l.validator}`).join(", ")}` : ""}`);
-  const px = await view("mainnet", ORACLE, "get_price_no_older_than", { price_id: NEAR_USD, age: 90 });
-  check(px && Date.now() / 1000 - px.publish_time <= 90, `oracle fresh: NEAR $${(Number(px?.price) * 10 ** (px?.expo ?? 0)).toFixed(4)}, ${Math.round(Date.now() / 1000 - (px?.publish_time ?? 0))} s old`, "oracle price older than 90 s: new loans would refund");
 } catch (e) { bad(`mainnet pool unreadable: ${e.message}`); }
+
+// The price the pool reads. Rhea's signers push it irregularly, so a stale price is a WARN: borrows wait for a fresh one.
+// get_price_no_older_than (arg price_id) returns null when stale, so the age comes from get_price (arg price_identifier).
+// get_price_unsafe is a fallback only: its publish_time can lag get_price's by hours.
+try {
+  const MAX_AGE = Number(process.env.ANKORA_MAX_PRICE_AGE ?? 90);
+  let px = null;
+  try { px = await view("mainnet", ORACLE, "get_price", { price_identifier: NEAR_USD }); }
+  catch { px = await view("mainnet", ORACLE, "get_price_unsafe", { price_identifier: NEAR_USD }).catch(() => null); }
+  if (!px) warn("oracle unreadable", `oracle unreadable: ${ORACLE} answered neither get_price nor get_price_unsafe; borrows wait for a price`);
+  else {
+    const age = Math.round(Date.now() / 1000 - px.publish_time), usdPx = (Number(px.price) * 10 ** px.expo).toFixed(4);
+    if (age <= MAX_AGE) ok(`oracle fresh: NEAR $${usdPx}, ${age} s old`);
+    else warn("oracle age", `oracle price is ${age} s old (NEAR $${usdPx}): Rhea's signers push irregularly; borrows wait for a price under ${MAX_AGE} s old`);
+  }
+} catch (e) { warn("oracle unreadable", `oracle unreadable: ${e.message}`); }
 
 console.log(`\n— Testnet pool ${TESTNET_POOL}`);
 try {
@@ -90,5 +107,6 @@ for (const [path, what] of [["/", "landing"], ["/app/", "app"], ["/docs/", "docs
   catch (e) { bad(`${what} unreachable: ${e.message}`); }
 }
 
-console.log(fails ? `\n${fails} check(s) failed.` : "\nEvery check passed.");
+const w = warns.length ? `, ${warns.length} warning${warns.length > 1 ? "s" : ""} (${warns.join(", ")})` : "";
+console.log(fails ? `\n${fails} check(s) failed${w}.` : `\nEvery check passed${w}.`);
 process.exit(fails ? 1 : 0);

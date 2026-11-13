@@ -6,6 +6,13 @@
 <title>Ankora docs: fixed-term dollar loans on staked NEAR</title>
 <meta name="description" content="How Ankora works: plans, renewal, auctions, the two lender layers, prices, NEAR Intents deposits, what the team controls, and the research behind the numbers, failures included.">
 <meta name="theme-color" content="#09090b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ankora docs: how it works, what the team controls, the research">
+<meta property="og:description" content="How Ankora works: plans, renewal, auctions, the two lender layers, prices, NEAR Intents deposits, what the team controls, and the research behind the numbers, failures included.">
+<meta property="og:image" content="https://ankora.utpal.dev/share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -110,6 +117,15 @@
 <span class="kicker">Ankora docs</span>
 <h1 id="overview">Borrow dollars against your NEAR. A 3am dip can't sell it.</h1>
 <p class="lede">Ankora lends USDC against NEAR for fixed 7 to 30-day terms. The price is read only when a term starts or renews, so a dip in between can't sell your collateral: in a backtest of NEAR's 2020–26 prices, 60–68% of liquidations on a typical liquidation line came on a day NEAR closed back above it. Your NEAR stays staked with your own validator the whole time. Lenders deposit from NEAR or from five other chains through NEAR Intents and pick a layer: Fixed is paid first, First-loss earns the rest and can lose everything. Live on NEAR mainnet, capped while unaudited; free on testnet.</p>
+
+<div class="note" id="judging"><strong>Judging in 2 minutes</strong>
+<ol style="margin:8px 0 0">
+  <li><a href="https://ankora.utpal.dev/demo/ankora-demo.mp4">Watch the demo</a> (1:50).</li>
+  <li><a href="https://github.com/geekybot/ankora/blob/main/research/THESIS.md">Read the thesis</a>: why the protocol makes sense, with historical simulations.</li>
+  <li>Check the live claims: <code>node scripts/verify.mjs</code> (Node 22, no keys). Rerun the numbers: <code>python research/sim.py</code>. A <code>WARN</code> on the oracle line means Rhea's price feed is momentarily stale, not that a claim failed.</li>
+  <li>Try it free on <a href="/app/">testnet</a>. Lending needs a little testnet NEAR for gas, plus test USDC from the app's faucet. Borrowing needs about 5.3 testnet NEAR. Faucets dry? <a href="https://github.com/geekybot/ankora/issues">Open an issue</a> and we'll send testnet NEAR.</li>
+  <li>Mainnet proof, no wallet needed: <a href="https://nearblocks.io/address/ankora.geekybot-1.near">the pool</a>, three NEAR Intents deposits from Polygon and Solana (<a href="https://nearblocks.io/txns/FCMW12YXWFF3L2g5mpxErKTSLPW4HfSYV2W1VF4KGhsV">1</a>, <a href="https://nearblocks.io/txns/BnykQzsdGbThiQ8JkrRyskhBbBU4bWy9dymNxtMU5YF6">2</a>, <a href="https://nearblocks.io/txns/9JBGJSdD7qmvc9oQ6iWWZ9RcgzUuh7PH2YtMR2En86Dc">3</a>) and <a href="https://nearblocks.io/txns/HacmZYgrETBUcoaZvHGdj5RZYTjTcjqsFaJxNRxNpvo2">loan #0</a>. A mainnet borrow waits until the price is under 90 s old; this proof doesn't need a fresh price.</li>
+</ol></div>
 
 <div class="grid2">
   <div class="card"><b>For borrowers</b><span>Pick a plan: 30%, 40% or 50% of your NEAR's value, for 30, 14 or 7 days. Interest is paid upfront. Your NEAR is staked in a vault made for your loan.</span></div>

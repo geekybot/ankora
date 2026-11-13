@@ -4,10 +4,18 @@
 
 Ankora lends USDC against NEAR for fixed 7 to 30-day terms and reads the price only when a term starts or renews, so a dip in between can't sell your collateral. In a backtest of NEAR's 2020–26 prices against a typical ~66.5% liquidation line, 60–68% of liquidations came on a day NEAR closed back above the line. Your NEAR stays staked with the validator you choose, inside a vault account opened for your loan. If NEAR has fallen too far at renewal, you get 72 hours' notice and 48 hours' grace before anything is auctioned, and any surplus comes back to you. Lenders deposit USDC from NEAR or from Base, Ethereum, Arbitrum, Polygon or Solana through NEAR Intents, and choose Fixed (paid first) or First-loss (takes losses first and can lose everything).
 
+## Judging in 2 minutes
+
+1. **Watch the demo** (1:50): [ankora.utpal.dev/demo/ankora-demo.mp4](https://ankora.utpal.dev/demo/ankora-demo.mp4)
+2. **Read the thesis:** [research/THESIS.md](research/THESIS.md): why the protocol makes sense, with historical simulations.
+3. **Check the live claims:** `node scripts/verify.mjs` (Node 22, no keys). **Rerun the numbers:** `python research/sim.py`. A `WARN` on the oracle line means Rhea's price feed is momentarily stale, not that a claim failed.
+4. **Try it free on testnet:** [ankora.utpal.dev/app](https://ankora.utpal.dev/app/). Lending needs a little testnet NEAR for gas, plus test USDC from the app's faucet. Borrowing needs about 5.3 testnet NEAR. Faucets dry? [Open an issue](https://github.com/geekybot/ankora/issues) and we'll send testnet NEAR.
+5. **Mainnet proof, no wallet needed:** [the pool](https://nearblocks.io/address/ankora.geekybot-1.near); three NEAR Intents deposits from Polygon and Solana ([1](https://nearblocks.io/txns/FCMW12YXWFF3L2g5mpxErKTSLPW4HfSYV2W1VF4KGhsV), [2](https://nearblocks.io/txns/BnykQzsdGbThiQ8JkrRyskhBbBU4bWy9dymNxtMU5YF6), [3](https://nearblocks.io/txns/9JBGJSdD7qmvc9oQ6iWWZ9RcgzUuh7PH2YtMR2En86Dc)); [loan #0](https://nearblocks.io/txns/HacmZYgrETBUcoaZvHGdj5RZYTjTcjqsFaJxNRxNpvo2). A mainnet borrow waits until the price is under 90 s old; this proof doesn't need a fresh price.
+
 > [!IMPORTANT]
 > **📈 [Read the thesis: why this protocol makes sense, with historical simulations →](research/THESIS.md)**
 >
-> - **60–68%** of liquidations on a 66.5% line (NEAR, 2020–26) came on a day NEAR closed back under it.
+> - **60–68%** of liquidations on a 66.5% line (NEAR, 2020–26) came on a day NEAR closed back above the liquidation price.
 > - The live contract, run on every weekly start since Oct 2020 with **no borrower ever paying down**: Fixed paid in full in **100%** of 257 pool-years, First-loss **19.5%** a year (10% auction discount).
 > - Where it fails, too: at a 25% auction discount, First-loss falls to 1.8% in the 2021–22 crash.
 > - One command reruns every number and chart: `python research/sim.py`.
@@ -61,7 +69,7 @@ Node 22, no installs, no keys. It reads the mainnet pool's code hash and reprodu
 - **Testnet app (free):** [ankora.utpal.dev/app](https://ankora.utpal.dev/app/).
   - **No wallet:** the pool, rates, open auctions and auction history load without one.
   - **Lend:** any testnet wallet with a little NEAR for gas. Get test USDC from the app's faucet (1,000 per click).
-  - **Borrow:** a testnet wallet with at least 5.1 NEAR (5 attached plus gas). Testnet NEAR comes from [near-faucet.io](https://near-faucet.io/) or the [NEAR docs faucet](https://docs.near.org/getting-started/faucet); both can run dry, and near-faucet.io gives about 2 NEAR a claim. If both are dry, ask the team for testnet NEAR. The app's wallet picker lists Meteor, Intear and others; switch the wallet to testnet.
+  - **Borrow:** a testnet wallet with about 5.3 NEAR (3.5 staked, 1.5 for the loan's vault account, about 0.3 held for gas). Testnet NEAR comes from [near-faucet.io](https://near-faucet.io/) or the [NEAR docs faucet](https://docs.near.org/getting-started/faucet); both can run dry, and near-faucet.io gives about 2 NEAR a claim. If both are dry, ask the team for testnet NEAR. The app's wallet picker lists Meteor, Intear and others; switch the wallet to testnet.
 - **On your machine, no testnet needed:** a full stack on a local NEAR sandbox, with the live mainnet price and controls to crash the price and skip time.
   ```bash
   cd contracts && ./build.sh

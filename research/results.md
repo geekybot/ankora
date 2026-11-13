@@ -17,7 +17,7 @@ Bars: Fixed paid in full >= 99%, First-loss mean >= 15%, First-loss losing <= 15
 
 ## Borrowers on a 66.5% liquidation line, priced daily on the low (every start day)
 
-| Start LTV | Liquidated within a year | Of those, on a day NEAR closed back under the line |
+| Start LTV | Liquidated within a year | Of those, on a day NEAR closed back above the liquidation price |
 |---|---|---|
 | 30% | 64% | 60% |
 | 40% | 75% | 68% |
