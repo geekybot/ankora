@@ -18,14 +18,17 @@ import { Ema, MAX_PRICE_AGE_SECS, parsePythPrice } from "../src/oracle.ts";
 import { views, type Action } from "../src/pool.ts";
 
 const DRY = process.env.DRY_RUN === "1";
+/** KEEPER_NETWORK=mainnet: the capped mainnet pool reads Rhea's oracle itself, so there is no relay; settle only. */
+const NET = process.env.KEEPER_NETWORK === "mainnet" ? "mainnet" : "testnet";
+const MAIN = NET === "mainnet";
 const RELAY = process.env.ANKORA_RELAY ?? "";
 const POOL = process.env.ANKORA_POOL ?? "";
-const SIGNER = process.env.KEEPER_ACCOUNT ?? RELAY;
+const SIGNER = process.env.KEEPER_ACCOUNT ?? (process.env.KEEPER_NETWORK === "mainnet" ? (process.env.ANKORA_POOL ?? "") : RELAY);
 /** Optional second signer for settle (a key limited to the pool's settle method); else SIGNER settles too. */
 const SETTLER = process.env.KEEPER_SETTLE_ACCOUNT ?? SIGNER;
 const PRICE_EVERY_MS = 5_000; // the source posts every ~25-57 s; the pool accepts prices up to 90 s old
 const SETTLE_EVERY_MS = 60_000;
-if (!DRY && (!RELAY || !POOL)) throw new Error("set ANKORA_RELAY and ANKORA_POOL (or DRY_RUN=1)");
+if (!DRY && (!POOL || (!MAIN && !RELAY))) throw new Error(MAIN ? "set ANKORA_POOL (or DRY_RUN=1)" : "set ANKORA_RELAY and ANKORA_POOL (or DRY_RUN=1)");
 
 const STATE_FILE = process.env.KEEPER_STATE_FILE ?? ".keeper-state.json";
 const mainnets = [MAINNET.rpc, "https://rpc.mainnet.near.org"].map((rpcUrl) => new Near({ network: "mainnet", rpcUrl }));
@@ -42,9 +45,9 @@ const keys: Record<string, string> = {};
 if (process.env.KEEPER_PRIVATE_KEY) keys[SIGNER] = process.env.KEEPER_PRIVATE_KEY;
 if (process.env.KEEPER_SETTLE_PRIVATE_KEY) keys[SETTLER] = process.env.KEEPER_SETTLE_PRIVATE_KEY;
 const testnet = new Near({
-  network: "testnet", rpcUrl: TESTNET.rpc,
+  network: NET, rpcUrl: MAIN ? MAINNET.rpc : TESTNET.rpc,
   ...(DRY ? {} : {
-    keyStore: Object.keys(keys).length ? new InMemoryKeyStore(keys) : new FileKeyStore(`${homedir()}/.near-credentials`, "testnet"),
+    keyStore: Object.keys(keys).length ? new InMemoryKeyStore(keys) : new FileKeyStore(`${homedir()}/.near-credentials`, NET),
     defaultSignerId: SIGNER,
   }),
 });
@@ -107,6 +110,10 @@ async function main() {
   };
   const settleTick = async () => {
     if (!pool) return;
+    if (MAIN) { // heartbeat for /health: the oracle the pool reads is fresh and this loop is running
+      const src = parsePythPrice(await sourceView("get_price_no_older_than", { price_id: NEAR_USD_ID, age: MAX_PRICE_AGE_SECS }));
+      if (src) { state.lastPushAt = now(); state.lastPublishTime = src.publishTime; }
+    }
     const due = dueForSettle(await allLoans(pool.loans), now());
     for (const id of due) {
       try { await send({ receiverId: POOL, methodName: "settle", args: { id }, gas: 100_000_000_000_000n, deposit: 0n }); log("settled", id); }
@@ -117,9 +124,9 @@ async function main() {
     const run = () => f().catch((e) => log("error:", (e as Error).message.slice(0, 160))).finally(() => setTimeout(run, ms));
     run();
   };
-  log(DRY ? "DRY RUN: nothing is sent" : `keeper signing as ${SIGNER}: relay ${RELAY}, pool ${POOL}`);
-  loop(priceTick, PRICE_EVERY_MS);
-  loop(settleTick, SETTLE_EVERY_MS);
+  log(DRY ? `DRY RUN (${NET}): nothing is sent` : `keeper (${NET}) signing as ${SIGNER}: ${MAIN ? "no relay" : `relay ${RELAY}`}, pool ${POOL}`);
+  if (!MAIN) loop(priceTick, PRICE_EVERY_MS);
+  loop(settleTick, MAIN ? 30_000 : SETTLE_EVERY_MS);
 }
 
 main();

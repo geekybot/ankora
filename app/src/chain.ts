@@ -5,10 +5,30 @@ import { NearConnector } from "@hot-labs/near-connect";
 import { actions, views, vaultActions, type Action, type LoanView, type PlanView, type VaultInfo, type RawPrice } from "../../client/src/pool.ts";
 import { parsePythPrice, priceAge, collateralPrice, type SourcePrice } from "../../client/src/oracle.ts";
 import { allLoans as pagedLoans } from "../../client/src/keeper.ts";
-import { TESTNET_STUB, type AnkoraConfig } from "../../client/src/config.ts";
+import { TESTNET_STUB, MAINNET_APP, MAINNET, type AnkoraConfig } from "../../client/src/config.ts";
 
 const env = (k: string) => (import.meta.env[k] as string | undefined) || undefined;
-export const CFG: AnkoraConfig = {
+/** Local sandbox only (client/bin/local-chain.ts): sign as a dev account with a key from .env.local, no wallet. */
+const DEV_ACCOUNT = env("VITE_DEV_ACCOUNT");
+const DEV_KEY = env("VITE_DEV_KEY");
+export const DEV_LOCAL = !!(DEV_ACCOUNT && DEV_KEY);
+export type Net = "testnet" | "mainnet";
+const NET_KEY = "ankora.net";
+/** Testnet unless the visitor picked mainnet (?net=mainnet or the header toggle). The sandbox is always local. */
+export const NET: Net = DEV_LOCAL ? "testnet" : (() => {
+  const q = new URLSearchParams(location.search).get("net");
+  if (q === "mainnet" || q === "testnet") { try { localStorage.setItem(NET_KEY, q); } catch { /* private mode */ } return q; }
+  try { return localStorage.getItem(NET_KEY) === "mainnet" ? "mainnet" : "testnet"; } catch { return "testnet"; }
+})();
+export const MAINNET_NET = NET === "mainnet";
+/** Switch networks: the chain clients and the wallet are built for one network at load, so the app reloads. */
+export async function setNetwork(n: Net) {
+  if (n === NET) return;
+  try { localStorage.setItem(NET_KEY, n); } catch { /* private mode */ }
+  try { if (account) await connector.disconnect(); } catch { /* not connected */ }
+  const u = new URL(location.href); u.searchParams.delete("net"); location.replace(u.toString());
+}
+const TESTNET_CFG: AnkoraConfig = {
   ...TESTNET_STUB,
   pool: env("VITE_POOL") ?? TESTNET_STUB.pool,
   usdc: env("VITE_USDC") ?? env("VITE_RELAY") ?? TESTNET_STUB.usdc,
@@ -17,13 +37,10 @@ export const CFG: AnkoraConfig = {
   validator: env("VITE_VALIDATOR") ?? TESTNET_STUB.validator,
   rpc: env("VITE_RPC") ?? TESTNET_STUB.rpc,
 };
-/** Local sandbox only (client/bin/local-chain.ts): sign as a dev account with a key from .env.local, no wallet. */
-const DEV_ACCOUNT = env("VITE_DEV_ACCOUNT");
-const DEV_KEY = env("VITE_DEV_KEY");
-export const DEV_LOCAL = !!(DEV_ACCOUNT && DEV_KEY);
+export const CFG: AnkoraConfig = MAINNET_NET ? { ...MAINNET_APP, pool: env("VITE_MAINNET_POOL") ?? "" } : TESTNET_CFG;
 export const KEEPER_CONTROL = DEV_LOCAL ? env("VITE_KEEPER_URL") : undefined;
 /** False while the app still points at TESTNET_STUB (nothing deployed there). */
-export const configured = () => CFG.pool !== TESTNET_STUB.pool;
+export const configured = () => (MAINNET_NET ? !!CFG.pool : CFG.pool !== TESTNET_STUB.pool);
 
 /** App-side gate before asking the wallet: tighter than the pool's 90 s so the transaction lands in time. */
 export const QUOTE_MAX_AGE_SECS = 75; // pool limit 90 s minus ~15 s for the wallet round trip and inclusion
@@ -32,9 +49,9 @@ export const QUOTE_MAX_GAP_BPS = 300;
 export const QUOTE_CAP_SHARE_BPS = 9700n;
 
 // Reads try the configured RPC first and fall back to NEAR's own RPC: one rate-limited provider must not take the app down.
-const RPCS = DEV_LOCAL ? [CFG.rpc] : [CFG.rpc, "https://rpc.testnet.near.org"];
+const RPCS = DEV_LOCAL ? [CFG.rpc] : [CFG.rpc, MAINNET_NET ? "https://rpc.mainnet.near.org" : "https://rpc.testnet.near.org"];
 // No retry on the primary: a refused call should fail over at once, not back off for seconds.
-const readers = RPCS.map((rpcUrl, i) => new Near({ network: "testnet", rpcUrl, retryConfig: { maxRetries: i === 0 ? 0 : 1, initialDelayMs: 300 } }));
+const readers = RPCS.map((rpcUrl, i) => new Near({ network: NET, rpcUrl, retryConfig: { maxRetries: i === 0 ? 0 : 1, initialDelayMs: 300 } }));
 let live = 0;
 async function firstOk<T>(f: (n: Near) => Promise<T>): Promise<T> {
   let err: unknown;
@@ -55,14 +72,14 @@ export const rpc = (body: object) => firstOk(async () => {
   }
   throw new Error("Failed to fetch");
 });
-export const pool = views(reader as never, CFG.pool, { usdc: CFG.usdc, relay: CFG.relay });
+export const pool = views(reader as never, CFG.pool, { usdc: CFG.usdc, relay: CFG.relay, spotOnly: MAINNET_NET });
 export const act = actions({ pool: CFG.pool, usdc: CFG.usdc });
 export const vault = vaultActions;
 export type { LoanView, PlanView, Action, VaultInfo };
 export type { AuctionRecord } from "../../client/src/pool.ts";
 
 // ---------- wallet ----------
-const connector = new NearConnector({ network: "testnet", footerBranding: null });
+const connector = new NearConnector({ network: NET, footerBranding: null });
 let signer: Near | null = null;
 export let account: string | null = null;
 const listeners = new Set<() => void>();
@@ -71,7 +88,7 @@ const emit = () => listeners.forEach((f) => f());
 
 function signedIn(id: string | undefined) {
   account = id ?? null;
-  signer = id ? new Near({ network: "testnet", rpcUrl: CFG.rpc, wallet: fromHotConnect(connector) }) : null;
+  signer = id ? new Near({ network: NET, rpcUrl: CFG.rpc, wallet: fromHotConnect(connector) }) : null;
   emit();
 }
 connector.on("wallet:signIn", (e) => signedIn(e.accounts[0]?.accountId));
@@ -186,8 +203,8 @@ export async function devControl(path: string): Promise<string> {
   return t;
 }
 
-/** Keeper health badge; hidden when VITE_KEEPER_URL is unset. */
-export const KEEPER_URL = env("VITE_KEEPER_URL");
+/** Keeper health badge; hidden when unset. Mainnet reads Rhea's oracle directly: no relay to watch. */
+export const KEEPER_URL = MAINNET_NET ? undefined : env("VITE_KEEPER_URL");
 export async function keeperStatus(): Promise<{ ok: boolean; relayPriceAgeSecs: number | null; secsSincePush: number } | null> {
   if (!KEEPER_URL) return null;
   try { return await fetch(KEEPER_URL.replace(/\/$/, "") + "/status", { cache: "no-store" }).then((r) => r.json()); } catch { return { ok: false, relayPriceAgeSecs: null, secsSincePush: Infinity }; }
@@ -199,7 +216,7 @@ export const faucet = (id: string, usdc: bigint): Action => ({ ...act.mint(id, u
 // ---------- validators a vault can stake with ----------
 /** eligible: on the lockup whitelist (undefined until checked). feePct: reward fee (undefined until checked, null if unknown). */
 export interface ValidatorRow { id: string; sharePct: number; feePct?: number | null; eligible?: boolean }
-const WHITELIST = DEV_LOCAL ? null : "whitelist.f863973.m0";
+const WHITELIST = DEV_LOCAL ? null : MAINNET_NET ? MAINNET.lockupWhitelist : "whitelist.f863973.m0";
 const VKEY = `ankora.validators.v2.${CFG.pool}`;
 let validatorCache: ValidatorRow[] | null = null;
 const save = () => { try { localStorage.setItem(VKEY, JSON.stringify({ at: Date.now(), rows: validatorCache })); } catch { /* private mode */ } };

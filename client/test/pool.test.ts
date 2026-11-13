@@ -8,12 +8,12 @@ const a = actions({ pool: "ankora.testnet", usdc: "usdc.testnet" });
 const TGAS = 1_000_000_000_000n;
 
 describe("pool actions", () => {
-  it("borrow attaches the stake plus the vault reserve and 300 Tgas", () => {
+  it("borrow attaches the stake plus the vault reserve and 230 Tgas", () => {
     const x = a.borrow({ validator: "kiln.pool.f863973.m0", principal: 14_000_000_000n, plan: "P40", stakeYocto: 10_000n * NEAR });
     expect(x).toEqual({
       receiverId: "ankora.testnet", methodName: "borrow",
       args: { validator: "kiln.pool.f863973.m0", principal: "14000000000", plan: "P40" },
-      gas: 300n * TGAS, deposit: 10_000n * NEAR + VAULT_RESERVE,
+      gas: 230n * TGAS, deposit: 10_000n * NEAR + VAULT_RESERVE,
     });
   });
   it("deposits go through USDC ft_transfer_call with a lowercase tranche", () => {

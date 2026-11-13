@@ -6,4 +6,5 @@ cd "$(dirname "$0")"
 # regardless of --out-dir, so the production build must run last to leave the production ABI there. Never deploy it.
 (cd ankora-vault && cargo near build non-reproducible-wasm)
 (cd ankora-pool && cargo near build non-reproducible-wasm --features test-clock --out-dir ../target/near/ankora_pool_testclock)
+(cd ankora-pool && cargo near build non-reproducible-wasm --features mainnet --out-dir ../target/near/ankora_pool_mainnet)
 for c in ankora-vault ankora-pool ankora-mocks; do (cd "$c" && cargo near build non-reproducible-wasm); done

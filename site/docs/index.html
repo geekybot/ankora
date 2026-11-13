@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ankora docs: fixed-term USDC loans on staked NEAR</title>
+<meta name="description" content="How Ankora works: plans, renewal, auctions, the two lender layers, prices, NEAR Intents deposits, what the team controls, and the research behind the numbers, failures included.">
+<meta name="theme-color" content="#09090b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090b; --panel: #111113; --text: #fafafa; --text-2: #d4d4d8; --text-3: #a1a1aa; --text-4: #71717a;
+    --hair: rgb(255 255 255 / 0.08); --hair-2: rgb(255 255 255 / 0.14);
+    --acc: #fda856; --acc-ink: #421105; --acc-rgb: 253 168 86; --ok: #34d399; --bad: #f87171;
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
+    --e-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--text-2); font: 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+  ::selection { background: rgb(var(--acc-rgb) / 0.9); color: var(--acc-ink); }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; border-radius: 4px; }
+  a { color: var(--acc); text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size 220ms var(--e-out); }
+  a:hover { background-size: 100% 1px; }
+  .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 28px; background: rgb(9 9 11 / 0.82); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hair); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 600; font-size: 17px; background: none; }
+  .brand svg { width: 22px; height: 22px; fill: var(--acc); }
+  .brand small { color: var(--text-4); font-weight: 500; font-size: 14px; }
+  .top .sp { flex: 1; }
+  .top .lnk { color: var(--text-3); font-size: 14px; background: none; transition: color 160ms var(--e-out); }
+  .top .lnk:hover { color: var(--text); }
+  .cta { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 10px; background: var(--acc); color: var(--acc-ink); font-weight: 600; font-size: 14px; transition: transform 140ms var(--e-out), filter 160ms var(--e-out); }
+  .cta:hover { filter: brightness(1.06); background-size: 0; } .cta:active { transform: scale(0.97); }
+  .wrap { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 56px; max-width: 1180px; margin: 0 auto; padding: 40px 28px 120px; }
+  .side { position: sticky; top: 104px; align-self: start; max-height: calc(100dvh - 128px); overflow: auto; font-size: 14px; }
+  .side p { margin: 18px 0 6px; color: var(--text-4); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .side a { display: block; padding: 5px 10px; margin-left: -10px; border-radius: 7px; color: var(--text-3); background: none; transition: color 160ms var(--e-out), background-color 160ms var(--e-out); }
+  .side a:hover { color: var(--text); background: rgb(255 255 255 / 0.04); }
+  .side a.on { color: var(--text); background: rgb(var(--acc-rgb) / 0.1); }
+  main { min-width: 0; max-width: 760px; }
+  h1 { margin: 0 0 14px; color: var(--text); font-size: clamp(34px, 4.4vw, 46px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; text-wrap: balance; }
+  .lede { margin: 0 0 28px; font-size: 19px; color: var(--text-2); text-wrap: pretty; }
+  h2 { margin: 72px 0 14px; padding-top: 8px; color: var(--text); font-size: 27px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 600; }
+  h3 { margin: 32px 0 8px; color: var(--text); font-size: 18px; font-weight: 600; }
+  p, li { text-wrap: pretty; } p { margin: 0 0 14px; }
+  ul, ol { padding-left: 22px; margin: 0 0 16px; } li { margin: 4px 0; }
+  strong { color: var(--text); font-weight: 600; }
+  code { font: 0.88em var(--mono); color: var(--text); background: rgb(255 255 255 / 0.06); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+  pre { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--hair); overflow-x: auto; font: 13.5px/1.6 var(--mono); color: var(--text); }
+  pre code { background: none; padding: 0; }
+  .tw { margin: 6px 0 22px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--hair); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { padding: 10px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hair); }
+  th { color: var(--text-3); font-weight: 500; font-size: 13px; background: rgb(255 255 255 / 0.02); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pass { color: var(--ok); font-weight: 600; } .fail { color: var(--bad); font-weight: 600; }
+  .note { margin: 6px 0 22px; padding: 14px 16px; border-radius: 12px; font-size: 15px; background: rgb(var(--acc-rgb) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--acc-rgb) / 0.28); }
+  .note.warn { background: rgb(248 113 113 / 0.06); box-shadow: inset 0 0 0 1px rgb(248 113 113 / 0.32); }
+  .note strong:first-child { display: block; margin-bottom: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 22px; }
+  .card { padding: 16px; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--hair); }
+  .card b { display: block; color: var(--text); margin-bottom: 4px; }
+  .card span { font-size: 14.5px; color: var(--text-3); }
+  .kicker { display: inline-block; margin-bottom: 14px; color: var(--acc); font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  footer { margin-top: 88px; padding-top: 22px; border-top: 1px solid var(--hair); font-size: 14px; color: var(--text-4); }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding-top: 28px; }
+    .side { position: static; max-height: none; display: none; }
+    .grid2 { grid-template-columns: 1fr; }
+    .top { padding: 0 18px; } .top .lnk { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/" aria-label="Ankora home"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5"/><circle cx="17.5" cy="6.5" r="4.5"/><circle cx="6.5" cy="17.5" r="4.5"/><rect x="13" y="13" width="9" height="9" rx="1.5"/></svg>Ankora <small>Docs</small></a>
+  <span class="sp"></span>
+  <a class="lnk" href="https://github.com/geekybot/ankora">GitHub</a>
+  <a class="cta" href="/app/">Open app</a>
+</header>
+
+<div class="wrap">
+<nav class="side" aria-label="On this page">
+  <p>Start</p>
+  <a href="#overview">Overview</a>
+  <a href="#networks">Testnet and mainnet</a>
+  <p>Borrow</p>
+  <a href="#borrow">Plans and the vault</a>
+  <a href="#renewal">Renewal, notice and auction</a>
+  <p>Lend</p>
+  <a href="#lend">Fixed and First-loss</a>
+  <a href="#intents">From another chain</a>
+  <p>System</p>
+  <a href="#prices">Prices</a>
+  <a href="#trust">What the team controls</a>
+  <a href="#limits">Mainnet caps</a>
+  <p>Evidence</p>
+  <a href="#research">Research and results</a>
+  <a href="#weak">Known weak spots</a>
+  <a href="#verify">Verify it yourself</a>
+</nav>
+
+<main>
+<span class="kicker">Ankora docs</span>
+<h1 id="overview">Fixed-term USDC loans on staked NEAR</h1>
+<p class="lede">Borrow dollars against NEAR that stays staked with your own validator. The price is checked when a term starts or renews, not during it. Lenders pick a layer: Fixed is paid first, First-loss earns the rest and can lose everything.</p>
+
+<div class="grid2">
+  <div class="card"><b>For borrowers</b><span>Pick a plan: 30%, 40% or 50% of your NEAR's value, for 30, 14 or 7 days. Interest is paid upfront. Your NEAR is staked in a vault made for your loan.</span></div>
+  <div class="card"><b>For lenders</b><span>Deposit USDC from NEAR or from Base, Ethereum, Arbitrum, Polygon or Solana through NEAR Intents. Choose Fixed (paid first) or First-loss (takes losses first).</span></div>
+</div>
+
+<h2 id="networks">Testnet and mainnet</h2>
+<p>The app has a switch in the header.</p>
+<div class="tw"><table>
+  <tr><th></th><th>Testnet (default)</th><th>Mainnet</th></tr>
+  <tr><td>Money</td><td>Test USDC from a faucet, free testnet NEAR</td><td>Real USDC and NEAR</td></tr>
+  <tr><td>Size</td><td>Uncapped</td><td>Deposits at most 200 USDC, loans at most 100 USDC, written into the contract</td></tr>
+  <tr><td>Price</td><td>A relay the team runs, copying the mainnet price</td><td>Rhea's <code>aggregate-oracle.near</code>, read by the contract itself</td></tr>
+  <tr><td>NEAR Intents</td><td>Live quotes only (NEAR Intents has no testnet)</td><td>Real deposits from other chains</td></tr>
+  <tr><td>Pool</td><td><code>geekybot-ankora.testnet</code></td><td id="mainnet-pool"><a href="https://nearblocks.io/address/ankora.geekybot-1.near"><code>ankora.geekybot-1.near</code></a></td></tr>
+</table></div>
+<p>Everything a judge or new user needs runs on testnet at no cost. Mainnet exists to prove the cross-chain path with real funds, under caps, because the contract is unaudited.</p>
+
+<h2 id="borrow">Plans and the vault</h2>
+<div class="tw"><table>
+  <tr><th>Plan</th><th class="n">Borrow up to</th><th class="n">Term</th><th class="n">Rate (APR)</th></tr>
+  <tr><td>30%</td><td class="n">30% of value</td><td class="n">30 days</td><td class="n">9.7%</td></tr>
+  <tr><td>40%</td><td class="n">40% of value</td><td class="n">14 days</td><td class="n">10.1%</td></tr>
+  <tr><td>50%</td><td class="n">50% of value</td><td class="n">7 days</td><td class="n">11.3%</td></tr>
+</table></div>
+<ol>
+  <li><strong>You send NEAR.</strong> At least 5 NEAR: 3.5 or more to stake, plus 1.5 that pays for your vault account's storage.</li>
+  <li><strong>The pool reads the price</strong> in the same transaction. If it is missing, stale or moving too fast, the loan doesn't start and your NEAR comes back.</li>
+  <li><strong>A vault account is created for your loan</strong> and stakes the NEAR with the validator you chose. Any validator on NEAR Foundation's lockup whitelist works.</li>
+  <li><strong>You receive USDC minus the first term's interest.</strong> Staking rewards accrue in the vault and stay yours.</li>
+  <li><strong>Repay any time.</strong> The vault is handed to you; unstake and withdraw like any staking account (about 28 hours). The current term's interest isn't refunded.</li>
+</ol>
+<p>Native stakers unstake once (about 28 hours) to move their NEAR in. Staking pools have no transfer method.</p>
+
+<h2 id="renewal">Renewal, notice and auction</h2>
+<p>At the end of each term the pool reads the price once.</p>
+<div class="tw"><table>
+  <tr><th>Loan-to-value at the check</th><th>What happens</th></tr>
+  <tr><td>50% or less</td><td>The loan renews. The next term's interest is added to the debt. You can switch renewal off.</td></tr>
+  <tr><td>Above 50%</td><td>72 hours' notice to pay down, then 48 hours' grace. No late fee.</td></tr>
+  <tr><td>Still above after grace</td><td>A 24-hour Dutch auction of the staked vault, starting at 100% of its value and falling to 50%. The buyer gets the vault. Anything above the debt goes back to the borrower.</td></tr>
+  <tr><td>No buyer</td><td>The vault goes to the owner to unstake and sell; the proceeds are booked to the pool. Losses hit First-loss first, then Fixed.</td></tr>
+</table></div>
+<div class="note"><strong>The auction is a liquidation.</strong> What changes is when and how: one price check per term instead of every block, 120 hours to act, no liquidator bonus, and the surplus returned. In a fast crash a borrower at 50% can still end in auction.</div>
+
+<h2 id="lend">Fixed and First-loss</h2>
+<div class="tw"><table>
+  <tr><th></th><th>Fixed</th><th>First-loss</th></tr>
+  <tr><td>Earns</td><td>6.5% a year on the share of the pool that is lent out</td><td>Everything the pool earns above Fixed's share, after Ankora's 5% of interest</td></tr>
+  <tr><td>Losses</td><td>Only after every First-loss deposit is gone</td><td><strong>Takes losses first and can lose everything</strong></td></tr>
+  <tr><td>Withdraw</td><td>Any time, from idle cash</td><td>Locked 36 days after your latest First-loss deposit (one full term plus notice, grace and auction)</td></tr>
+</table></div>
+<ul>
+  <li><strong>Cover rule:</strong> a new loan needs First-loss capital of at least 15% of all loans. A First-loss withdrawal can't take cover below that.</li>
+  <li><strong>Why Fixed earns on lent cash only:</strong> if Fixed earned 6.5% on idle cash, First-loss would pay it from its own deposit and lose money until the pool was about 60% lent. The pool keeps an accrual clock that runs at utilisation, so First-loss is never charged for idle cash.</li>
+  <li>Interest vests into share prices over each term, not on receipt, so depositing just before a payment doesn't capture interest others earned.</li>
+</ul>
+
+<h2 id="intents">From another chain (NEAR Intents)</h2>
+<p>A lender on Base, Ethereum, Arbitrum, Polygon or Solana deposits without a NEAR bridge or a NEAR wallet balance.</p>
+<ol>
+  <li>The app asks NEAR Intents 1Click for a quote that delivers USDC to the pool with the message <code>{"depositfor":{"tranche":"senior","account":"you.near"}}</code>.</li>
+  <li>You send USDC to the one-time deposit address it returns, on your chain.</li>
+  <li>1Click swaps into native USDC on NEAR and calls <code>ft_transfer_call</code> on the pool. The pool credits the shares to <code>you.near</code>, not to the relayer.</li>
+  <li>If anything fails, 1Click refunds to the address you gave on your chain.</li>
+</ol>
+<p>For borrowers, the app quotes what a loan would arrive as on another chain; that leg isn't executed in the app yet. NEAR Intents has no testnet, so on testnet the app shows live mainnet quotes and executes nothing.</p>
+
+<h2 id="prices">Prices</h2>
+<ul>
+  <li><strong>Mainnet:</strong> Rhea's <code>aggregate-oracle.near</code>, which posts signed Pyth Pro prices about every 40 seconds. Pyth's own NEAR feed on NEAR stopped updating on 25 August 2026. The aggregate has no EMA, so the mainnet pool reads spot only.</li>
+  <li><strong>Testnet:</strong> a relay the team runs copies the mainnet spot and a 1-hour EMA. The pool uses the lower of the two and refuses new loans when they differ by more than 3%.</li>
+  <li><strong>Age:</strong> a price older than 90 seconds is refused.</li>
+  <li><strong>What the price can and can't do:</strong> it can refuse a new loan or a renewal. It can never take collateral during a term. Only an auction does that, and only after notice and grace.</li>
+</ul>
+
+<h2 id="trust">What the team controls</h2>
+<div class="tw"><table>
+  <tr><th>Power</th><th>Who holds it</th><th>What it could do</th></tr>
+  <tr><td>Upgrade the pool contract</td><td>The pool account's full-access key</td><td>Anything, including moving funds. This is the largest trust assumption.</td></tr>
+  <tr><td><code>set_stressed</code></td><td>The owner account</td><td>Tighten plans when markets are stressed.</td></tr>
+  <tr><td>Book an auction recovery</td><td>The owner account</td><td>Sell an unsold vault's NEAR and book the USDC to the pool.</td></tr>
+  <tr><td>Testnet price</td><td>The team's relay</td><td>Push a wrong testnet price. Mainnet reads the oracle directly.</td></tr>
+  <tr><td><code>settle</code></td><td>Anyone</td><td>Run the price check at a deadline. The team's keeper calls it; nobody needs permission.</td></tr>
+</table></div>
+
+<h2 id="limits">Mainnet caps</h2>
+<p>The mainnet build (<code>cargo near build --features mainnet</code>) is the same code with four differences:</p>
+<ul>
+  <li>Deposits are refused past <strong>200 USDC</strong> in the pool, cash plus loans.</li>
+  <li>Loans are refused past <strong>100 USDC</strong> in total.</li>
+  <li>The minimum deposit is <strong>0.5 USDC</strong>, so a first cross-chain test can be tiny (1 USDC sent through 1Click arrives as about 0.995).</li>
+  <li>The price is spot from <code>aggregate-oracle.near</code>.</li>
+</ul>
+<p>The caps are constants. No method raises them; raising them means a new deployment anyone can see.</p>
+
+<h2 id="research">Research and results</h2>
+<p>The numbers come from models run on NEAR's daily history, October 2020 to November 2026. Pass criteria were written into each script before it ran, and failures are reported. Rounds tested earlier parameter sets; each row says which.</p>
+<div class="tw"><table>
+  <tr><th>Test</th><th>Criterion</th><th>Result</th></tr>
+  <tr><td>G1 lender returns</td><td>Lenders earn enough at 1x and 1.3x volatility and in history</td><td><span class="pass">Pass</span> at 9% or more, 40% LTV, 30 days</td></tr>
+  <tr><td>G4 stale quotes</td><td>Quote age doesn't change outcomes</td><td>1-hour quote passes; 24-hour fails. Fixed by pricing in the borrow transaction</td></tr>
+  <tr><td>G6 early repayment</td><td>Lenders keep their yield</td><td>Prepaid interest keeps 100%; pro-rata refunds would keep 76%</td></tr>
+  <tr><td>A1 auto-renewal, flat 45% cap</td><td>Few borrowers asked to pay down in a year</td><td><span class="fail">Fail</span>: 50.6% and 72.1%</td></tr>
+  <tr><td>R1 lender floor per band</td><td>Every band pays lenders at least 7.3%</td><td><span class="fail">Fail</span>: 6.45–7.01%</td></tr>
+  <tr><td>B3 / T2 tranches</td><td>Two layers hold on the tested rates</td><td><span class="pass">Pass</span> at First-loss 15%, Fixed 6.5%</td></tr>
+  <tr><td>Round 9 pool, 2025+ history</td><td>Fixed paid in full</td><td><span class="pass">100%</span>; First-loss mean 19.7%</td></tr>
+  <tr><td>S5 rate formula, in sample</td><td>Fixed whole in the 2021–22 crash</td><td><span class="pass">Pass</span>, even at 5 days and 10%</td></tr>
+  <tr><td>S6 rate formula, out of sample</td><td>First-loss at least 15% in an unseen crash</td><td><span class="fail">Fail</span>: 11.3% when fitted on calm 2023+ prices</td></tr>
+</table></div>
+<h3>How the plans were priced</h3>
+<p>A loan is a risk-free loan minus a put on the collateral (Merton, 1974). NEAR moves in jumps, about 8 a year with a 22.5% standard deviation, so the put is priced with Merton's jump-diffusion, the only model tested that never priced below NEAR's actual losses from 2020 to 2026. It rejected anything above 50% LTV: those loans priced at 15–54% a year. The live menu (30% for 30 days, 40% for 14, 50% for 7) is what survived.</p>
+
+<h2 id="weak">Known weak spots</h2>
+<div class="note warn"><strong>Read these before lending.</strong>
+<ul style="margin:6px 0 0">
+  <li><strong>The default path is 6 days long</strong> (72 h notice, 48 h grace, 24 h auction). Round 10 found that a 10% sale discount and a 5-day delay leave Fixed paid in full in only 94.3% of 2021–22 start-weeks. A borrower who lets a loan run to auction in a crash can cost lenders.</li>
+  <li><strong>Out of sample the pricing failed once</strong> (S6). Volatility inputs must cover the whole cycle, not recent months.</li>
+  <li><strong>The contract is unaudited</strong> and upgradable by one key.</li>
+</ul></div>
+<h3>Not tested</h3>
+<ul>
+  <li>Whether lenders show up, and at what size, and who buys First-loss (about $150k for every $1M of loans).</li>
+  <li>Whether auctions attract bidders, or whether bidders can collude.</li>
+  <li>How much native stake sits with holders who would use this rather than a liquid staking token.</li>
+  <li>What Fixed lenders do while Rhea's supply rate stays above 6.5%.</li>
+</ul>
+
+<h2 id="verify">Verify it yourself</h2>
+<pre><code>git clone https://github.com/geekybot/ankora && cd ankora
+cd contracts && ./build.sh
+cargo test -p ankora-core                      # 43 tests
+cargo test -p ankora-pool --lib                # 31 tests
+cargo test -p ankora-pool --lib --features mainnet   # 5 tests: the caps
+cargo test -p ankora-pool --test flow          # 4 flows on a local NEAR sandbox</code></pre>
+<p>Run the whole product locally with a time machine (crash the price, skip to a deadline, watch an auction):</p>
+<pre><code>cd client && npm install && npm run local
+cd app && npm install && npm run dev</code></pre>
+<p>Testnet pool state, read-only: <code>near view geekybot-ankora.testnet get_ledger</code>, <code>get_loans</code>, <code>get_auction_history</code>.</p>
+
+<footer>Built at NEAR HACKATHON, November 2026. <a href="/app/">Open the app</a> · <a href="https://github.com/geekybot/ankora">Source</a></footer>
+</main>
+</div>
+<script>
+  // highlight the section in view
+  const links = [...document.querySelectorAll('.side a')];
+  const map = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { links.forEach((l) => l.classList.remove('on')); map.get(e.target.id)?.classList.add('on'); } }), { rootMargin: '-20% 0px -70% 0px' });
+  map.forEach((_, id) => { const el = document.getElementById(id); if (el) io.observe(el); });
+</script>
+</body>
+</html>

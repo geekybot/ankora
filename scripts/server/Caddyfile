@@ -14,6 +14,10 @@ ankora.utpal.dev {
 		try_files {path} {path}/ /index.html
 		file_server
 		header /assets/* Cache-Control "public, max-age=86400"
+		# Pages revalidate on every visit, so a deploy shows at once; the app's hashed bundles never change.
+		@pages path / /index.html /app /app/ /app/index.html /docs /docs/ /docs/index.html
+		header @pages Cache-Control "no-cache"
+		header /app/assets/* Cache-Control "public, max-age=31536000, immutable"
 	}
 }
 

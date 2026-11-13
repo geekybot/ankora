@@ -79,7 +79,7 @@ export interface Viewer { view<T>(contractId: string, method: string, args?: obj
  *  right after the user's own transaction would otherwise show the old balance or loan state. */
 const OPT = { finality: "optimistic" } as const;
 
-export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: string } = {}) {
+export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: string; spotOnly?: boolean } = {}) {
   return {
     ledger: () => v.view<LedgerView>(pool, "get_ledger", {}, OPT),
     loan: (id: number) => v.view<LoanView | null>(pool, "get_loan", { id }, OPT),
@@ -101,7 +101,8 @@ export function views(v: Viewer, pool: string, more: { usdc?: string; relay?: st
     relayPrice: async () => {
       const r = need(more.relay, "relay");
       const spot = await v.view<RawPrice | null>(r, "get_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }, OPT);
-      const ema = await v.view<RawPrice | null>(r, "get_ema_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }, OPT);
+      // Mainnet (aggregate-oracle.near) has no EMA method; the mainnet pool reads spot twice, so the app does too.
+      const ema = more.spotOnly ? spot : await v.view<RawPrice | null>(r, "get_ema_price_no_older_than", { price_id: NEAR_USD_ID, age: 600 }, OPT);
       return { spot, ema };
     },
   };

@@ -37,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -92,9 +92,11 @@ function human(raw: string): string {
     [/only the borrower/, "Only the borrower of this loan can do that."],
     [/nothing to claim/, "There's nothing to claim."],
     [/whitelist/i, "That validator isn't on the lockup whitelist. Pick a validator from the whitelist."],
-    [/doesn't have enough balance|The account doesn't have enough balance|Insufficient balance/i, "Not enough test USDC. Get 1,000 from the faucet first."],
+    [/doesn't have enough balance|The account doesn't have enough balance|Insufficient balance/i, C.MAINNET_NET ? "Not enough USDC in this wallet." : "Not enough test USDC. Get 1,000 from the faucet first."],
+    [/mainnet cap: the pool holds at most 200 USDC/, "The mainnet pool is capped at 200 USDC while it is unaudited, and it is full. Deposit less."],
+    [/mainnet cap: loans are limited to 100 USDC/, "Mainnet loans are capped at 100 USDC in total while the pool is unaudited. Borrow less."],
     [/not registered|storage_deposit/i, "Your account isn't registered with test USDC yet. Use the faucet once: it registers you."],
-    [/Failed to fetch|NetworkError|timeout|ECONN|Load failed|503|502/i, "Couldn't reach NEAR testnet. Check your connection and try again."],
+    [/Failed to fetch|NetworkError|timeout|ECONN|Load failed|503|502/i, `Couldn't reach NEAR ${C.NET}. Check your connection and try again.`],
   ];
   for (const [re, out] of rules) { const x = re.exec(m); if (x) return typeof out === "string" ? out : out(x); }
   const clean = m.replace(/^.*?(?:Smart contract panicked: |panic_msg":")/, "").replace(/["}\]]+$/, "").slice(0, 160);
@@ -134,7 +136,7 @@ async function run(a: C.Action, msg: Msg): Promise<Status> {
 // ---------- toasts: a stack at the bottom right (bottom centre on phones) ----------
 /** One toast per transaction: it opens as "Confirm in your wallet" and turns into the result in place.
  *  Success and info leave on their own; errors stay until dismissed. Hover pauses the timers. */
-const EXPLORER = (h: string) => `https://testnet.nearblocks.io/txns/${h}`;
+const EXPLORER = (h: string) => `https://${C.MAINNET_NET ? "" : "testnet."}nearblocks.io/txns/${h}`;
 const toasts = (() => {
   const host = () => $("#toasts");
   let seq = 0; const timers = new Map<number, number>();
@@ -199,7 +201,33 @@ function crossChain(toNear: boolean, amount: bigint) {
   return `<details class="xc" data-xc ${S.xOpen[toNear ? "lend" : "borrow"] ? "open" : ""}><summary><span>${toNear ? "Fund from another chain" : "Receive on another chain"}</span><span class="xc-tag">NEAR Intents</span>${ICON.chev}</summary>
     <div class="xc-chains" role="radiogroup" aria-label="Chain">${X.CHAINS.map((c) => `<button class="xc-c" role="radio" aria-checked="${c.id === ch.id}" data-act="xchain" data-v="${c.id}">${c.label}</button>`).join("")}</div>
     <p class="xc-q ${q.state}" aria-live="polite">${line}</p>
-    <p class="fine">Live mainnet quote via NEAR Intents 1Click. This testnet build uses test USDC, so the route is shown, not executed.</p></details>`;
+    ${toNear && C.MAINNET_NET ? xDeposit(ch, amt) : ""}
+    <p class="fine">${C.MAINNET_NET ? (toNear ? "Through NEAR Intents 1Click. The USDC arrives in the pool as a deposit in your name." : "Live quote via NEAR Intents 1Click. Send the USDC from your wallet once the loan pays out.") : "Live mainnet quote via NEAR Intents 1Click. This testnet build uses test USDC, so the route is shown, not executed."}</p></details>`;
+}
+const MIN_DEP = C.MAINNET_NET ? 500_000n : 10n * U;
+/** Room left under the mainnet pool's 200 USDC cap. */
+const capRoom = () => S.ledger ? 200n * U - (BigInt(S.ledger.cash) + BigInt(S.ledger.outstanding)) : 0n;
+const X_STATUS: Record<string, string> = {
+  PENDING_DEPOSIT: "Waiting for your transfer", KNOWN_DEPOSIT_TX: "Transfer seen, confirming", PROCESSING: "Bridging to NEAR",
+  SUCCESS: "Deposited in the pool", INCOMPLETE_DEPOSIT: "Less than quoted arrived: it will be refunded", REFUNDED: "Refunded to your address", FAILED: "Failed: refunded to your address",
+};
+function xDeposit(ch: X.Chain, amt: bigint) {
+  const d = S.xDep;
+  if (d && d.chain === ch.id) {
+    const done = d.status === "SUCCESS", bad = /REFUNDED|FAILED|INCOMPLETE/.test(d.status);
+    return `<div class="xd ${done ? "ok" : bad ? "bad" : ""}">
+      <div class="xd-k">Send exactly <b class="num">${esc(d.amountIn)} USDC</b> on ${ch.label} to</div>
+      <div class="xd-addr"><code>${esc(d.address)}</code><button class="btn btn-2 sm" data-act="xcopy">Copy</button></div>
+      <div class="xd-st" aria-live="polite"><i></i>${esc(X_STATUS[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR tx</a>` : ""}</div>
+      <div class="xd-f">Arrives as about <span class="num">${d.amountOut.toFixed(2)}</span> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} in ${esc(C.account ?? "")}, in ~${d.secs} s. Quote valid until ${new Date(d.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. ${done || bad ? `<button class="inline-link" data-act="xreset">New deposit</button>` : `<button class="inline-link" data-act="xreset">Cancel</button>`}</div>
+    </div>`;
+  }
+  if (!C.account) return `<p class="xd-note">Connect your NEAR wallet: the deposit is credited to it.</p>`;
+  const q = S.xq.state === "ok" ? S.xq.out : 0;
+  const okAddr = X.validAddress(ch, S.xRefund.trim());
+  const why = amt === 0n ? "Enter an amount above" : q > 0 && q * 1e6 < Number(MIN_DEP) ? "Arrives under the 0.5 USDC minimum" : q > 0 && BigInt(Math.ceil(q * 1e6)) > capRoom() ? `The pool has room for ${usdc(capRoom())} USDC` : !okAddr ? `Your ${ch.label} address, for refunds` : !S.ack ? "Confirm the risk below" : "";
+  return `<label class="xd-in"><span>Refund address on ${ch.label}</span><input id="xrefund" class="input" placeholder="${ch.id === "sol" ? "Solana address" : "0x…"}" value="${esc(S.xRefund)}" autocomplete="off" spellcheck="false"></label>
+    <button class="btn ${why ? "btn-2" : "btn-1"} xd-go" data-act="${why ? "noop" : "xdeposit"}" ${why || S.xBusy ? "disabled" : ""}>${S.xBusy ? "Getting an address…" : why || `Get a ${ch.label} deposit address`}</button>`;
 }
 /** Fetch the open row's quote when its chain, direction or amount changes. */
 function ensureQuote() {
@@ -321,7 +349,7 @@ function borrowPanel() {
       <div><dt>To close the loan</dt><dd class="num">${usdc(q.payout + q.termInterest)} USDC</dd></div>
     </dl>` : ""}
     ${button}
-    ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan sends at least 5 NEAR: 3.5 to stake, 1.5 for your vault account. Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>, or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
+    ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan sends at least 5 NEAR: 3.5 to stake, 1.5 for your vault account. ${C.MAINNET_NET ? "Add NEAR to this wallet," : `Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>,`} or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
       : `<p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>`}
     ${crossChain(false, q?.ok ? q.payout : 0n)}
     <details class="more" ${S.details ? "open" : ""} data-details><summary>Details ${ICON.chev}</summary>
@@ -342,7 +370,7 @@ function lendPanel() {
   const ack = jr ? "I can lose my whole First-loss deposit" : "Fixed can lose money in a fast crash";
   const button = !C.account ? connectBtn()
     : amt === 0n ? btn("Enter an amount", "noop", false)
-    : amt < 10n * U ? btn("Minimum 10 USDC", "noop", false)
+    : amt < MIN_DEP ? btn(`Minimum ${C.MAINNET_NET ? "0.5" : "10"} USDC`, "noop", false)
     : amt > S.usdcBal ? btn("Not enough USDC", "noop", false)
     : !S.ack ? btn("Confirm the risk above", "noop", false)
     : btn(`Deposit ${usdc(amt)} USDC`, "deposit", true);
@@ -359,7 +387,7 @@ function lendPanel() {
     ${crossChain(true, amt)}
     <button class="ack" role="checkbox" aria-checked="${S.ack}" data-act="ack"><span class="ack-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>${ack}</button>
     ${button}
-    <p class="fine">${C.account ? `Test USDC only. <button class="inline-link" data-act="faucet" ${S.busy ? "disabled" : ""}>Get 1,000</button>` : "Test USDC only."}</p>`;
+    <p class="fine">${C.MAINNET_NET ? "Real USDC. Unaudited: the pool is capped at 200 USDC and loans at 100 USDC." : C.account ? `Test USDC only. <button class="inline-link" data-act="faucet" ${S.busy ? "disabled" : ""}>Get 1,000</button>` : "Test USDC only."}</p>`;
 }
 
 function auctionsPanel() {
@@ -399,6 +427,7 @@ const STATE: Record<string, { label: string; tone: string }> = {
   Auction: { label: "At auction", tone: "bad" }, Defaulted: { label: "Auction ended", tone: "mute" },
 };
 function repayBtn(l: C.LoanView, amt: bigint, label: string, primary: boolean) {
+  if (S.usdcBal < amt && C.MAINNET_NET) return "";
   if (S.usdcBal < amt) return `<button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""} title="${esc(label)} needs ${usdc(amt)} USDC">Get test USDC</button>`;
   return `<button class="btn ${primary ? "btn-1" : "btn-2"} sm" data-act="repay" data-id="${l.id}" data-amt="${amt}" ${S.busy ? "disabled" : ""}>${label}</button>`;
 }
@@ -452,7 +481,7 @@ function poolNow() {
   </dl></section>`;
 }
 function account() {
-  if (!C.account) return `${poolNow()}<div class="acct-empty"><b>Borrow or lend from your wallet</b><span>Connect a NEAR testnet wallet. Your loans, vaults and deposits appear here.</span>${connectBtn()}</div>`;
+  if (!C.account) return `${poolNow()}<div class="acct-empty"><b>Borrow or lend from your wallet</b><span>Connect a NEAR ${C.NET} wallet. Your loans, vaults and deposits appear here.</span>${connectBtn()}</div>`;
   const L = S.ledger, share = (v: string, sh: string) => (BigInt(sh) > 0n ? Number(BigInt(v)) / Number(BigInt(sh)) : 1);
   const sen = S.lender && L ? Number(BigInt(S.lender.senior_shares)) * share(L.senior_value, L.senior_shares) : 0;
   const jun = S.lender && L ? Number(BigInt(S.lender.junior_shares)) * share(L.junior_value, L.junior_shares) : 0;
@@ -469,7 +498,7 @@ function account() {
   const claim = S.claimable > 0n ? `<li class="row-i tone-ok"><div class="row-a"><span class="row-n">Auction surplus</span></div><b class="row-v num">${usdc(S.claimable)} <small>USDC</small></b><div class="row-acts"><button class="btn btn-1 sm" data-act="claim" ${S.busy ? "disabled" : ""}>Claim</button></div><div class="row-sub">Your vault sold above its debt; this part is yours.</div></li>` : "";
   const sec = (h: string, body: string) => body ? `<section class="acct-sec"><h3 class="h3">${h}</h3><ul>${body}</ul></section>` : "";
   const nothing = !loans && !vaults && !deps && !claim;
-  return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div><button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button></div>
+  return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div>${C.MAINNET_NET ? "" : `<button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button>`}</div>
     ${sec("To claim", claim)}${sec("Your loans", loans)}${sec("Your vaults", vaults)}${deps ? `<section class="acct-sec"><h3 class="h3">Your deposits</h3><ul class="deps">${deps}</ul></section>` : ""}
     ${nothing ? `<div class="acct-empty sm"><span>No loans or deposits yet. Use the card to start one.</span></div>` : ""}${poolNow()}${demoPanel()}`;
 }
@@ -486,11 +515,12 @@ addEventListener("pointerdown", () => { pressed = true; }, true);
 addEventListener("pointerup", () => { pressed = false; if (pending) setTimeout(softRender, 250); }, true);
 document.addEventListener("pointerout", () => { if (pending) setTimeout(softRender, 250); });
 function render() {
-  put($("#keeper"), keeper ? `<span class="badge ${keeper.ok ? "st-ok" : "st-bad"}">Price relay ${keeper.ok ? "live" : "lagging"}</span>` : "");
+  put($("#keeper"), keeper ? `<span class="badge ${keeper.ok ? "st-ok" : "st-bad"}">Price relay ${keeper.ok ? "live" : "lagging"}</span>` : C.MAINNET_NET && S.price ? `<span class="badge ${S.price.ok && S.price.fresh ? "st-ok" : "st-bad"}">Rhea oracle ${S.price.ok && S.price.fresh ? "live" : "stale"}</span>` : "");
+  put($("#net"), C.DEV_LOCAL ? "" : `<div class="net" role="radiogroup" aria-label="Network">${(["testnet", "mainnet"] as const).map((n) => `<button role="radio" aria-checked="${C.NET === n}" data-act="net" data-v="${n}">${n === "testnet" ? "Testnet" : "Mainnet"}</button>`).join("")}</div>`);
   put($("#wallet"), C.account ? `<span class="dot"></span><span>${esc(C.account)}</span>` : "Connect wallet");
   $("#wallet").classList.toggle("is-out", !C.account);
   $("#wallet").setAttribute("aria-label", C.account ? `Signed in as ${C.account}. Disconnect` : "Connect a NEAR wallet");
-  if (!C.configured()) { put($("#screen"), `<div class="empty"><b>The testnet pool isn't configured.</b><span>Set VITE_POOL and VITE_RELAY in app/.env.local.</span></div>`); return; }
+  if (!C.configured()) { put($("#screen"), C.MAINNET_NET ? `<div class="empty"><b>The mainnet pool opens shortly.</b><span>It launches capped at 200 USDC while unaudited. <button class="inline-link" data-act="net" data-v="testnet">Use testnet</button> meanwhile: it's free.</span></div>` : `<div class="empty"><b>The testnet pool isn't configured.</b><span>Set VITE_POOL and VITE_RELAY in app/.env.local.</span></div>`); return; }
   const err = S.error ? `<div class="status st-error" role="alert"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg><div class="st-txt"><b>Couldn't read the pool. ${esc(S.error)}</b><span class="st-links"><button class="st-link" data-act="reload">Try again</button></span></div></div>` : "";
   put($("#stats"), stats());
   const panel = S.tab === "lend" ? lendPanel() : S.tab === "auctions" ? auctionsPanel() : borrowPanel();
@@ -513,7 +543,7 @@ function demoPanel() {
   if (!C.DEV_LOCAL || !C.KEEPER_CONTROL) return "";
   const next = nextDeadline(), dis = S.busy ? "disabled" : "";
   return `<section class="acct-sec demo"><h3 class="h3">Demo controls · local only</h3><div class="acct-acts">
-    <button class="btn btn-2 sm danger" data-act="dev-crash" ${dis}>Crash NEAR to $1</button><button class="btn btn-2 sm" data-act="dev-live" ${dis}>Live price</button>
+    <button class="btn btn-2 sm danger" data-act="dev-crash" ${dis}>Drop NEAR 50%</button><button class="btn btn-2 sm" data-act="dev-live" ${dis}>Live price</button>
     <button class="btn btn-2 sm" data-act="dev-next" ${dis || (next ? "" : "disabled")}>${next ? `Skip to loan #${next.id}'s deadline` : "Skip to next deadline"}</button></div></section>`;
 }
 function nextDeadline() {
@@ -531,7 +561,7 @@ document.addEventListener("click", async (e) => {
   if (a === "dev-crash" || a === "dev-live" || a === "dev-next") {
     S.busy = true; render();
     try {
-      if (a === "dev-crash") { await C.devControl("/price?usd=1"); toast("NEAR is held at $1 on the sandbox. Nothing happens until the next deadline."); }
+      if (a === "dev-crash") { const usd = Math.round((S.price?.price ?? 0) * 50) / 100; if (!(usd > 0)) throw new Error("no price yet"); await C.devControl(`/price?usd=${usd}`); toast(`NEAR is held at $${usd.toFixed(2)} on the sandbox. Nothing happens until the next price check.`); }
       else if (a === "dev-live") { await C.devControl("/price"); toast("Back to the live NEAR price."); }
       else {
         const l = nextDeadline();
@@ -547,7 +577,20 @@ document.addEventListener("click", async (e) => {
     S.busy = false; await load(); return;
   }
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
+  if (a === "net") return void C.setNetwork(el.dataset.v as C.Net);
   if (a === "xchain") { S.xChain = el.dataset.v!; return render(); }
+  if (a === "xcopy" && S.xDep) { await navigator.clipboard.writeText(S.xDep.address).catch(() => undefined); return toast("Address copied."); }
+  if (a === "xreset") { S.xDep = null; return render(); }
+  if (a === "xdeposit") {
+    const ch = X.CHAINS.find((c) => c.id === S.xChain)!;
+    S.xBusy = true; render();
+    try {
+      const d = await X.depositTo(ch, safe(() => toUsdc(S.lendAmt || "0"), 0n), S.xRefund.trim(), C.CFG.pool, C.account!, S.tranche === "junior" ? "junior" : "senior");
+      S.xDep = { ...d, status: "PENDING_DEPOSIT", tranche: S.tranche };
+      pollDeposit(d.address);
+    } catch (err) { toast(`Couldn't get a deposit address: ${(err as Error).message}`); }
+    S.xBusy = false; return render();
+  }
   if (a === "val-open") {
     S.valOpen = !S.valOpen; S.valActive = Math.max(0, S.vals.findIndex((v) => v.id === S.validator)); render();
     if (S.valOpen) { $<HTMLElement>(`#vp-${S.valActive}`)?.focus(); if (!S.vals.length) await loadValidators(); C.validatorDetails(() => { pickFair(); render(); }); }
@@ -647,3 +690,20 @@ C.restore().then(async () => {
   loadValidators(); // one RPC call; details wait until the list is opened
 });
 render();
+
+/** Follow a cross-chain deposit until it lands or is refunded; reload the pool when it lands. */
+function pollDeposit(address: string) {
+  const tick = async () => {
+    if (S.xDep?.address !== address) return;
+    try {
+      const r = await X.depositStatus(address);
+      if (S.xDep?.address !== address) return;
+      const was = S.xDep.status; S.xDep.status = r.status; S.xDep.nearTx = r.nearTx;
+      if (r.status !== was) { if (r.status === "SUCCESS") { toast("Your cross-chain deposit is in the pool."); await load(); } else render(); }
+      if (/SUCCESS|REFUNDED|FAILED/.test(r.status)) return;
+    } catch { /* keep polling */ }
+    setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 3000);
+}
+document.addEventListener("input", (e) => { const t = e.target as HTMLInputElement; if (t.id === "xrefund") { S.xRefund = t.value; softRender(); } }, true);

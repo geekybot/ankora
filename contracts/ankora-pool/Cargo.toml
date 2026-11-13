@@ -43,6 +43,9 @@ ankora-core = { path = "../ankora-core", features = ["borsh"] }
 [features]
 # Sandbox tests only: lets a test move contract time. Never in a deployed build.
 test-clock = []
+# The mainnet build: hard caps written into the code, a 1 USDC minimum deposit, and spot-only pricing
+# (Rhea's aggregate-oracle.near serves Pyth Pro spot with no EMA method; Pyth's own NEAR feed stopped 2026-08-25).
+mainnet = []
 
 [dev-dependencies]
 near-sdk = { version = "5.30", features = ["unit-testing"] }

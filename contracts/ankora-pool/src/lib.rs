@@ -15,7 +15,17 @@ const VAULT_WASM: &[u8] = include_bytes!("../../target/near/ankora_vault/ankora_
 const VAULT_RESERVE: NearToken = NearToken::from_millinear(1_500);
 const MIN_ATTACHED: NearToken = NearToken::from_near(5);
 /// Smallest lender deposit (6 dp): each position costs the pool storage.
+#[cfg(not(feature = "mainnet"))]
 const MIN_DEPOSIT: u128 = 10_000_000;
+/// Mainnet: 0.5 USDC, so a first cross-chain deposit can be tiny (1 USDC sent through 1Click arrives as ~0.995).
+#[cfg(feature = "mainnet")]
+const MIN_DEPOSIT: u128 = 500_000;
+/// Mainnet launch caps, in the code so no owner call can raise them: raising them is a visible upgrade.
+/// The contract is unaudited; the caps bound what anyone, the team included, can put at risk.
+#[cfg(feature = "mainnet")]
+pub const CAP_DEPOSITS: u128 = 200_000_000; // cash + loans, 200 USDC
+#[cfg(feature = "mainnet")]
+pub const CAP_LOANS: u128 = 100_000_000; // outstanding + reserved, 100 USDC
 const MIN_GAS: Gas = Gas::from_tgas(220);
 const GAS_PYTH: Gas = Gas::from_tgas(10);
 const GAS_ON_PRICED: Gas = Gas::from_tgas(170);
@@ -188,8 +198,13 @@ fn to_price(r: Result<Option<PythPriceJson>, PromiseError>) -> Option<PythPrice>
 impl Pool {
     fn price_calls(&self) -> Promise {
         let age = MAX_PRICE_AGE_SECS as u64;
-        ext_pyth::ext(self.pyth.clone()).with_static_gas(GAS_PYTH).get_price_no_older_than(self.price_id.clone(), age)
-            .and(ext_pyth::ext(self.pyth.clone()).with_static_gas(GAS_PYTH).get_ema_price_no_older_than(self.price_id.clone(), age))
+        let spot = ext_pyth::ext(self.pyth.clone()).with_static_gas(GAS_PYTH).get_price_no_older_than(self.price_id.clone(), age);
+        // Mainnet's live source has no EMA: read spot twice, so the min(spot, EMA) and 3% breaker checks see spot == EMA.
+        #[cfg(feature = "mainnet")]
+        let second = ext_pyth::ext(self.pyth.clone()).with_static_gas(GAS_PYTH).get_price_no_older_than(self.price_id.clone(), age);
+        #[cfg(not(feature = "mainnet"))]
+        let second = ext_pyth::ext(self.pyth.clone()).with_static_gas(GAS_PYTH).get_ema_price_no_older_than(self.price_id.clone(), age);
+        spot.and(second)
     }
     fn me() -> AccountId { env::current_account_id() }
     fn vault_id(id: u64) -> AccountId { format!("v{id}.{}", Self::me()).parse().unwrap() }
@@ -264,6 +279,8 @@ impl Pool {
         require!(env::prepaid_gas() >= MIN_GAS, "attach at least 220 Tgas");
         require!(principal.0 > 0, "principal must be positive");
         require!(self.ledger.can_lend(principal.0, self.clock(now())), "junior cover or free cash too low for this loan");
+        #[cfg(feature = "mainnet")]
+        require!(self.ledger.outstanding + self.ledger.reserved + principal.0 <= CAP_LOANS, "mainnet cap: loans are limited to 100 USDC in total");
         self.ledger.reserve(principal.0);
         let id = self.next_id;
         self.next_id += 1;
@@ -362,7 +379,12 @@ impl Pool {
         let (m, sender_id) = match m { FtMsg::DepositFor(d) => (FtMsg::Deposit(d.tranche), d.account), m => (m, sender_id) };
         match m {
             FtMsg::Deposit(tr) => {
+                #[cfg(not(feature = "mainnet"))]
                 require!(amount.0 >= MIN_DEPOSIT, "minimum deposit is 10 USDC");
+                #[cfg(feature = "mainnet")]
+                require!(amount.0 >= MIN_DEPOSIT, "minimum deposit is 0.5 USDC");
+                #[cfg(feature = "mainnet")]
+                require!(self.ledger.cash + self.ledger.outstanding + amount.0 <= CAP_DEPOSITS, "mainnet cap: the pool holds at most 200 USDC");
                 let shares = self.ledger.deposit(tr.into(), amount.0, self.clock(t)).unwrap_or_else(|e| env::panic_str(&format!("{e:?}")));
                 let mut pos = self.lenders.get(&sender_id).cloned().unwrap_or_default();
                 match tr { TrancheArg::Senior => pos.senior_shares += shares, TrancheArg::Junior => { pos.junior_shares += shares; pos.junior_deposited_at = t; } }
@@ -554,7 +576,69 @@ impl Pool {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "mainnet"))]
+mod mainnet_tests {
+    use super::*;
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+    const U: u128 = 1_000_000;
+    const NEAR_Y: u128 = 1_000_000_000_000_000_000_000_000;
+    const T0: u64 = 1_800_000_000;
+    fn acc(s: &str) -> AccountId { s.parse().unwrap() }
+    fn set(pred: &str, deposit_yocto: u128) {
+        let mut b = VMContextBuilder::new();
+        b.current_account_id(acc("pool.near")).predecessor_account_id(acc(pred)).signer_account_id(acc(pred))
+            .attached_deposit(NearToken::from_yoctonear(deposit_yocto)).block_timestamp(T0 * 1_000_000_000)
+            .prepaid_gas(Gas::from_tgas(300)).account_balance(NearToken::from_near(1_000));
+        testing_env!(b.build());
+    }
+    fn pool(senior: u128, junior: u128) -> Pool {
+        set("owner.near", 0);
+        let mut p = Pool::new(acc("owner.near"), acc("usdc.near"), acc("aggregate-oracle.near"),
+            "c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750".into(), acc("lockup-whitelist.near"));
+        set("usdc.near", 0);
+        if junior > 0 { let _ = p.ft_on_transfer(acc("j.near"), U128(junior * U), r#"{"deposit":"junior"}"#.into()); }
+        if senior > 0 { let _ = p.ft_on_transfer(acc("s.near"), U128(senior * U), r#"{"deposit":"senior"}"#.into()); }
+        p
+    }
+
+    #[test]
+    fn one_usdc_from_intents_is_a_deposit() {
+        let mut p = pool(0, 0);
+        let r = p.ft_on_transfer(acc("intents.near"), U128(U), r#"{"depositfor":{"tranche":"senior","account":"alice.near"}}"#.into());
+        assert!(matches!(r, PromiseOrValue::Value(U128(0))));
+        assert!(p.get_lender(acc("alice.near")).unwrap().senior_shares.0 > 0);
+    }
+    #[test]
+    fn deposits_fill_up_to_200_usdc() {
+        let mut p = pool(150, 30);
+        let _ = p.ft_on_transfer(acc("x.near"), U128(20 * U), r#"{"deposit":"senior"}"#.into());
+        assert_eq!(p.get_ledger().cash.0, 200 * U);
+    }
+    #[test]
+    #[should_panic(expected = "mainnet cap: the pool holds at most 200 USDC")]
+    fn a_deposit_past_200_usdc_is_refused() {
+        let mut p = pool(150, 30);
+        let _ = p.ft_on_transfer(acc("x.near"), U128(21 * U), r#"{"deposit":"senior"}"#.into());
+    }
+    #[test]
+    fn a_100_usdc_loan_is_accepted() {
+        let mut p = pool(150, 30);
+        set("b.near", 1_000 * NEAR_Y);
+        let _ = p.borrow(acc("aurora.poolv1.near"), U128(100 * U), PlanArg::P30);
+        assert_eq!(p.get_ledger().reserved.0, 100 * U);
+    }
+    #[test]
+    #[should_panic(expected = "mainnet cap: loans are limited to 100 USDC in total")]
+    fn loans_past_100_usdc_are_refused() {
+        let mut p = pool(150, 30);
+        set("b.near", 1_000 * NEAR_Y);
+        let _ = p.borrow(acc("aurora.poolv1.near"), U128(60 * U), PlanArg::P30);
+        let _ = p.borrow(acc("aurora.poolv1.near"), U128(41 * U), PlanArg::P30);
+    }
+}
+
+#[cfg(all(test, not(feature = "mainnet")))]
 mod tests {
     use super::*;
     use near_sdk::test_utils::VMContextBuilder;
