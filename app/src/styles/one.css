@@ -419,3 +419,18 @@
 @media (prefers-reduced-motion: reduce) {
   .xc[open] .xc-b, .xr-skel, .xs li.on i::after { animation: none; }
 }
+
+/* Pay from: NEAR wallet or another chain (mainnet lend) */
+.src { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.src-o { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; text-align: left; background: rgb(255 255 255 / 0.03); box-shadow: inset 0 0 0 1px var(--hair); transition: box-shadow 160ms var(--e-out), background-color 160ms var(--e-out), transform 140ms var(--e-out); }
+.src-o:hover { background: rgb(255 255 255 / 0.05); }
+.src-o:active { transform: scale(0.98); }
+.src-o:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.src-o b { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.src-o > span { font-size: 12px; color: var(--text-3); }
+.src-o[aria-checked="true"] { background: rgb(var(--accent-rgb) / 0.08); box-shadow: inset 0 0 0 1.5px rgb(var(--accent-rgb) / 0.75); }
+.xf { display: grid; gap: 12px; }
+.xd-go.cta { height: 48px; font-size: 15px; }
+
+/* the lend panel's action stays in view while paying from another chain */
+.cta-dock { position: sticky; bottom: -1px; z-index: 2; display: grid; gap: 10px; margin: 0 -2px; padding: 12px 2px 4px; background: linear-gradient(to bottom, rgb(24 24 27 / 0), rgb(24 24 27) 18px); }

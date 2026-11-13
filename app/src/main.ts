@@ -37,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -251,17 +251,41 @@ function xDeposit(ch: X.Chain, amt: bigint) {
       ${done ? `<p class="xd-done">About <b class="num">${d.amountOut.toFixed(2)}</b> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} is in ${esc(C.account ?? "")}.</p>` : ""}
     </div>`;
   }
-  if (!C.account) return `<p class="xd-note">Connect your NEAR wallet first: the deposit is credited to it.</p>`;
-  const q = S.xq.state === "ok" ? S.xq.out : 0;
+  if (!C.account) return "";
   const addr = S.xRefund.trim(), okAddr = X.validAddress(ch, addr);
-  const why = amt === 0n ? "Enter an amount above" : q > 0 && q * 1e6 < Number(MIN_DEP) ? "Arrives under the 0.5 USDC minimum" : q > 0 && BigInt(Math.ceil(q * 1e6)) > capRoom() ? `The pool has room for ${usdc(capRoom())} USDC` : !okAddr ? `Add your ${ch.label} address` : !S.ack ? "Confirm the risk below" : "";
   return `<label class="xd-in"><span>Refund address on ${ch.label}</span><input id="xrefund" class="input ${addr && !okAddr ? "is-bad" : ""}" placeholder="${ch.id === "sol" ? "Solana address" : "0x…"}" value="${esc(S.xRefund)}" autocomplete="off" spellcheck="false" aria-invalid="${!!addr && !okAddr}"></label>
-    ${addr && !okAddr ? `<p class="xd-err">That isn't a ${ch.label} address.</p>` : ""}
-    <button class="btn ${why ? "btn-2" : "btn-1"} xd-go" data-act="${why ? "noop" : "xdeposit"}" ${why || S.xBusy ? "disabled" : ""}>${S.xBusy ? "Getting an address…" : why || `Get a ${ch.label} deposit address`}</button>`;
+    ${addr && !okAddr ? `<p class="xd-err">That isn't a ${ch.label} address.</p>` : ""}`;
+}
+/** The lend panel's main button when paying from another chain: says exactly what's missing. */
+function xButton(ch: X.Chain, amt: bigint) {
+  const q = S.xq.state === "ok" ? S.xq.out : 0;
+  const okAddr = X.validAddress(ch, S.xRefund.trim());
+  const why = amt === 0n ? "Enter an amount" : q > 0 && q * 1e6 < Number(MIN_DEP) ? "Arrives under the 0.5 USDC minimum" : q > 0 && BigInt(Math.ceil(q * 1e6)) > capRoom() ? `The pool has room for ${usdc(capRoom())} USDC` : !okAddr ? `Add your ${ch.label} address` : !S.ack ? "Confirm the risk above" : "";
+  return `<button class="btn ${why ? "btn-2" : "btn-1"} xd-go cta" data-act="${why ? "noop" : "xdeposit"}" ${why || S.xBusy ? "disabled" : ""}>${S.xBusy ? "Getting an address…" : why || `Get a ${ch.label} deposit address`}</button>`;
+}
+/** Pay from: the NEAR wallet or another chain (mainnet). With no USDC on NEAR, another chain is the default. */
+const lendSrc = (): "near" | "xchain" => !C.MAINNET_NET ? "near" : S.srcTouched ? S.src : C.account && S.usdcBal === 0n ? "xchain" : S.src;
+function srcPicker() {
+  const src = lendSrc();
+  return `<div class="src" role="radiogroup" aria-label="Pay from">
+    <button class="src-o" role="radio" aria-checked="${src === "near"}" data-act="src" data-v="near"><b>NEAR wallet</b><span>${C.account ? `<span class="num">${usdc(S.usdcBal)}</span> USDC` : "USDC on NEAR"}</span></button>
+    <button class="src-o" role="radio" aria-checked="${src === "xchain"}" data-act="src" data-v="xchain"><b>Another chain</b><span>via NEAR Intents</span></button>
+  </div>`;
+}
+/** Paying from another chain, inline in the lend panel: chain, route, refund address, or the live deposit. */
+function xFund(amt: bigint) {
+  const live = S.xDep ? X.CHAINS.find((c) => c.id === S.xDep!.chain) : undefined;
+  if (live) return xDeposit(live, amt);
+  const ch = X.CHAINS.find((c) => c.id === S.xChain) ?? X.CHAINS[0]!;
+  const a = amt > 0n ? amt : 100n * U;
+  const key = `${ch.id}:true:${a}`;
+  const q = S.xq.key === key ? S.xq : { state: "loading", out: 0, secs: 0 };
+  return `${chainChips("xchain", ch.id)}
+    ${routeCard(usdc(a), ch, NEAR_SIDE, q.state === "ok" ? q.out : q.state === "err" ? NaN : null, q.secs)}`;
 }
 /** Fetch the open row's quote when its chain, direction or amount changes. */
 function ensureQuote() {
-  if (!S.xOpen[S.tab]) return;
+  if (!S.xOpen[S.tab] && !(S.tab === "lend" && lendSrc() === "xchain")) return;
   const toNear = S.tab === "lend";
   const ch = X.CHAINS.find((c) => c.id === S.xChain) ?? X.CHAINS[0]!;
   const raw = toNear ? safe(() => toUsdc(S.lendAmt || "0"), 0n) : (quoteNow()?.q.ok ? quoteNow()!.q.payout : 0n);
@@ -398,7 +422,10 @@ function lendPanel() {
     ? "Earns the pool's interest above Fixed's 6.5% on lent cash: more as more is lent. Takes losses first and can lose everything. Locked 36 days."
     : "6.5% a year on the share of the pool that is lent out, paid before First-loss. Loses money only after every First-loss deposit is gone.";
   const ack = jr ? "I can lose my whole First-loss deposit" : "Fixed can lose money in a fast crash";
-  const button = !C.account ? connectBtn()
+  const xc = lendSrc() === "xchain";
+  const xch = X.CHAINS.find((c) => c.id === S.xChain) ?? X.CHAINS[0]!;
+  const button = xc ? (S.xDep ? "" : !C.account ? connectBtn() : xButton(xch, amt))
+    : !C.account ? connectBtn()
     : amt === 0n ? btn("Enter an amount", "noop", false)
     : amt < MIN_DEP ? btn(`Minimum ${C.MAINNET_NET ? "0.5" : "10"} USDC`, "noop", false)
     : amt > S.usdcBal ? btn("Not enough USDC", "noop", false)
@@ -411,12 +438,13 @@ function lendPanel() {
     </div>
     <p class="risk ${jr ? "is-warn" : ""}">${risk}</p>
     <div class="box">
-      <div class="box-top"><label for="lamt">You deposit</label>${C.account ? `<button class="bal" data-act="max">Balance <span class="num">${usdc(S.usdcBal)}</span> · Max</button>` : ""}</div>
+      <div class="box-top"><label for="lamt">You deposit</label>${C.account && !xc ? `<button class="bal" data-act="max">Balance <span class="num">${usdc(S.usdcBal)}</span> · Max</button>` : ""}</div>
       <div class="box-in">${ICON.usdc()}<input id="lamt" class="input num" inputmode="decimal" placeholder="0" value="${esc(S.lendAmt)}" autocomplete="off"><span class="unit">USDC</span></div>
     </div>
-    ${crossChain(true, amt)}
-    <button class="ack" role="checkbox" aria-checked="${S.ack}" data-act="ack"><span class="ack-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>${ack}</button>
-    ${button}
+    ${C.MAINNET_NET ? srcPicker() : ""}
+    ${xc ? `<div class="xf">${xFund(amt)}</div>` : C.MAINNET_NET ? "" : crossChain(true, amt)}
+    ${xc && !S.xDep ? `<div class="cta-dock">${xDeposit(xch, amt)}` : ""}<button class="ack" role="checkbox" aria-checked="${S.ack}" data-act="ack"><span class="ack-box"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>${ack}</button>
+    ${button}${xc && !S.xDep ? `</div>` : ""}
     <p class="fine">${C.MAINNET_NET ? "Real USDC. Unaudited: the pool is capped at 200 USDC and loans at 100 USDC." : C.account ? `Test USDC only. <button class="inline-link" data-act="faucet" ${S.busy ? "disabled" : ""}>Get 1,000</button>` : "Test USDC only."}</p>`;
 }
 
@@ -609,6 +637,7 @@ document.addEventListener("click", async (e) => {
   if (a === "plan") { S.plan = el.dataset.v as PlanName; return render(); }
   if (a === "net") return void C.setNetwork(el.dataset.v as C.Net);
   if (a === "xchain") { S.xChain = el.dataset.v!; return render(); }
+  if (a === "src") { S.src = el.dataset.v as "near" | "xchain"; S.srcTouched = true; return render(); }
   if (a === "xcopy" && S.xDep) { await navigator.clipboard.writeText(S.xDep.address).catch(() => undefined); S.xCopied = Date.now(); render(); setTimeout(render, 1600); return; }
   if (a === "xreset") { S.xDep = null; saveX(); return render(); }
   if (a === "xdeposit") {
@@ -776,7 +805,7 @@ async function resumeX(redirectHashes: string[]) {
   let saved: { dep?: typeof S.xDep; out?: typeof S.out.dep; outPending?: typeof S.outPending } | null = null;
   try { saved = JSON.parse(localStorage.getItem(XKEY()) ?? "null"); } catch { /* ignore */ }
   if (!saved) return;
-  if (saved.dep && !S.xDep) { S.xDep = saved.dep; S.xOpen.lend = true; if (!X_END.test(saved.dep.status)) pollDeposit(saved.dep.address); }
+  if (saved.dep && !S.xDep) { S.xDep = saved.dep; S.xOpen.lend = true; S.src = "xchain"; S.srcTouched = true; if (!X_END.test(saved.dep.status)) pollDeposit(saved.dep.address); }
   if (saved.out && !S.out.dep) { S.out.dep = saved.out; S.out.open = true; if (!X_END.test(saved.out.status)) pollOut(saved.out.address); }
   // A send-out signed through a redirecting wallet: the route was saved before the wallet opened.
   if (saved.outPending && !S.out.dep) {
