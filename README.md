@@ -4,6 +4,16 @@
 
 Ankora lends USDC against NEAR for fixed 7 to 30-day terms and reads the price only when a term starts or renews, so a dip in between can't sell your collateral. In a backtest of NEAR's 2020–26 prices against a typical ~66.5% liquidation line, 60–68% of liquidations came on a day NEAR closed back above the line. Your NEAR stays staked with the validator you choose, inside a vault account opened for your loan. If NEAR has fallen too far at renewal, you get 72 hours' notice and 48 hours' grace before anything is auctioned, and any surplus comes back to you. Lenders deposit USDC from NEAR or from Base, Ethereum, Arbitrum, Polygon or Solana through NEAR Intents, and choose Fixed (paid first) or First-loss (takes losses first and can lose everything).
 
+> [!IMPORTANT]
+> **📈 [Read the thesis: why this protocol makes sense, with historical simulations →](research/THESIS.md)**
+>
+> - **60–68%** of liquidations on a 66.5% line (NEAR, 2020–26) came on a day NEAR closed back under it.
+> - The live contract, run on every weekly start since Oct 2020 with **no borrower ever paying down**: Fixed paid in full in **100%** of 257 pool-years, First-loss **19.5%** a year (10% auction discount).
+> - Where it fails, too: at a 25% auction discount, First-loss falls to 1.8% in the 2021–22 crash.
+> - One command reruns every number and chart: `python research/sim.py`.
+
+[![First-loss return by pool start](research/charts/lenders.png)](research/THESIS.md)
+
 **Status: built at NEAR HACKATHON (Nov 2026). Unaudited.** Testnet is the full product and free. Mainnet runs a capped build: deposits at most 200 USDC, loans at most 100 USDC, written into the contract.
 
 | | Testnet (default) | Mainnet (capped) |
