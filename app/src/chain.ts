@@ -25,8 +25,10 @@ export const MAINNET_NET = NET === "mainnet";
 export async function setNetwork(n: Net) {
   if (n === NET) return;
   try { localStorage.setItem(NET_KEY, n); } catch { /* private mode */ }
-  try { if (account) await connector.disconnect(); } catch { /* not connected */ }
-  const u = new URL(location.href); u.searchParams.delete("net"); location.replace(u.toString());
+  // A wallet's disconnect can hang (seen with Intear): give it a second, then switch regardless.
+  if (account) await Promise.race([connector.disconnect().catch(() => undefined), new Promise((r) => setTimeout(r, 1000))]);
+  // location.replace() to the same URL with a #fragment is a same-page jump with no reload, so set the URL, then reload.
+  const u = new URL(location.href); u.searchParams.delete("net"); history.replaceState(null, "", u.toString()); location.reload();
 }
 const TESTNET_CFG: AnkoraConfig = {
   ...TESTNET_STUB,

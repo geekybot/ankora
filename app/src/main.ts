@@ -51,7 +51,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xAmtCopied: 0, qrOpen: false, qrMode: ((() => { try { return localStorage.getItem("ankora.qrmode") === "addr" ? "addr" : "pay"; } catch { return "pay"; } })()) as "pay" | "addr", xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  usdcReg: true, editing: "stake" as "stake" | "get", getAmt: "", getWhy: "", src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xAmtCopied: 0, qrOpen: false, qrMode: ((() => { try { return localStorage.getItem("ankora.qrmode") === "addr" ? "addr" : "pay"; } catch { return "pay"; } })()) as "pay" | "addr", xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -95,6 +95,8 @@ function human(raw: string): string {
     [/junior cover or free cash too low/, "The pool doesn't have enough free cash or First-loss cover for this loan right now. Try a smaller loan."],
     [/minimum deposit is 10 USDC/, "The minimum deposit is 10 USDC."],
     [/\bLocked\b/, "First-loss deposits stay locked for 36 days after your latest First-loss deposit."],
+    [/junior cover or free cash too low/, "The pool can't lend that much right now: another loan may have just used it. Refresh and try a smaller loan."],
+    [/mainnet cap: loans are limited/, "Mainnet loans are capped at 100 USDC in total while the pool is unaudited."],
     [/CoverBreach/, "Withdrawing that would leave First-loss cover under 15% of loans. Withdraw less, or wait for borrowers to repay."],
     [/InsufficientCash/, "The pool's free cash is lent out right now. Withdraw less, or wait for borrowers to repay."],
     [/JuniorWiped/, "First-loss deposits were used up by losses, so there's nothing left to withdraw from First-loss."],
@@ -365,12 +367,26 @@ function stats() {
 }
 
 
-function quoteNow() {
-  const p = S.price, stake = safe(() => toYocto(S.stake), 0n), plan = S.plans.find((x) => x.plan === S.plan);
+function quoteNow(stakeOverride?: bigint) {
+  const p = S.price, stake = stakeOverride ?? safe(() => toYocto(S.stake), 0n), plan = S.plans.find((x) => x.plan === S.plan);
   if (!p?.ok || p.priceRaw === undefined || !plan || stake <= 0n) return null;
   const menu = S.plans.map((x) => ({ plan: x.plan, ltvCapBps: x.ltv_cap_bps, termSecs: x.term_secs, rateBps: x.rate_bps }));
-  const principal = maxPrincipal(stake, { price: p.priceRaw, expo: p.expo! }, plan.ltv_cap_bps) * C.QUOTE_CAP_SHARE_BPS / 10_000n;
-  return { plan, stake, principal, q: quoteBorrow({ stakeYocto: stake, principal, plan: S.plan, price: { price: p.priceRaw, expo: p.expo! }, menu }) };
+  const full = maxPrincipal(stake, { price: p.priceRaw, expo: p.expo! }, plan.ltv_cap_bps) * C.QUOTE_CAP_SHARE_BPS / 10_000n;
+  // Never ask for more than the pool can lend (the contract's can_lend would refuse it): borrow less than the plan allows.
+  const room = lendRoom();
+  const principal = full > room ? room : full;
+  return { plan, stake, principal, capped: full > room, q: quoteBorrow({ stakeYocto: stake, principal, plan: S.plan, price: { price: p.priceRaw, expo: p.expo! }, menu }) };
+}
+
+/** The smallest stake (to 0.01 NEAR) whose loan pays at least `want` USDC; null if the pool can't lend that much. */
+function stakeFor(want: bigint): bigint | null {
+  const pays = (st: bigint) => { const Q = quoteNow(st); return Q?.q.ok ? Q.q.payout : 0n; };
+  let hi = 1_000_000n * YOCTO;
+  if (pays(hi) < want) return null;
+  let lo = 0n;
+  for (let i = 0; i < 90 && hi - lo > YOCTO / 100n; i++) { const mid = (lo + hi) / 2n; if (pays(mid) >= want) hi = mid; else lo = mid; }
+  const step = YOCTO / 100n;
+  return ((hi + step - 1n) / step) * step;
 }
 
 function validatorPicker() {
@@ -392,13 +408,14 @@ function borrowPanel() {
   const amt = safe(() => toYocto(S.stake), 0n);
   const button = !C.account ? connectBtn()
     : !p ? btn("Reading the price…", "noop", false)
+    : !p.ok && p.ageSecs > 90 ? btn(`NEAR price is ${Math.round(p.ageSecs / 60)} min old · waiting for an update`, "refresh", false)
     : !p.fresh ? btn("Refresh the price", "refresh", true)
     : maxStake() < MIN_STAKE ? btn(`Needs 5.3 NEAR · you have ${near(S.nearBal)}`, "noop", false)
     : amt <= 0n ? btn("Enter an amount", "noop", false)
     : amt < MIN_STAKE ? btn("Stake at least 3.5 NEAR", "noop", false)
     : amt > maxStake() ? btn(`Stake at most ${nearIn(maxStake())} NEAR`, "noop", false)
     : !q?.ok ? btn(q?.reason === "LTV above plan cap" ? "Price moved: refresh" : q?.reason ?? "Can't quote this", "noop", false)
-    : Q!.principal > lendRoom() ? btn(lendRoom() === 0n ? (S.ledger && BigInt(S.ledger.junior_value) === 0n ? "The pool needs First-loss cover to lend" : "The pool has no free cash to lend") : `The pool can lend up to ${usdc(lendRoom())} USDC now`, "noop", false)
+    : lendRoom() < U ? btn(S.ledger && BigInt(S.ledger.junior_value) === 0n ? "The pool needs First-loss cover to lend" : "The pool has no free cash to lend right now", "noop", false)
     : btn(`Borrow ${usdc(q.payout)} USDC`, "borrow", true);
   return `
     <div class="box">
@@ -411,21 +428,29 @@ function borrowPanel() {
     </div>
     <div class="flow" aria-hidden="true">${ICON.down}</div>
     <div class="box out">
-      <div class="box-top"><span>You get</span></div>
-      <div class="box-in">${ICON.usdc()}<output class="out-v num">${q?.ok ? usdc(q.payout) : "0.00"}</output><span class="unit">USDC</span></div>
+      <div class="box-top"><label for="getamt">You get</label>${S.getWhy ? `<span class="box-why">${esc(S.getWhy)}</span>` : ""}</div>
+      <div class="box-in">${ICON.usdc()}<input id="getamt" class="input num out-v" inputmode="decimal" placeholder="0.00" value="${esc(S.editing === "get" ? S.getAmt : q?.ok ? usdc(q.payout) : "")}" autocomplete="off" aria-describedby="sendsum"><span class="unit">USDC</span></div>
     </div>
-    ${q?.ok ? `<dl class="terms">
+    ${q?.ok ? `<div class="send" id="sendsum">
+      <div class="send-t"><span>You send</span><b class="num">${near(q.attachedYocto)} NEAR</b></div>
+      <ul class="send-p">
+        <li><span>Staked with ${esc(S.validator.replace(/\.pool(v1)?\.(near|f863973\.m0)$/, ""))}, keeps earning</span><span class="num">${near(Q!.stake + VAULT_EXTRA)}</span></li>
+        <li><span>Your loan's vault account, yours after repay</span><span class="num">${near(RESERVE - VAULT_EXTRA)}</span></li>
+      </ul>
+      <p class="send-f">Plus about ${near(BORROW_GAS, 1)} NEAR your wallet holds for network fees; most comes back.</p>
+    </div>
+    <dl class="terms">
       <div><dt>Interest, paid upfront</dt><dd class="num">${usdc(q.termInterest)} USDC</dd></div>
       <div><dt>Next price check</dt><dd>${when(due).replace(" UTC", "")} <small>UTC</small></dd></div>
       <div><dt>To close the loan</dt><dd class="num">${usdc(q.payout + q.termInterest)} USDC</dd></div>
-    </dl>` : ""}
+    </dl>${Q?.capped ? `<p class="fine warn">The pool can lend ${usdc(lendRoom())} USDC right now, so this loan is smaller than the plan allows. Stake less NEAR, or wait for lenders.</p>` : ""}` : ""}
     ${button}
     ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan needs about 5.3 NEAR: 3.5 to stake, 1.5 for your vault account and about 0.3 the wallet holds for network fees. ${C.MAINNET_NET ? "Add NEAR to this wallet," : `Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>,`} or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
+      : p && !p.ok && p.ageSecs > 90 ? `<p class="fine warn">${C.MAINNET_NET ? "Rhea's oracle" : "The price relay"} last posted ${Math.round(p.ageSecs / 60)} min ago. Loans need a price under 90 s old, so borrowing waits for the next update. Nothing is sent meanwhile.</p>`
       : `<p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>`}
     ${crossChain(false, q?.ok ? q.payout : 0n)}
     <details class="more" ${S.details ? "open" : ""} data-details><summary>Details ${ICON.chev}</summary>
       <dl class="terms sm">
-        ${q?.ok ? `<div><dt>NEAR sent</dt><dd class="num">${near(q.attachedYocto)} NEAR</dd></div><div><dt>Staked as collateral</dt><dd class="num">≈ ${near(Q!.stake + VAULT_EXTRA, 1)} NEAR</dd></div><div><dt>Vault storage</dt><dd>Rest of the 1.5 NEAR reserve</dd></div>` : ""}
         <div><dt>Above 50% LTV at renewal</dt><dd>72 h notice, 48 h grace, then a 24 h auction</dd></div>
       </dl>
     </details>`;
@@ -713,9 +738,11 @@ document.addEventListener("click", async (e) => {
   if (a === "v-transfer") return run(C.vault(el.dataset.v!).transfer(C.account!, BigInt(el.dataset.amt!)), { doing: "Sending NEAR from your vault to your wallet.", done: "The NEAR is in your wallet." });
   if (a === "borrow") {
     S.price = await C.readPrice().catch(() => null); // re-check right before asking the wallet
+    S.ledger = await C.pool.ledger().catch(() => S.ledger); // and what the pool can lend, which another borrower may have used
     if (!S.price?.fresh) { toasts.push({ kind: "info", title: "The price moved since your quote.", body: "Check the new quote, then borrow again. Nothing was sent." }); return render(); }
     const Q = quoteNow();
     if (!Q?.q.ok) { toasts.push({ kind: "error", title: Q?.q.reason ?? "Couldn't quote this loan.", body: "Nothing was sent." }); return render(); }
+    if (Q.principal < U) { toasts.push({ kind: "info", title: "The pool has nothing left to lend right now.", body: "Another loan may have just used it. Nothing was sent." }); return render(); }
     return run(C.act.borrow({ validator: S.validator, principal: Q.principal, plan: S.plan, stakeYocto: Q.stake }), { doing: `Borrowing ${usdc(Q.q.payout)} USDC against ${near(Q.stake)} NEAR.`, done: `${usdc(Q.q.payout)} USDC is in your wallet.`, doneBody: "Your NEAR is staked in your loan's vault." });
   }
 });
@@ -725,13 +752,28 @@ document.addEventListener("toggle", (e) => {
   if (d.matches?.("[data-xc]")) { const o = (d as HTMLDetailsElement).open; if (S.xOpen[S.tab] === o) return; S.xOpen[S.tab] = o; if (o) { ensureQuote(); render(); } }
 }, true);
 $("#wallet").addEventListener("click", () => (C.account ? C.disconnect() : C.connect()));
+// The two borrow amounts drive each other, so a click selects the number: typing replaces it instead of appending.
+let refocusing = false; // the app's own refocus after a re-render must not select (it would wipe what was just typed)
+document.addEventListener("focusin", (e) => { const t = e.target as HTMLInputElement; if (!refocusing && (t.id === "getamt" || t.id === "stake")) requestAnimationFrame(() => t.select()); });
 document.addEventListener("input", (e) => {
   const t = e.target as HTMLInputElement;
-  if (t.id !== "stake" && t.id !== "lamt") return;
+  if (t.id !== "stake" && t.id !== "lamt" && t.id !== "getamt") return;
   const pos = t.selectionStart;
-  if (t.id === "stake") S.stake = t.value; else S.lendAmt = t.value;
+  if (t.id === "stake") { S.stake = t.value; S.editing = "stake"; S.getWhy = ""; }
+  else if (t.id === "getamt") {
+    S.editing = "get"; S.getAmt = t.value; S.getWhy = "";
+    const want = safe(() => toUsdc(t.value || "0"), 0n);
+    if (want > 0n && !S.price?.ok) S.getWhy = "Waiting for a fresh NEAR price";
+    else if (want > 0n) {
+      const st = stakeFor(want);
+      if (st === null) S.getWhy = `The pool can lend about ${usdc(lendRoom())} USDC now`;
+      else S.stake = nearIn(st < MIN_STAKE ? MIN_STAKE : st);
+      if (st !== null && st < MIN_STAKE) S.getWhy = "Loans start at 3.5 NEAR staked";
+    }
+  }
+  else S.lendAmt = t.value;
   render();
-  const n = $<HTMLInputElement>("#" + t.id); n?.focus(); if (pos !== null) n?.setSelectionRange(pos, pos);
+  const n = $<HTMLInputElement>("#" + t.id); refocusing = true; n?.focus(); refocusing = false; if (pos !== null) n?.setSelectionRange(pos, pos);
 });
 document.addEventListener("change", (e) => { const t = e.target as HTMLInputElement; if (t.id === "val" && t.value.trim()) { S.validator = t.value.trim(); S.valTouched = true; S.valOpen = false; render(); } });
 // validator list: arrow keys move, Enter picks, Escape closes; a click outside closes it
