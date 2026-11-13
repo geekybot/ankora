@@ -151,6 +151,11 @@ export const nearBalance = async (id: string): Promise<bigint> => {
   return BigInt(i || "0") * 10n ** 24n + BigInt((f + "0".repeat(24)).slice(0, 24) || "0");
 };
 export const usdcBalance = async (id: string): Promise<bigint> => BigInt((await pool.usdcBalance(id)) ?? "0");
+/** Native USDC pays only accounts registered with it (NEP-145). Testnet's test token needs no registration. */
+export const usdcRegistered = async (id: string): Promise<boolean> =>
+  !MAINNET_NET || (await reader.view<unknown>(CFG.usdc, "storage_balance_of", { account_id: id }).catch(() => null)) != null;
+/** Register an account with USDC so payouts can reach it: 0.00125 NEAR, once. */
+export const registerUsdc = (id: string): Action => ({ receiverId: CFG.usdc, methodName: "storage_deposit", args: { account_id: id, registration_only: true }, gas: 10_000_000_000_000n, deposit: 1_250_000_000_000_000_000_000n });
 export const allLoans = (): Promise<LoanView[]> => pagedLoans(pool.loans);
 const owners = new Map<string, string>();
 export type MyVault = VaultInfo & { vault: string; loanId: number; transferable: bigint; stakedNow: bigint; unstaked: bigint; canWithdraw: boolean };

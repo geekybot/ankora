@@ -37,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -49,7 +49,8 @@ async function load(soft = false) {
     Object.assign(S, { plans, price, ledger, all, error: "" });
     S.history = await C.pool.auctionHistory(0, 10).catch(() => S.history); // older pools have no history view
     if (C.account) {
-      const [nb, ub, lender, cl, vaults] = await Promise.all([C.nearBalance(C.account), C.usdcBalance(C.account), C.pool.lender(C.account), C.pool.claimable(C.account), C.myVaults(all, C.account)]);
+      const [nb, ub, lender, cl, vaults, reg] = await Promise.all([C.nearBalance(C.account), C.usdcBalance(C.account), C.pool.lender(C.account), C.pool.claimable(C.account), C.myVaults(all, C.account), C.usdcRegistered(C.account)]);
+      S.usdcReg = reg;
       Object.assign(S, { nearBal: nb, usdcBal: ub, lender, claimable: BigInt(cl ?? "0"), vaults });
     }
   } catch (e) { S.error = human((e as Error).message ?? ""); }
@@ -662,6 +663,11 @@ document.addEventListener("click", async (e) => {
   if (a === "ack") { S.ack = !S.ack; return render(); }
   if (a === "max") { S.lendAmt = (Number(S.usdcBal) / 1e6).toFixed(2); return render(); }
   if (a === "faucet") return run(C.faucet(C.account!, 1_000n * U), { doing: "Minting 1,000 test USDC to your wallet.", done: "1,000 test USDC is in your wallet." });
+  if ((a === "claim" || a === "withdraw" || a === "borrow") && !S.usdcReg && C.account) {
+    const r = await run(C.registerUsdc(C.account), { doing: "First, registering your account with USDC (0.00125 NEAR, once) so the payout can reach you.", done: "Your account can now receive USDC.", doneBody: "Now approve the next step." });
+    if (r.kind !== "ok") return;
+    S.usdcReg = true;
+  }
   if (a === "claim") return run(C.act.claim(), { doing: `Claiming ${usdc(S.claimable)} USDC.`, done: `${usdc(S.claimable)} USDC is in your wallet.` });
   if (a === "settle") return run(C.act.settle(id), { doing: `Running loan #${id}'s price check.`, done: "Price check done.", doneBody: "Your account shows the loan's new state." });
   if (a === "autorenew") { const on = el.dataset.on === "true"; return run(C.act.setAutoRenew(id, on), { doing: `Turning auto-renew ${on ? "on" : "off"} for loan #${id}.`, done: on ? "Auto-renew is on." : "Auto-renew is off.", doneBody: on ? undefined : "Repay by the term's end, or a 48 h grace period starts, then the auction." }); }
