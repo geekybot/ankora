@@ -463,3 +463,8 @@
 .qrm-amt { display: inline-flex; align-items: center; height: 22px; padding: 0 7px; margin: 0 1px; border-radius: 6px; font: 600 13px/1 var(--font-num); color: var(--accent-ink); background: var(--accent); vertical-align: baseline; transition: transform 140ms var(--e-out), background-color 200ms var(--e-out); }
 .qrm-amt:active { transform: scale(0.96); }
 .qrm-amt.is-done { background: rgb(52 211 153); color: rgb(6 78 59); }
+
+.qrm-mode { justify-self: center; display: inline-flex; padding: 3px; border-radius: 10px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px var(--hair); }
+.qrm-mode button { height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--text-3); transition: color 160ms var(--e-out), background-color 160ms var(--e-out), transform 140ms var(--e-out); }
+.qrm-mode button:hover { color: var(--text); } .qrm-mode button:active { transform: scale(0.97); }
+.qrm-mode button[aria-checked="true"] { color: var(--accent-ink); background: var(--accent); }
