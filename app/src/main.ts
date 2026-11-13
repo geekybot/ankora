@@ -37,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -118,11 +118,11 @@ function judge(o: C.Outcome, a: C.Action, msg: Msg): Status {
   }
   return { kind: "ok", title: msg.done, body: msg.doneBody, hash: o.hash };
 }
-async function run(a: C.Action, msg: Msg): Promise<Status> {
+async function run(a: C.Action | C.Action[], msg: Msg): Promise<Status> {
   S.busy = true; render();
   const id = toasts.push({ kind: "pending", title: "Confirm in your wallet", body: `${msg.doing} Nothing is sent until you approve it there.` });
   let st: Status;
-  try { st = judge(await C.send(a), a, msg); }
+  try { st = judge(await C.send(a), Array.isArray(a) ? a[a.length - 1]! : a, msg); }
   catch (e) {
     const t = human((e as Error).message ?? ""), unsent = /cancelled|Couldn't reach|Connect a wallet/.test(t);
     st = { kind: /cancelled/.test(t) ? "info" : "error", title: t, body: unsent ? "Nothing was sent." : "Nothing changed in your wallet." };
@@ -498,7 +498,7 @@ function account() {
   const claim = S.claimable > 0n ? `<li class="row-i tone-ok"><div class="row-a"><span class="row-n">Auction surplus</span></div><b class="row-v num">${usdc(S.claimable)} <small>USDC</small></b><div class="row-acts"><button class="btn btn-1 sm" data-act="claim" ${S.busy ? "disabled" : ""}>Claim</button></div><div class="row-sub">Your vault sold above its debt; this part is yours.</div></li>` : "";
   const sec = (h: string, body: string) => body ? `<section class="acct-sec"><h3 class="h3">${h}</h3><ul>${body}</ul></section>` : "";
   const nothing = !loans && !vaults && !deps && !claim;
-  return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div>${C.MAINNET_NET ? "" : `<button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button>`}</div>
+  return `<div class="wallet-row"><div><span class="k">NEAR</span><b class="num">${near(S.nearBal)}</b></div><div><span class="k">USDC</span><b class="num">${usdc(S.usdcBal)}</b></div>${C.MAINNET_NET ? (S.usdcBal > 0n || S.out.dep ? `<button class="btn btn-2 sm" data-act="out-open" aria-expanded="${S.out.open}">Send to another chain</button>` : "") : `<button class="btn btn-2 sm" data-act="faucet" ${S.busy ? "disabled" : ""}>Get test USDC</button>`}</div>${C.MAINNET_NET && S.out.open ? sendOutBox() : ""}
     ${sec("To claim", claim)}${sec("Your loans", loans)}${sec("Your vaults", vaults)}${deps ? `<section class="acct-sec"><h3 class="h3">Your deposits</h3><ul class="deps">${deps}</ul></section>` : ""}
     ${nothing ? `<div class="acct-empty sm"><span>No loans or deposits yet. Use the card to start one.</span></div>` : ""}${poolNow()}${demoPanel()}`;
 }
@@ -707,3 +707,89 @@ function pollDeposit(address: string) {
   setTimeout(tick, 3000);
 }
 document.addEventListener("input", (e) => { const t = e.target as HTMLInputElement; if (t.id === "xrefund") { S.xRefund = t.value; softRender(); } }, true);
+
+// ---------- USDC out to another chain (mainnet): withdrawals and loan payouts land in the NEAR wallet first ----------
+const OUT_KEYS = { quote: "" };
+let outQ = { key: "", state: "idle" as "idle" | "ok" | "err", out: 0 };
+function sendOutBox() {
+  const o = S.out, ch = X.CHAINS.find((c) => c.id === o.chain) ?? X.CHAINS[0]!;
+  const d = o.dep;
+  if (d) {
+    const done = d.status === "SUCCESS", bad = /REFUNDED|FAILED|INCOMPLETE/.test(d.status);
+    return `<div class="xd xo ${done ? "ok" : bad ? "bad" : ""}">
+      <div class="xd-k">Sending <b class="num">${esc(d.amountIn)} USDC</b> to ${X.CHAINS.find((c) => c.id === d.chain)?.label ?? d.chain}</div>
+      <div class="xd-st" aria-live="polite"><i></i>${esc(X_STATUS_OUT[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR tx</a>` : ""}</div>
+      <div class="xd-f">About <span class="num">${d.amountOut.toFixed(2)}</span> USDC arrives, in ~${d.secs} s. ${done || bad ? `<button class="inline-link" data-act="out-reset">Send more</button>` : ""}</div></div>`;
+  }
+  const amt = safe(() => toUsdc(o.amt || "0"), 0n);
+  const okTo = X.validAddress(ch, o.to.trim());
+  const q = outQ.key === `out:${ch.id}:${amt}` && outQ.state === "ok" ? outQ.out : 0;
+  const why = amt === 0n ? "Enter an amount" : amt > S.usdcBal ? "More than your USDC" : !okTo ? `Your ${ch.label} address` : S.nearBal < 10n ** 22n ? "Needs 0.01 NEAR for the fee" : "";
+  return `<div class="xo-box">
+    <div class="xc-chains" role="radiogroup" aria-label="Chain">${X.CHAINS.map((c) => `<button class="xc-c" role="radio" aria-checked="${c.id === ch.id}" data-act="out-chain" data-v="${c.id}">${c.label}</button>`).join("")}</div>
+    <div class="xo-row"><input id="out-amt" class="input num" inputmode="decimal" placeholder="0" value="${esc(o.amt)}" autocomplete="off"><span class="unit">USDC</span><button class="bal" data-act="out-max">Max</button></div>
+    <label class="xd-in"><span>Send to, on ${ch.label}</span><input id="out-to" class="input" placeholder="${ch.id === "sol" ? "Solana address" : "0x…"}" value="${esc(o.to)}" autocomplete="off" spellcheck="false"></label>
+    <p class="xc-q">${q ? `Arrives as about <b class="num">${q.toFixed(2)}</b> USDC on ${ch.label}` : amt > 0n ? "Getting a live quote…" : "Live quote via NEAR Intents 1Click"}</p>
+    <button class="btn ${why ? "btn-2" : "btn-1"} xd-go" data-act="${why ? "noop" : "out-send"}" ${why || o.busy || S.busy ? "disabled" : ""}>${o.busy ? "Getting a route…" : why || `Send to ${ch.label}`}</button>
+    <p class="fine">One wallet approval: it registers the one-time NEAR Intents address (0.00125 NEAR) and sends the USDC. Refunds come back to ${esc(C.account ?? "")}.</p></div>`;
+}
+const X_STATUS_OUT: Record<string, string> = {
+  PENDING_DEPOSIT: "Waiting for the transfer", KNOWN_DEPOSIT_TX: "Transfer seen, confirming", PROCESSING: "Moving to the other chain",
+  SUCCESS: "Arrived", INCOMPLETE_DEPOSIT: "Less than quoted arrived: it will be refunded", REFUNDED: "Refunded to your NEAR wallet", FAILED: "Failed: refunded to your NEAR wallet",
+};
+/** Keep a live quote for the send-out box as its chain or amount changes. */
+function ensureOutQuote() {
+  if (!S.out.open || S.out.dep) return;
+  const ch = X.CHAINS.find((c) => c.id === S.out.chain) ?? X.CHAINS[0]!;
+  const amt = safe(() => toUsdc(S.out.amt || "0"), 0n);
+  const key = `out:${ch.id}:${amt}`;
+  if (amt === 0n || outQ.key === key || OUT_KEYS.quote === key) return;
+  OUT_KEYS.quote = key;
+  X.quote(ch, amt, false).then((r) => { outQ = { key, state: "ok", out: r.out }; render(); }).catch(() => { outQ = { key, state: "err", out: 0 }; render(); }).finally(() => { OUT_KEYS.quote = ""; });
+}
+function pollOut(address: string) {
+  const tick = async () => {
+    if (S.out.dep?.address !== address) return;
+    try {
+      const r = await X.depositStatus(address);
+      if (S.out.dep?.address !== address) return;
+      const was = S.out.dep.status; S.out.dep.status = r.status; S.out.dep.nearTx = r.nearTx ?? S.out.dep.nearTx;
+      if (r.status !== was) { if (r.status === "SUCCESS") toast("Your USDC arrived on the other chain."); render(); }
+      if (/SUCCESS|REFUNDED|FAILED/.test(r.status)) return;
+    } catch { /* keep polling */ }
+    setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 3000);
+}
+document.addEventListener("input", (e) => {
+  const t = e.target as HTMLInputElement;
+  if (t.id === "out-amt") { S.out.amt = t.value; softRender(); ensureOutQuote(); }
+  if (t.id === "out-to") { S.out.to = t.value; softRender(); }
+}, true);
+document.addEventListener("click", async (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>("[data-act]"); if (!el || (el as HTMLButtonElement).disabled) return;
+  const a = el.dataset.act;
+  if (a === "out-open") { S.out.open = !S.out.open; render(); return ensureOutQuote(); }
+  if (a === "out-chain") { S.out.chain = el.dataset.v!; render(); return ensureOutQuote(); }
+  if (a === "out-max") { S.out.amt = (Number(S.usdcBal) / 1e6).toFixed(6).replace(/\.?0+$/, ""); render(); return ensureOutQuote(); }
+  if (a === "out-reset") { S.out.dep = null; S.out.amt = ""; return render(); }
+  if (a === "out-send") {
+    const ch = X.CHAINS.find((c) => c.id === S.out.chain)!;
+    const amt = safe(() => toUsdc(S.out.amt || "0"), 0n);
+    S.out.busy = true; render();
+    let route: X.SendOut;
+    try { route = await X.sendOut(ch, amt, S.out.to.trim(), C.account!); }
+    catch (err) { S.out.busy = false; toast(`Couldn't get a route: ${(err as Error).message}`); return render(); }
+    S.out.busy = false;
+    const usdcId = C.CFG.usdc;
+    const st = await run([
+      { receiverId: usdcId, methodName: "storage_deposit", args: { account_id: route.address, registration_only: true }, gas: 10_000_000_000_000n, deposit: 1_250_000_000_000_000_000_000n },
+      { receiverId: usdcId, methodName: "ft_transfer", args: { receiver_id: route.address, amount: amt.toString(), memo: "ankora: to another chain" }, gas: 20_000_000_000_000n, deposit: 1n },
+    ], { doing: `Sending ${usdc(amt)} USDC to ${ch.label}.`, done: "Sent. NEAR Intents is moving it now." });
+    if (st.kind === "ok") {
+      S.out.dep = { ...route, status: "KNOWN_DEPOSIT_TX" };
+      if (st.hash) X.submitTx(st.hash, route.address);
+      pollOut(route.address); render();
+    }
+  }
+}, true);

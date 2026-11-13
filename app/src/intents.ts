@@ -70,3 +70,23 @@ export async function depositStatus(address: string): Promise<{ status: DepositS
   const tx = j?.swapDetails?.destinationChainTxHashes?.[0]?.hash ?? j?.swapDetails?.nearTxHashes?.at?.(-1);
   return { status: j?.status ?? "PENDING_DEPOSIT", nearTx: tx };
 }
+
+export interface SendOut { address: string; chain: string; amountIn: string; amountOut: number; deadline: string; secs: number }
+/** Mainnet only. USDC from a NEAR wallet to `to` on `chain`. 1Click returns a NEAR deposit address (an implicit account,
+ *  not yet registered with USDC): the wallet registers it and transfers in one transaction. Refunds go to `refundNear`. */
+export async function sendOut(chain: Chain, amount: bigint, to: string, refundNear: string): Promise<SendOut> {
+  const body = {
+    dry: false, swapType: "EXACT_INPUT", slippageTolerance: 100,
+    originAsset: NEAR_USDC, destinationAsset: chain.asset, amount: amount.toString(),
+    depositType: "ORIGIN_CHAIN", refundType: "ORIGIN_CHAIN", recipientType: "DESTINATION_CHAIN",
+    refundTo: refundNear, recipient: to, deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
+  };
+  const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok || !j?.quote?.depositAddress) throw new Error(j?.message ?? `quote failed (${r.status})`);
+  return { address: j.quote.depositAddress, chain: chain.id, amountIn: j.quote.amountInFormatted, amountOut: Number(j.quote.amountOutFormatted), deadline: j.quote.deadline ?? body.deadline, secs: Number(j.quote.timeEstimate ?? 0) };
+}
+/** Tell 1Click which transaction paid the deposit address, so it starts without waiting to notice it. Best effort. */
+export async function submitTx(txHash: string, depositAddress: string): Promise<void> {
+  await fetch(API.replace(/quote$/, "deposit/submit"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ txHash, depositAddress }) }).catch(() => undefined);
+}

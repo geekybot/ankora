@@ -132,13 +132,14 @@ export async function outcomesFromUrl(): Promise<Outcome[]> {
   }));
 }
 
-/** Sign and send one Action; returns what the chain said. */
-export async function send(a: Action): Promise<Outcome> {
+/** Sign and send one Action, or several for the same contract in one transaction; returns what the chain said. */
+export async function send(a: Action | Action[]): Promise<Outcome> {
   if (!signer || !account) throw new Error("Connect a wallet first.");
-  const res = await signer.transaction(account)
-    .functionCall(a.receiverId, a.methodName, a.args, { gas: `${Number(a.gas / 1_000_000_000_000n)} Tgas`, attachedDeposit: `${a.deposit} yocto` })
-    .send({ waitUntil: "FINAL" });
-  return readOutcome(res);
+  const list = Array.isArray(a) ? a : [a];
+  if (new Set(list.map((x) => x.receiverId)).size !== 1) throw new Error("one transaction goes to one contract");
+  let tx = signer.transaction(account);
+  for (const x of list) tx = tx.functionCall(x.receiverId, x.methodName, x.args, { gas: `${Number(x.gas / 1_000_000_000_000n)} Tgas`, attachedDeposit: `${x.deposit} yocto` });
+  return readOutcome(await tx.send({ waitUntil: "FINAL" }));
 }
 
 // ---------- reads ----------

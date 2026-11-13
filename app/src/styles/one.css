@@ -345,3 +345,14 @@
 .xd-f { font-size: 12px; color: var(--text-3); }
 @keyframes xdpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .xd-st i { animation: none; } }
+
+/* send USDC to another chain (mainnet) */
+.xo-box { display: grid; gap: 8px; margin-top: 10px; padding: 12px 0 4px; border-top: 1px solid var(--hair); }
+.xo-box .xc-chains { padding: 0; }
+.xo-box .xd-in, .xo-box .xc-q { margin: 0; padding: 0; }
+.xo-box .xd-go { margin: 2px 0 0; width: 100%; }
+.xo-box .fine { text-align: left; }
+.xo-row { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--hair); }
+.xo-row .input { flex: 1; min-width: 0; height: 100%; font-size: 18px; background: none; }
+.xo-row .input:focus { outline: none; }
+.xo { margin: 10px 0 0; }
