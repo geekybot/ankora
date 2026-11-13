@@ -11,6 +11,7 @@ import "./app.css";
 import "../../site/kinetic-grid.js"; // the landing's background, one source for both pages
 import * as C from "./chain.ts";
 import * as X from "./intents.ts";
+import { renderSVG } from "uqr";
 import { quoteBorrow, maxPrincipal, paydownToRenew, NEAR as YOCTO, type PlanName } from "../../client/src/quote.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -50,7 +51,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  usdcReg: true, src: "near" as "near" | "xchain", srcTouched: false, outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, qrOpen: false, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -260,7 +261,7 @@ function xDeposit(ch: X.Chain, amt: bigint) {
       ${xSteps(late ? "FAILED" : d.status, ["Send", "Bridging", "In the pool"])}
       ${late ? `<p class="xd-k"><b>This address expired. Don't send to it.</b> Get a new one: quotes last an hour.</p>` : ""}
       ${done || bad ? "" : `<p class="xd-k">Send exactly <b class="num">${Number(d.amountIn).toFixed(2)} USDC</b> on ${ch.label} to this one-time address</p>
-      <div class="xd-addr"><code>${esc(d.address)}</code><button class="xd-copy ${copied ? "is-done" : ""}" data-act="xcopy" aria-label="Copy the deposit address">${copied ? "Copied" : "Copy"}</button></div>`}
+      <div class="xd-addr"><code>${esc(d.address)}</code><button class="xd-qr" data-act="xqr" aria-haspopup="dialog" aria-label="Show a QR code to pay from a phone">${QR_ICON}</button><button class="xd-copy ${copied ? "is-done" : ""}" data-act="xcopy" aria-label="Copy the deposit address">${copied ? "Copied" : "Copy"}</button></div>`}
       <div class="xd-foot"><span aria-live="polite">${late ? "Expired" : esc(X_STATUS[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR transaction</a>` : ""}</span>
         <span>${done || bad ? `<button class="inline-link" data-act="xreset">New deposit</button>` : `Valid to ${new Date(d.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · <button class="inline-link" data-act="xreset">Cancel</button>`}</span></div>
       ${done ? `<p class="xd-done">About <b class="num">${d.amountOut.toFixed(2)}</b> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} is in ${esc(C.account ?? "")}.</p>` : ""}
@@ -609,6 +610,7 @@ function render() {
   if (pnl.dataset.tab !== S.tab) { pnl.dataset.tab = S.tab; pnl.classList.remove("is-swap"); void pnl.offsetWidth; pnl.classList.add("is-swap"); }
   put(pnl, panel);
   ensureQuote();
+  syncQr();
   put($("#context"), `<h2 class="acct-h">Your account</h2>${account()}`);
 }
 
@@ -655,7 +657,9 @@ document.addEventListener("click", async (e) => {
   if (a === "xchain") { S.xChain = el.dataset.v!; return render(); }
   if (a === "src") { S.src = el.dataset.v as "near" | "xchain"; S.srcTouched = true; return render(); }
   if (a === "xcopy" && S.xDep) { await navigator.clipboard.writeText(S.xDep.address).catch(() => undefined); S.xCopied = Date.now(); render(); setTimeout(render, 1600); return; }
-  if (a === "xreset") { S.xDep = null; saveX(); return render(); }
+  if (a === "xreset") { S.xDep = null; S.qrOpen = false; saveX(); return render(); }
+  if (a === "xqr") { S.qrOpen = true; return render(); }
+  if (a === "qr-close") { S.qrOpen = false; return render(); }
   if (a === "xdeposit") {
     const ch = X.CHAINS.find((c) => c.id === S.xChain)!;
     S.xBusy = true; render();
@@ -916,3 +920,46 @@ document.addEventListener("click", async (e) => {
     saveX(); render();
   }
 }, true);
+
+// ---------- QR: pay a deposit address from a phone. The modal mirrors the card; closing it leaves the card as it was ----------
+const QR_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2zM16 16h2v2h-2z"/></svg>`;
+const rawIn = (d: X.Deposit) => (d.amountInRaw ? BigInt(d.amountInRaw) : BigInt(Math.round(Number(d.amountIn) * 1e6)));
+const qrCache = new Map<string, string>();
+function qrSvg(text: string) {
+  let svg = qrCache.get(text);
+  if (!svg) { svg = renderSVG(text, { border: 1, ecc: "M" }); qrCache.set(text, svg); }
+  return svg;
+}
+function qrModal() {
+  const d = S.xDep!;
+  const ch = X.CHAINS.find((c) => c.id === d.chain) ?? X.CHAINS[0]!;
+  const late = expired(d);
+  const done = d.status === "SUCCESS", bad = late || /REFUNDED|FAILED|INCOMPLETE/.test(d.status);
+  const sending = d.status === "PENDING_DEPOSIT" && !late;
+  const copied = Date.now() - S.xCopied < 1500;
+  const amount = Number(d.amountIn).toFixed(2);
+  return `<div class="qrm-b ${done ? "is-ok" : bad ? "is-bad" : ""}">
+    <div class="qrm-h"><h2 id="qr-t">${done ? "In the pool" : bad ? (late ? "This address expired" : "Not completed") : sending ? `Send ${amount} USDC on ${ch.label}` : "Moving to the pool"}</h2>
+      <button class="qrm-x" data-act="qr-close" aria-label="Close">${ICON_X}</button></div>
+    ${xSteps(late ? "FAILED" : d.status, ["Send", "Bridging", "In the pool"])}
+    ${sending ? `<div class="qrm-code" role="img" aria-label="QR code: a ${ch.label} payment of ${amount} USDC to the deposit address">${qrSvg(X.payLink(d.chain, d.address, rawIn(d)))}</div>
+    <p class="qrm-k">Scan with your phone wallet. It fills in <b>${amount} USDC</b> on <b><i class="xdot xdot-${ch.id}" aria-hidden="true"></i> ${ch.label}</b>; check both before you send.</p>
+    <div class="xd-addr"><code>${esc(d.address)}</code><button class="xd-copy ${copied ? "is-done" : ""}" data-act="xcopy">${copied ? "Copied" : "Copy"}</button></div>`
+    : done ? `<p class="qrm-k">About <b class="num">${d.amountOut.toFixed(2)}</b> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} is in ${esc(C.account ?? "")}.</p>`
+    : late ? `<p class="qrm-k">Don't send to it. Close this and get a new address: quotes last an hour.</p>`
+    : bad ? `<p class="qrm-k">${esc(X_STATUS[d.status] ?? d.status)}.</p>`
+    : `<p class="qrm-k">Transfer seen. NEAR Intents is moving it to the pool; this takes about ${d.secs} s.</p>`}
+    <div class="qrm-f"><span aria-live="polite">${late ? "Expired" : esc(X_STATUS[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR transaction</a>` : ""}</span>
+      <button class="btn ${done ? "btn-1" : "btn-2"} sm" data-act="qr-close">${done || bad ? "Done" : "Close"}</button></div>
+  </div>`;
+}
+const ICON_X = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
+/** Keep the dialog in step with state on every render: open with content, or closed. */
+function syncQr() {
+  const dlg = document.getElementById("qr") as HTMLDialogElement | null;
+  if (!dlg) return;
+  if (S.qrOpen && S.xDep) { put(dlg, qrModal()); if (!dlg.open) dlg.showModal(); }
+  else if (dlg.open) dlg.close();
+}
+document.getElementById("qr")?.addEventListener("close", () => { if (S.qrOpen) { S.qrOpen = false; render(); } });
+document.getElementById("qr")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) { S.qrOpen = false; render(); } }); // backdrop

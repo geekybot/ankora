@@ -4,6 +4,25 @@
 const API = "https://1click.chaindefuser.com/v0/quote";
 export const NEAR_USDC = "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
 export interface Chain { id: string; label: string; asset: string; addr: string }
+/** USDC on each chain (native, not bridged), and the EVM chain id, for payment links (EIP-681, Solana Pay). */
+const PAY: Record<string, { chainId?: number; token: string }> = {
+  base: { chainId: 8453, token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
+  eth: { chainId: 1, token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+  arb: { chainId: 42161, token: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" },
+  pol: { chainId: 137, token: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359" },
+  sol: { token: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" },
+};
+/** A payment request for `amount` (6 dp) of USDC to `to`: the wallet that scans it gets the token, network and amount
+ *  filled in, so it can't default to the wrong token. EVM: EIP-681 ERC-20 transfer. Solana: Solana Pay. */
+export function payLink(chainId: string, to: string, amount: bigint): string {
+  const p = PAY[chainId];
+  if (!p) return to;
+  if (p.chainId === undefined) {
+    const whole = amount / 1_000_000n, frac = (amount % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+    return `solana:${to}?amount=${whole}${frac ? "." + frac : ""}&spl-token=${p.token}&label=Ankora`;
+  }
+  return `ethereum:${p.token}@${p.chainId}/transfer?address=${to}&uint256=${amount}`;
+}
 /** USDC on each chain (ids from GET /v0/tokens) and a placeholder address of that chain's format for dry quotes. */
 export const CHAINS: Chain[] = [
   { id: "base", label: "Base", asset: "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near", addr: "0x0000000000000000000000000000000000000001" },
@@ -44,7 +63,7 @@ export async function quote(chain: Chain, amount: bigint, toNear: boolean): Prom
 /** Address formats each chain accepts for refunds. */
 export const validAddress = (chain: Chain, a: string) => chain.id === "sol" ? /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a) : /^0x[0-9a-fA-F]{40}$/.test(a);
 
-export interface Deposit { address: string; chain: string; amountIn: string; amountOut: number; minOut: number; deadline: string; secs: number }
+export interface Deposit { address: string; chain: string; amountIn: string; amountInRaw?: string; amountOut: number; minOut: number; deadline: string; secs: number }
 /** Mainnet only. A real (non-dry) quote: USDC sent to `address` on `chain` reaches NEAR and is delivered to `pool` with
  *  ft_transfer_call and the message `depositfor`, so the shares are credited to `account`. Refunds go to `refundTo`. */
 export async function depositTo(chain: Chain, amount: bigint, refundTo: string, pool: string, account: string, tranche: "senior" | "junior"): Promise<Deposit> {
@@ -58,7 +77,7 @@ export async function depositTo(chain: Chain, amount: bigint, refundTo: string, 
   const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok || !j?.quote?.depositAddress) throw new Error(j?.message ?? `quote failed (${r.status})`);
-  return { address: j.quote.depositAddress, chain: chain.id, amountIn: j.quote.amountInFormatted, amountOut: Number(j.quote.amountOutFormatted),
+  return { address: j.quote.depositAddress, chain: chain.id, amountIn: j.quote.amountInFormatted, amountInRaw: String(j.quote.amountIn ?? ""), amountOut: Number(j.quote.amountOutFormatted),
     minOut: Number(j.quote.minAmountOut) / 1e6, deadline: j.quote.deadline ?? body.deadline, secs: Number(j.quote.timeEstimate ?? 0) };
 }
 export type DepositStatus = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" | "INCOMPLETE_DEPOSIT" | "REFUNDED" | "FAILED" | string;
