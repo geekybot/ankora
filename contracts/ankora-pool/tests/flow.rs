@@ -32,6 +32,11 @@ impl World {
         let r = Contract(contract.clone()).call_function(method, args).transaction()
             .deposit(NearToken::from_yoctonear(deposit_yocto)).gas(NearGas::from_tgas(tgas))
             .with_signer(who.clone(), self.signer.clone()).send_to(&self.net).await?;
+        if std::env::var("GAS_REPORT").is_ok() {
+            let near_api::types::transaction::result::TransactionResult::Full(fr) = &r else { panic!("pending") }; let os = fr.outcomes(); let total: u64 = os.iter().map(|o| o.gas_burnt.as_gas()).sum();
+            eprintln!("GAS {method}: total {} Tgas", total / 1_000_000_000_000);
+            for o in os { eprintln!("GAS   {} {} Tgas", o.executor_id, o.gas_burnt.as_gas() / 1_000_000_000_000); }
+        }
         let ok = r.assert_success();
         Ok(ok.json::<Value>().unwrap_or(Value::Null))
     }
@@ -89,7 +94,7 @@ async fn usdc_of(s: &Setup, who: &AccountId) -> TestResult<u128> { Ok(u(&s.w.vie
 
 async fn borrow(s: &Setup) -> TestResult<()> {
     set_price(s, 362_000_000).await?;
-    s.w.call(&s.whale, &s.pool, "borrow", json!({"validator": s.validator, "principal": (14_000 * U).to_string(), "plan": "P40"}), 10_001_500 * NEAR_Y / 1_000, 300).await?;
+    s.w.call(&s.whale, &s.pool, "borrow", json!({"validator": s.validator, "principal": (14_000 * U).to_string(), "plan": "P40"}), 10_001_500 * NEAR_Y / 1_000, 230).await?;
     Ok(())
 }
 
@@ -120,7 +125,7 @@ async fn stale_price_refunds_borrower() -> TestResult<()> {
     let s = setup().await?;
     let before = near_api::Tokens::account(s.whale.clone()).near_balance().fetch_from(&s.w.net).await?.total;
     // No price set: Pyth returns None, so the borrow must cancel and refund.
-    s.w.call(&s.whale, &s.pool, "borrow", json!({"validator": s.validator, "principal": (14_000 * U).to_string(), "plan": "P40"}), 10_001_500 * NEAR_Y / 1_000, 300).await?;
+    s.w.call(&s.whale, &s.pool, "borrow", json!({"validator": s.validator, "principal": (14_000 * U).to_string(), "plan": "P40"}), 10_001_500 * NEAR_Y / 1_000, 230).await?;
     assert!(loan(&s).await?.is_null());
     let after = near_api::Tokens::account(s.whale.clone()).near_balance().fetch_from(&s.w.net).await?.total;
     assert!(before.as_yoctonear() - after.as_yoctonear() < NEAR_Y / 10, "only gas spent, NEAR refunded");

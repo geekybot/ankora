@@ -41,7 +41,7 @@ export function actions(c: { pool: string; usdc: string }) {
   return {
     /** NEAR attached = stake + 1.5 NEAR vault reserve. The pool reads the price itself; no price push needed. */
     borrow: (b: { validator: string; principal: bigint; plan: PlanName; stakeYocto: bigint }): Action =>
-      call("borrow", { validator: b.validator, principal: b.principal.toString(), plan: b.plan }, 300n, b.stakeYocto + VAULT_RESERVE),
+      call("borrow", { validator: b.validator, principal: b.principal.toString(), plan: b.plan }, 230n, b.stakeYocto + VAULT_RESERVE),
     deposit: (tranche: Tranche, amount: bigint): Action => {
       if (amount < MIN_DEPOSIT) throw new Error("minimum deposit is 10 USDC");
       return ftCall(amount, { deposit: tranche });

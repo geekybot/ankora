@@ -75,7 +75,7 @@ function human(raw: string): string {
     [/reject|cancel|denied|closed|User (?:didn't|did not)/i, "You cancelled in the wallet."],
     [/Connect a wallet/i, "Connect a wallet first."],
     [/attach at least 5 NEAR/, "A loan needs at least 5 NEAR attached: 1.5 NEAR of it pays for your vault account. Bring more NEAR."],
-    [/attach at least 250 Tgas/, "The wallet sent too little gas. Try again; if your wallet lets you set gas, allow 300 Tgas."],
+    [/attach at least \d+ Tgas/, "The wallet sent too little gas. Try again; if your wallet lets you set gas, allow 230 Tgas."],
     [/NotEnoughBalance|Exceeded the account balance|LackBalanceForState|not enough balance to cover/i, "This wallet doesn't have enough NEAR for that plus gas. Keep about 0.1 NEAR spare."],
     [/junior cover or free cash too low/, "The pool doesn't have enough free cash or First-loss cover for this loan right now. Try a smaller loan."],
     [/minimum deposit is 10 USDC/, "The minimum deposit is 10 USDC."],

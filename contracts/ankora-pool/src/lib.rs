@@ -16,12 +16,12 @@ const VAULT_RESERVE: NearToken = NearToken::from_millinear(1_500);
 const MIN_ATTACHED: NearToken = NearToken::from_near(5);
 /// Smallest lender deposit (6 dp): each position costs the pool storage.
 const MIN_DEPOSIT: u128 = 10_000_000;
-const MIN_GAS: Gas = Gas::from_tgas(250);
+const MIN_GAS: Gas = Gas::from_tgas(220);
 const GAS_PYTH: Gas = Gas::from_tgas(10);
-const GAS_ON_PRICED: Gas = Gas::from_tgas(190);
+const GAS_ON_PRICED: Gas = Gas::from_tgas(170);
 const GAS_VAULT_INIT: Gas = Gas::from_tgas(10);
 const GAS_VAULT_STAKE: Gas = Gas::from_tgas(100);
-const GAS_ON_STAKED: Gas = Gas::from_tgas(50);
+const GAS_ON_STAKED: Gas = Gas::from_tgas(35);
 const GAS_FT: Gas = Gas::from_tgas(10);
 const GAS_CB: Gas = Gas::from_tgas(10);
 const GAS_PROBE: Gas = Gas::from_tgas(5);
@@ -255,12 +255,13 @@ impl Pool {
     }
     fn started(self) -> Self { acc_write(self.ledger.t0, self.ledger.t0); self }
 
-    /// Attach the NEAR to stake (plus 1.5 NEAR vault storage) and at least 250 Tgas.
+    /// Attach the NEAR to stake (plus 1.5 NEAR vault storage) and at least 220 Tgas.
+    /// A sandbox borrow burns about 49 Tgas; the rest is headroom for real validators and Pyth, refunded if unused.
     #[payable]
     pub fn borrow(&mut self, validator: AccountId, principal: U128, plan: PlanArg) -> Promise {
         let attached = env::attached_deposit();
         require!(attached >= MIN_ATTACHED, "attach at least 5 NEAR");
-        require!(env::prepaid_gas() >= MIN_GAS, "attach at least 250 Tgas");
+        require!(env::prepaid_gas() >= MIN_GAS, "attach at least 220 Tgas");
         require!(principal.0 > 0, "principal must be positive");
         require!(self.ledger.can_lend(principal.0, self.clock(now())), "junior cover or free cash too low for this loan");
         self.ledger.reserve(principal.0);
