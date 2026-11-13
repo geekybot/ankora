@@ -6,7 +6,7 @@ Ankora lends USDC against NEAR for fixed 7 to 30-day terms and reads the price o
 
 ## Judging in 2 minutes
 
-1. **Watch the demo** (1:50): [ankora.utpal.dev/demo/ankora-demo.mp4](https://ankora.utpal.dev/demo/ankora-demo.mp4)
+1. **Watch the demo** (1:50): [ankora.utpal.dev/demo/ankora-demo.mp4](https://ankora.utpal.dev/demo/ankora-demo.mp4), also [on X](https://x.com/0xpalut/status/2121341029534355644)
 2. **Read the thesis:** [research/THESIS.md](research/THESIS.md): why the protocol makes sense, with historical simulations.
 3. **Check the live claims:** `node scripts/verify.mjs` (Node 22, no keys). **Rerun the numbers:** `python research/sim.py`. A `WARN` on the oracle line means Rhea's price feed is momentarily stale, not that a claim failed.
 4. **Try it free on testnet:** [ankora.utpal.dev/app](https://ankora.utpal.dev/app/). Lending needs a little testnet NEAR for gas, plus test USDC from the app's faucet. Borrowing needs about 5.3 testnet NEAR. Faucets dry? [Open an issue](https://github.com/geekybot/ankora/issues) and we'll send testnet NEAR.
