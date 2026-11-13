@@ -28,7 +28,20 @@ const GAS_SPARE = YOCTO / 10n;
 const RESERVE = 3n * YOCTO / 2n;              // held back for the loan's vault account (contract VAULT_RESERVE)
 const MIN_STAKE = 7n * YOCTO / 2n;            // the contract needs at least 5 NEAR attached: 3.5 staked + 1.5 reserve
 /** The most this wallet can stake: balance minus the vault reserve and some gas. */
-const maxStake = () => { const m = S.nearBal - RESERVE - GAS_SPARE * 2n; return m > 0n ? m : 0n; };
+/** NEAR the wallet holds back to pre-pay a borrow's 230 Tgas at a pessimistic gas price (0.24 measured on mainnet). */
+const BORROW_GAS = 3n * YOCTO / 10n;
+const maxStake = () => { const m = S.nearBal - RESERVE - BORROW_GAS; return m > 0n ? m : 0n; };
+/** What the pool can lend right now, by the contract's own rule (can_lend): free cash, First-loss cover of 15% of all
+ *  loans, and on mainnet the 100 USDC loan cap. */
+function lendRoom(): bigint {
+  const L = S.ledger; if (!L) return 0n;
+  const out = BigInt(L.outstanding) + BigInt(L.reserved);
+  const cash = BigInt(L.cash) - BigInt(L.treasury) - BigInt(L.reserved);
+  const cover = BigInt(L.junior_value) * 10_000n / 1_500n - out;
+  let r = cash < cover ? cash : cover;
+  if (C.MAINNET_NET) { const cap = 100n * U - out; if (cap < r) r = cap; }
+  return r > 0n ? r : 0n;
+}
 const nearIn = (y: bigint) => (Number(y / 10n ** 20n) / 1e4).toFixed(2);
 const ASSET = `${import.meta.env.BASE_URL}assets/`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -93,6 +106,7 @@ function human(raw: string): string {
     [/only the borrower/, "Only the borrower of this loan can do that."],
     [/nothing to claim/, "There's nothing to claim."],
     [/whitelist/i, "That validator isn't on the lockup whitelist. Pick a validator from the whitelist."],
+    [/Not enough balance: .* has ([\d.]+) NEAR but needs ([\d.]+) NEAR/i, "This needs more NEAR than the wallet holds, including network fees. Lower the stake a little."],
     [/doesn't have enough balance|The account doesn't have enough balance|Insufficient balance/i, C.MAINNET_NET ? "Not enough USDC in this wallet." : "Not enough test USDC. Get 1,000 from the faucet first."],
     [/mainnet cap: the pool holds at most 200 USDC/, "The mainnet pool is capped at 200 USDC while it is unaudited, and it is full. Deposit less."],
     [/mainnet cap: loans are limited to 100 USDC/, "Mainnet loans are capped at 100 USDC in total while the pool is unaudited. Borrow less."],
@@ -342,7 +356,7 @@ function stats() {
   const cell = (k: string, v: string, side = "") => `<div class="stat"><span class="stat-k">${k}${side ? `<span class="stat-side">${side}</span>` : ""}</span><span class="stat-v num">${v}</span></div>`;
   const unit = (x: string) => `${x} <small>USDC</small>`;
   return `<div class="stats-row">
-    ${cell("Available to borrow", L ? unit(usdc(L.cash, 0)) : "–")}
+    ${cell("Available to borrow", L ? unit(usdc(lendRoom(), 0)) : "–")}
     ${cell("Lent out", L ? unit(usdc(L.outstanding, 0)) : "–")}
     ${cell("Utilisation", L ? `${(L.utilisation_bps / 100).toFixed(1)}%` : "–", L ? `<span class="util"><i style="width:${Math.min(100, L.utilisation_bps / 100)}%"></i></span>` : "")}
     ${cell("NEAR price", p ? `$${p.price.toFixed(3)}` : "–", p ? `<span class="live ${stale ? "is-stale" : ""}"><i></i>${stale ? "stale " : ""}${age}</span>` : "")}
@@ -378,11 +392,12 @@ function borrowPanel() {
   const button = !C.account ? connectBtn()
     : !p ? btn("Reading the price…", "noop", false)
     : !p.fresh ? btn("Refresh the price", "refresh", true)
-    : maxStake() < MIN_STAKE ? btn(`Needs 5.1 NEAR · you have ${near(S.nearBal)}`, "noop", false)
+    : maxStake() < MIN_STAKE ? btn(`Needs 5.3 NEAR · you have ${near(S.nearBal)}`, "noop", false)
     : amt <= 0n ? btn("Enter an amount", "noop", false)
     : amt < MIN_STAKE ? btn("Stake at least 3.5 NEAR", "noop", false)
     : amt > maxStake() ? btn(`Stake at most ${nearIn(maxStake())} NEAR`, "noop", false)
     : !q?.ok ? btn(q?.reason === "LTV above plan cap" ? "Price moved: refresh" : q?.reason ?? "Can't quote this", "noop", false)
+    : Q!.principal > lendRoom() ? btn(lendRoom() === 0n ? (S.ledger && BigInt(S.ledger.junior_value) === 0n ? "The pool needs First-loss cover to lend" : "The pool has no free cash to lend") : `The pool can lend up to ${usdc(lendRoom())} USDC now`, "noop", false)
     : btn(`Borrow ${usdc(q.payout)} USDC`, "borrow", true);
   return `
     <div class="box">
@@ -404,7 +419,7 @@ function borrowPanel() {
       <div><dt>To close the loan</dt><dd class="num">${usdc(q.payout + q.termInterest)} USDC</dd></div>
     </dl>` : ""}
     ${button}
-    ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan sends at least 5 NEAR: 3.5 to stake, 1.5 for your vault account. ${C.MAINNET_NET ? "Add NEAR to this wallet," : `Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>,`} or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
+    ${C.account && S.nearBal > 0n && maxStake() < MIN_STAKE ? `<p class="fine warn">A loan needs about 5.3 NEAR: 3.5 to stake, 1.5 for your vault account and about 0.3 the wallet holds for network fees. ${C.MAINNET_NET ? "Add NEAR to this wallet," : `Get testnet NEAR at <a href="https://near-faucet.io/" target="_blank" rel="noopener">near-faucet.io</a>,`} or <button class="inline-link" data-act="tab" data-v="lend">lend instead</button>.</p>`
       : `<p class="fine">Your NEAR stays staked. No price check for ${days || "7 to 30"} days.</p>`}
     ${crossChain(false, q?.ok ? q.payout : 0n)}
     <details class="more" ${S.details ? "open" : ""} data-details><summary>Details ${ICON.chev}</summary>
