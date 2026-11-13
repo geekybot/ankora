@@ -103,6 +103,8 @@ export async function restore() {
 }
 export const connect = () => connector.connect().catch(() => undefined);
 export const disconnect = () => connector.disconnect().catch(() => undefined);
+/** Dev server only: show the signed-in screens for a design review. Sets a display name; there is no signer behind it. */
+export const devViewAs = (id: string | null) => { if (import.meta.env.DEV) { account = id; emit(); } };
 
 // ---------- outcomes ----------
 export interface Outcome { hash?: string; ok: boolean; value?: unknown; logs: string[]; failure?: string; failures: string[] }
