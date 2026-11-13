@@ -37,7 +37,7 @@ type Status = { kind: "pending" | "ok" | "error" | "info"; title: string; body?:
 const S = {
   plans: [] as C.PlanView[], price: null as C.PriceRead | null, all: [] as C.LoanView[], vaults: [] as C.MyVault[],
   history: [] as C.AuctionRecord[], nearBal: 0n, usdcBal: 0n, lender: null as Awaited<ReturnType<typeof C.pool.lender>>, ledger: null as Awaited<ReturnType<typeof C.pool.ledger>> | null, claimable: 0n,
-  out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
+  outPending: null as X.SendOut | null, out: { open: false, chain: "base", amt: "", to: "", busy: false, dep: null as (X.SendOut & { status: string; nearTx?: string }) | null }, xCopied: 0, xRefund: "", xDep: null as (X.Deposit & { status: string; nearTx?: string; tranche: string }) | null, xBusy: false, tab: "borrow" as "borrow" | "lend" | "auctions", xOpen: { borrow: false, lend: false } as Record<string, boolean>, xChain: "base", xq: { key: "", state: "idle" as "idle" | "loading" | "ok" | "err", out: 0, secs: 0 }, details: false, vals: [] as C.ValidatorRow[], valOpen: false, valActive: -1, valTouched: false, stake: "10", plan: "P30" as PlanName, validator: C.CFG.validator, tranche: "senior" as "senior" | "junior", ack: false, lendAmt: "", busy: false, error: "",
 };
 const mine = () => S.all.filter((l) => l.borrower === C.account && l.state !== "Closed");
 
@@ -238,13 +238,15 @@ const X_STATUS: Record<string, string> = {
 function xDeposit(ch: X.Chain, amt: bigint) {
   const d = S.xDep;
   if (d && d.chain === ch.id) {
-    const done = d.status === "SUCCESS", bad = /REFUNDED|FAILED|INCOMPLETE/.test(d.status);
+    const late = expired(d);
+    const done = d.status === "SUCCESS", bad = late || /REFUNDED|FAILED|INCOMPLETE/.test(d.status);
     const copied = Date.now() - S.xCopied < 1500;
     return `<div class="xd ${done ? "is-ok" : bad ? "is-bad" : ""}">
-      ${xSteps(d.status, ["Send", "Bridging", "In the pool"])}
+      ${xSteps(late ? "FAILED" : d.status, ["Send", "Bridging", "In the pool"])}
+      ${late ? `<p class="xd-k"><b>This address expired. Don't send to it.</b> Get a new one: quotes last an hour.</p>` : ""}
       ${done || bad ? "" : `<p class="xd-k">Send exactly <b class="num">${Number(d.amountIn).toFixed(2)} USDC</b> on ${ch.label} to this one-time address</p>
       <div class="xd-addr"><code>${esc(d.address)}</code><button class="xd-copy ${copied ? "is-done" : ""}" data-act="xcopy" aria-label="Copy the deposit address">${copied ? "Copied" : "Copy"}</button></div>`}
-      <div class="xd-foot"><span aria-live="polite">${esc(X_STATUS[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR transaction</a>` : ""}</span>
+      <div class="xd-foot"><span aria-live="polite">${late ? "Expired" : esc(X_STATUS[d.status] ?? d.status)}${d.nearTx ? ` · <a href="${EXPLORER(d.nearTx)}" target="_blank" rel="noopener">NEAR transaction</a>` : ""}</span>
         <span>${done || bad ? `<button class="inline-link" data-act="xreset">New deposit</button>` : `Valid to ${new Date(d.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · <button class="inline-link" data-act="xreset">Cancel</button>`}</span></div>
       ${done ? `<p class="xd-done">About <b class="num">${d.amountOut.toFixed(2)}</b> USDC of ${d.tranche === "junior" ? "First-loss" : "Fixed"} is in ${esc(C.account ?? "")}.</p>` : ""}
     </div>`;
@@ -608,14 +610,14 @@ document.addEventListener("click", async (e) => {
   if (a === "net") return void C.setNetwork(el.dataset.v as C.Net);
   if (a === "xchain") { S.xChain = el.dataset.v!; return render(); }
   if (a === "xcopy" && S.xDep) { await navigator.clipboard.writeText(S.xDep.address).catch(() => undefined); S.xCopied = Date.now(); render(); setTimeout(render, 1600); return; }
-  if (a === "xreset") { S.xDep = null; return render(); }
+  if (a === "xreset") { S.xDep = null; saveX(); return render(); }
   if (a === "xdeposit") {
     const ch = X.CHAINS.find((c) => c.id === S.xChain)!;
     S.xBusy = true; render();
     try {
       const d = await X.depositTo(ch, safe(() => toUsdc(S.lendAmt || "0"), 0n), S.xRefund.trim(), C.CFG.pool, C.account!, S.tranche === "junior" ? "junior" : "senior");
       S.xDep = { ...d, status: "PENDING_DEPOSIT", tranche: S.tranche };
-      pollDeposit(d.address);
+      saveX(); pollDeposit(d.address);
     } catch (err) { toast(`Couldn't get a deposit address: ${(err as Error).message}`); }
     S.xBusy = false; return render();
   }
@@ -711,30 +713,78 @@ async function refresh() {
   if (refreshing) return; refreshing = true;
   try { await load(true); } finally { refreshing = false; }
 }
+C.onWallet(() => { resumeX([]); });
 C.restore().then(async () => {
   const outs = await C.outcomesFromUrl().catch(() => []);
+  await resumeX(outs.filter((o) => o.ok && o.hash).map((o) => o.hash!));
   if (outs.length) toasts.push(outs.map((o) => judge(o, { receiverId: "", methodName: "", args: {}, gas: 0n, deposit: 0n }, { doing: "", done: "Done. The chain confirmed it." })).find((s) => s.kind === "error") ?? { kind: "ok", title: "Done. The chain confirmed it.", hash: outs[0]?.hash });
   await load();
   loadValidators(); // one RPC call; details wait until the list is opened
 });
 render();
 // Dev server only (stripped from builds): lets a design review drive states the chain can't produce on demand.
-if (import.meta.env.DEV) Object.assign(window, { __ank: { S, render, viewAs: C.devViewAs } });
+if (import.meta.env.DEV) Object.assign(window, { __ank: { S, render, viewAs: C.devViewAs, saveX } });
 
 /** Follow a cross-chain deposit until it lands or is refunded; reload the pool when it lands. */
-function pollDeposit(address: string) {
+/** Cross-chain transfers survive a reload: kept per network and account until they end or are dismissed. */
+const XKEY = () => `ankora.xfer.v1.${C.NET}.${C.account ?? "-"}`;
+function saveX() {
+  try {
+    if (!C.account) return;
+    const keep = { dep: S.xDep, out: S.out.dep, outPending: S.outPending };
+    if (!keep.dep && !keep.out && !keep.outPending) localStorage.removeItem(XKEY()); else localStorage.setItem(XKEY(), JSON.stringify(keep));
+  } catch { /* private mode: nothing to resume */ }
+}
+const X_END = /SUCCESS|REFUNDED|FAILED/;
+/** A deposit address older than its quote deadline must not receive funds. */
+const expired = (d: { status: string; deadline: string }) => d.status === "PENDING_DEPOSIT" && Date.now() > Date.parse(d.deadline);
+const X_TOAST: Record<string, (out: boolean) => Status> = {
+  SUCCESS: (out) => ({ kind: "ok", title: out ? "Your USDC arrived on the other chain." : "Your cross-chain deposit is in the pool." }),
+  REFUNDED: (out) => ({ kind: "error", title: out ? "The transfer was refunded to your NEAR wallet." : "The deposit was refunded to your address.", body: "Nothing was lost but the network fees." }),
+  FAILED: (out) => ({ kind: "error", title: "NEAR Intents couldn't complete the transfer.", body: out ? "The USDC is refunded to your NEAR wallet." : "The USDC is refunded to the address you gave." }),
+  INCOMPLETE_DEPOSIT: () => ({ kind: "error", title: "Less USDC arrived than the quote needs.", body: "NEAR Intents refunds it to the address you gave." }),
+};
+/** Follow a transfer until it lands, is refunded or its address expires. `out`: the send-out direction. */
+function pollX(out: boolean, address: string) {
+  const cur = () => (out ? S.out.dep : S.xDep);
   const tick = async () => {
-    if (S.xDep?.address !== address) return;
+    const d = cur();
+    if (d?.address !== address) return;
+    if (expired(d)) { render(); return; } // the card says not to send; no point polling an address 1Click retired
     try {
       const r = await X.depositStatus(address);
-      if (S.xDep?.address !== address) return;
-      const was = S.xDep.status; S.xDep.status = r.status; S.xDep.nearTx = r.nearTx;
-      if (r.status !== was) { if (r.status === "SUCCESS") { toast("Your cross-chain deposit is in the pool."); await load(); } else render(); }
-      if (/SUCCESS|REFUNDED|FAILED/.test(r.status)) return;
+      const now = cur();
+      if (now?.address !== address) return;
+      const was = now.status; now.status = r.status; now.nearTx = r.nearTx ?? now.nearTx;
+      if (r.status !== was) {
+        saveX();
+        const t = X_TOAST[r.status]?.(out);
+        if (t) toasts.push(t);
+        if (r.status === "SUCCESS" && !out) await load(); else render();
+      }
+      if (X_END.test(r.status)) return;
     } catch { /* keep polling */ }
     setTimeout(tick, 5000);
   };
-  setTimeout(tick, 3000);
+  setTimeout(tick, 2500);
+}
+const pollDeposit = (address: string) => pollX(false, address);
+const pollOut = (address: string) => pollX(true, address);
+/** On load (and after a wallet redirect): bring back unfinished transfers and keep following them. */
+async function resumeX(redirectHashes: string[]) {
+  if (!C.MAINNET_NET || !C.account) return;
+  let saved: { dep?: typeof S.xDep; out?: typeof S.out.dep; outPending?: typeof S.outPending } | null = null;
+  try { saved = JSON.parse(localStorage.getItem(XKEY()) ?? "null"); } catch { /* ignore */ }
+  if (!saved) return;
+  if (saved.dep && !S.xDep) { S.xDep = saved.dep; S.xOpen.lend = true; if (!X_END.test(saved.dep.status)) pollDeposit(saved.dep.address); }
+  if (saved.out && !S.out.dep) { S.out.dep = saved.out; S.out.open = true; if (!X_END.test(saved.out.status)) pollOut(saved.out.address); }
+  // A send-out signed through a redirecting wallet: the route was saved before the wallet opened.
+  if (saved.outPending && !S.out.dep) {
+    const p = saved.outPending;
+    if (redirectHashes.length) { S.out.dep = { ...p, status: "KNOWN_DEPOSIT_TX" }; S.out.open = true; X.submitTx(redirectHashes[0]!, p.address); pollOut(p.address); }
+    S.outPending = null;
+  }
+  saveX(); render();
 }
 document.addEventListener("input", (e) => { const t = e.target as HTMLInputElement; if (t.id === "xrefund") { S.xRefund = t.value; softRender(); } }, true);
 
@@ -781,20 +831,6 @@ function ensureOutQuote() {
   OUT_KEYS.quote = key;
   X.quote(ch, amt, false).then((r) => { outQ = { key, state: "ok", out: r.out, secs: r.secs }; render(); }).catch(() => { outQ = { key, state: "err", out: 0, secs: 0 }; render(); }).finally(() => { OUT_KEYS.quote = ""; });
 }
-function pollOut(address: string) {
-  const tick = async () => {
-    if (S.out.dep?.address !== address) return;
-    try {
-      const r = await X.depositStatus(address);
-      if (S.out.dep?.address !== address) return;
-      const was = S.out.dep.status; S.out.dep.status = r.status; S.out.dep.nearTx = r.nearTx ?? S.out.dep.nearTx;
-      if (r.status !== was) { if (r.status === "SUCCESS") toast("Your USDC arrived on the other chain."); render(); }
-      if (/SUCCESS|REFUNDED|FAILED/.test(r.status)) return;
-    } catch { /* keep polling */ }
-    setTimeout(tick, 5000);
-  };
-  setTimeout(tick, 3000);
-}
 document.addEventListener("input", (e) => {
   const t = e.target as HTMLInputElement;
   if (t.id === "out-amt") { S.out.amt = t.value; softRender(); ensureOutQuote(); }
@@ -806,7 +842,7 @@ document.addEventListener("click", async (e) => {
   if (a === "out-open") { S.out.open = !S.out.open; render(); return ensureOutQuote(); }
   if (a === "out-chain") { S.out.chain = el.dataset.v!; render(); return ensureOutQuote(); }
   if (a === "out-max") { S.out.amt = (Number(S.usdcBal) / 1e6).toFixed(6).replace(/\.?0+$/, ""); render(); return ensureOutQuote(); }
-  if (a === "out-reset") { S.out.dep = null; S.out.amt = ""; return render(); }
+  if (a === "out-reset") { S.out.dep = null; S.out.amt = ""; saveX(); return render(); }
   if (a === "out-send") {
     const ch = X.CHAINS.find((c) => c.id === S.out.chain)!;
     const amt = safe(() => toUsdc(S.out.amt || "0"), 0n);
@@ -815,15 +851,18 @@ document.addEventListener("click", async (e) => {
     try { route = await X.sendOut(ch, amt, S.out.to.trim(), C.account!); }
     catch (err) { S.out.busy = false; toast(`Couldn't get a route: ${(err as Error).message}`); return render(); }
     S.out.busy = false;
+    S.outPending = route; saveX(); // a redirecting wallet reloads the page: resumeX picks this up
     const usdcId = C.CFG.usdc;
     const st = await run([
       { receiverId: usdcId, methodName: "storage_deposit", args: { account_id: route.address, registration_only: true }, gas: 10_000_000_000_000n, deposit: 1_250_000_000_000_000_000_000n },
       { receiverId: usdcId, methodName: "ft_transfer", args: { receiver_id: route.address, amount: amt.toString(), memo: "ankora: to another chain" }, gas: 20_000_000_000_000n, deposit: 1n },
     ], { doing: `Sending ${usdc(amt)} USDC to ${ch.label}.`, done: "Sent. NEAR Intents is moving it now." });
+    S.outPending = null;
     if (st.kind === "ok") {
       S.out.dep = { ...route, status: "KNOWN_DEPOSIT_TX" };
       if (st.hash) X.submitTx(st.hash, route.address);
-      pollOut(route.address); render();
+      pollOut(route.address);
     }
+    saveX(); render();
   }
 }, true);
